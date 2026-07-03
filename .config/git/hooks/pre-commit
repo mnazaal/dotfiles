@@ -1,0 +1,81 @@
+#!/bin/bash
+set -euo pipefail
+
+ERROR_PREFIX="GIT PRE-COMMIT HOOK ERROR:"
+
+# Coding-agent branch namespacing: agents may only touch <prefix>/* branches.
+# Prefix comes from AGENT_BRANCH_PREFIX (set by renv env files); fall back to
+# "opencode" for the OPENCODE=1 set by opencode's own runtime. Empty => human.
+PREFIX="${AGENT_BRANCH_PREFIX:-}"
+[[ -z "$PREFIX" && "${OPENCODE:-0}" == "1" ]] && PREFIX="opencode"
+if [[ -n "$PREFIX" ]]; then
+    BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
+    if [[ -z "$BRANCH" ]]; then
+        # Detached HEAD is only allowed mid-rebase of a $PREFIX/* branch (e.g.
+        # interactive rebase 'edit'/'reword' running git commit). The branch
+        # ref is reattached at rebase end, where reference-transaction still
+        # enforces the $PREFIX/* boundary, so this can't touch protected refs.
+        REBASE_HEAD=""
+        for d in rebase-merge rebase-apply; do
+            p="$(git rev-parse --git-path "$d/head-name" 2>/dev/null)"
+            [[ -f "$p" ]] && { REBASE_HEAD="$(cat "$p")"; break; }
+        done
+        ORIG="${REBASE_HEAD#refs/heads/}"
+        if [[ -z "$ORIG" || ( "$ORIG" != "$PREFIX"/* && "$ORIG" != worktree-"$PREFIX"* ) ]]; then
+            echo "$ERROR_PREFIX $PREFIX agent must commit to $PREFIX/* (or worktree-$PREFIX*) branches (got 'detached HEAD'${REBASE_HEAD:+, rebasing '$ORIG'})" >&2
+            exit 1
+        fi
+    elif [[ "$BRANCH" != "$PREFIX"/* && "$BRANCH" != worktree-"$PREFIX"* ]]; then
+        echo "$ERROR_PREFIX $PREFIX agent must commit to $PREFIX/* (or worktree-$PREFIX*) branches (got '$BRANCH')" >&2
+        exit 1
+    fi
+fi
+
+# --- Review-ledger guard: no un-resolved review artifacts in a commit ---------
+# Token built by concatenation so this hook (and docs) never self-trip on it.
+MARKER=">>>"" agent:"
+# Scan staged added lines; exclude doc files where the marker is legitimately
+# described (this repo's SKILL.md, etc.).
+violations="$(
+    git diff --cached --no-color --diff-filter=d -U0 -- \
+        ':(exclude)*.md' ':(exclude)*.org' ':(exclude)*.txt' \
+    | grep -E '^\+' | grep -F "$MARKER" || true
+)"
+if [[ -n "$violations" ]]; then
+    echo "$ERROR_PREFIX unresolved review markers ('$MARKER') staged:" >&2
+    printf '%s\n' "$violations" >&2
+    echo "Resolve with review-loop, or override with 'git commit --no-verify'." >&2
+    exit 1
+fi
+
+# Leftover merge-conflict markers (zdiff3 uses ||||||| for the base).
+conflicts="$(
+    git diff --cached --no-color --diff-filter=d -U0 \
+    | grep -E '^\+(<<<<<<< |\|\|\|\|\|\|\| |>>>>>>> )' || true
+)"
+if [[ -n "$conflicts" ]]; then
+    echo "$ERROR_PREFIX merge-conflict markers staged:" >&2
+    printf '%s\n' "$conflicts" >&2
+    exit 1
+fi
+
+THRESHOLD_MB=5
+THRESHOLD=$((THRESHOLD_MB * 1024 * 1024))
+if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
+    BASE=HEAD
+else
+    BASE="$(git hash-object -t tree /dev/null)"
+fi
+bad=()
+while IFS= read -r -d '' f; do
+    s="$(git cat-file -s ":$f" 2>/dev/null || printf '0')"
+    [[ "$s" =~ ^[0-9]+$ ]] || s=0
+    (( s > THRESHOLD )) && bad+=("$f")
+done < <(git diff --cached --name-only -z --diff-filter=A "$BASE" --)
+(( ${#bad[@]} == 0 )) && exit 0
+echo "$ERROR_PREFIX Refusing commit - large file(s) staged (>${THRESHOLD_MB}MB):" >&2
+for f in "${bad[@]}"; do
+    echo "  - $f" >&2
+done
+echo "Tip: use Git LFS or reduce file size." >&2
+exit 1

@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+failures=0
+
+ok() { printf 'ok: %s\n' "$1"; }
+warn() { printf 'warn: %s\n' "$1"; }
+fail() {
+	printf 'fail: %s\n' "$1"
+	failures=$((failures + 1))
+}
+
+show_help() {
+	cat <<'EOF'
+dotfiles-doctor - run lightweight dotfiles health checks
+
+USAGE:
+  dotfiles-doctor [repo]
+  dotfiles-doctor --help
+
+CHECKS:
+  - Makefile entrypoints exist
+  - Stow dry-run from repo root
+  - Zsh bootstrap and target files exist after linking
+  - zsh startup syntax/smoke test
+  - Kitty terminfo availability when TERM=xterm-kitty
+  - Git hooks path and delta pager availability
+  - Neovim vim.pack availability when nvim is installed
+  - Claude agent guard hooks are present and parse (they fail open if broken)
+  - ~/org/agenda exists and is writable
+  - srcup helpers are executable or readable
+  - Optional shellcheck and shfmt availability
+  - Waybar bluetooth module is listed when configured
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	show_help
+	exit 0
+fi
+
+repo="${1:-$PWD}"
+
+if [[ -f "$repo/Makefile" ]] && grep -q '^link:' "$repo/Makefile" && grep -q '^check:' "$repo/Makefile"; then
+	ok "Makefile link/check targets"
+else
+	fail "Makefile link/check targets missing"
+fi
+
+if [[ -d "$repo/.git" ]]; then
+	if command -v stow >/dev/null 2>&1; then
+		if stow --simulate --target="$HOME" --no-folding --dir="$repo" . >/dev/null 2>&1; then
+			ok "stow dry-run"
+		else
+			fail "stow dry-run"
+		fi
+	else
+		warn "stow not installed"
+	fi
+else
+	warn "repo root not detected: $repo"
+fi
+
+for file in \
+	"$HOME/.zshenv" \
+	"$HOME/.zprofile" \
+	"$HOME/.zshrc" \
+	"$HOME/.config/zsh/.zshenv" \
+	"$HOME/.config/zsh/.zprofile" \
+	"$HOME/.config/zsh/.zshrc" \
+	"$HOME/.config/zsh/plugins.zsh"; do
+	if [[ -r "$file" ]]; then
+		ok "zsh file readable: ${file#$HOME/}"
+	else
+		fail "zsh file missing or unreadable: $file"
+	fi
+done
+
+if [[ "${TERM:-}" == xterm-kitty ]]; then
+	if command -v infocmp >/dev/null 2>&1; then
+		if infocmp xterm-kitty >/dev/null 2>&1; then
+			ok "xterm-kitty terminfo"
+		else
+			warn "TERM=xterm-kitty but terminfo missing"
+		fi
+	else
+		warn "TERM=xterm-kitty but infocmp not installed"
+	fi
+fi
+
+if command -v zsh >/dev/null 2>&1; then
+	zsh -i -c exit >/dev/null 2>&1 && ok "zsh startup" || fail "zsh startup"
+else
+	fail "zsh not installed"
+fi
+
+hooks_path=$(git config --get core.hooksPath 2>/dev/null || true)
+if [[ "$hooks_path" == "$HOME/.config/git/hooks" || "$hooks_path" == \~/.config/git/hooks ]]; then
+	ok "git hooksPath"
+else
+	warn "git hooksPath is '$hooks_path'"
+fi
+
+pager=$(git config --get core.pager 2>/dev/null || true)
+if [[ "$pager" == delta ]]; then
+	command -v delta >/dev/null 2>&1 && ok "git delta pager" || warn "delta pager configured but delta not installed"
+else
+	warn "git core.pager is '$pager'"
+fi
+
+if command -v nvim >/dev/null 2>&1; then
+	nvim --headless +'lua assert(vim.pack)' +qa >/dev/null 2>&1 &&
+		ok "nvim vim.pack" || fail "nvim lacks vim.pack"
+else
+	warn "nvim not installed"
+fi
+
+# Agent guard: a bun CLI (.claude/hooks/guardrails.ts) over the shared core in
+# ~/.agents/guardrails/ (core.ts + JSON data), used by Claude, pi, and opencode.
+# It fails open by design (a missing bun or moved file silently disables the guard
+# rather than locking out the tools), so surface breakage here. Checks the deployed
+# copies under $HOME, which is what the harness actually runs.
+guard_hook="$HOME/.claude/hooks/guardrails.ts"
+if command -v bun >/dev/null 2>&1; then
+	if [[ ! -f "$guard_hook" ]]; then
+		fail "agent guard hook missing (fails open): ~/.claude/hooks/guardrails.ts"
+	elif printf '' | bun "$guard_hook" >/dev/null 2>&1; then
+		ok "agent guard hook loads (bun): guardrails.ts"
+	else
+		fail "agent guard hook fails to load (fails open): ~/.claude/hooks/guardrails.ts"
+	fi
+else
+	fail "bun missing — Claude agent guard hook fails open"
+fi
+for asset in core.ts sensitive-paths.json dangerous-commands.json; do
+	if [[ -f "$HOME/.agents/guardrails/$asset" ]]; then
+		ok "guardrail asset present: $asset"
+	else
+		fail "guardrail asset missing (fails open): ~/.agents/guardrails/$asset"
+	fi
+done
+
+if [[ -d "$HOME/org/agenda" && -w "$HOME/org/agenda" ]]; then
+	ok "$HOME/org/agenda exists and writable"
+else
+	fail "$HOME/org/agenda missing or not writable"
+fi
+
+for cmd in grim slurp wl-copy; do
+	if command -v "$cmd" >/dev/null 2>&1; then
+		ok "screenshot dependency installed: $cmd"
+	else
+		fail "screenshot dependency missing: $cmd"
+	fi
+done
+
+srcup_dir="$repo/.config/srcup"
+if [[ -d "$srcup_dir" ]]; then
+	while IFS= read -r -d '' script; do
+		if [[ -x "$script" ]]; then
+			ok "srcup executable: ${script#$repo/}"
+		elif [[ -r "$script" ]]; then
+			warn "srcup readable but not executable: ${script#$repo/}"
+		else
+			fail "srcup unreadable: ${script#$repo/}"
+		fi
+	done < <(find "$srcup_dir" -maxdepth 1 -type f -name '*.sh' -print0)
+fi
+
+if command -v shellcheck >/dev/null 2>&1; then
+	ok "shellcheck installed"
+else
+	warn "shellcheck not installed"
+fi
+
+if command -v shfmt >/dev/null 2>&1; then
+	ok "shfmt installed"
+else
+	warn "shfmt not installed"
+fi
+
+waybar_config="$repo/.config/waybar/config"
+if [[ -f "$waybar_config" ]]; then
+	if grep -q '"bluetooth"' "$waybar_config"; then
+		ok "waybar bluetooth module present"
+	else
+		warn "waybar bluetooth config exists but module not listed"
+	fi
+fi
+
+exit "$failures"

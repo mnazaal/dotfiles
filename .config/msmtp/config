@@ -1,0 +1,14 @@
+defaults
+auth           on
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        ~/.local/state/msmtp/log
+
+account gmail
+host smtp.gmail.com
+port 587
+eval "pass show primary-gmail | sed -n '1s/^/from /p'"
+eval "pass show primary-gmail | sed -n '1s/^/user /p'"
+passwordeval "pass show primary-gmail-secret"
+account default : gmail

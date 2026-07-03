@@ -1,0 +1,31 @@
+{
+  "_comment": "Path guardrails. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, pi, and opencode via their adapters. Paths only, no logic. See README.md. `machinery_enabled` is per-agent so the persistence-escape protection can be toggled independently (e.g. set an agent false while bootstrapping, to avoid the PreToolUse self-lockout).",
+
+  "credentials": [
+    "~/.aws", "~/.gnupg", "~/.gpg", "~/.ssh",
+    "~/.bashrc", "~/.bash_profile", "~/.profile", "~/.zshrc", "~/.zprofile",
+    "~/.config/git/credentials", "~/.netrc", "~/.npmrc",
+    "~/.docker/config.json", "~/.kube/config",
+    "~/.password-store",
+    "~/.claude/.credentials.json",
+    "~/.config/pi/agent/auth.json", "~/.pi/agent/auth.json",
+    "~/.local/share/opencode/auth.json"
+  ],
+
+  "sensitive_segments": [".ssh", ".gnupg", ".gpg", ".aws", ".password-store"],
+
+  "machinery_enabled": { "claude": false, "pi": true, "opencode": true },
+
+  "machinery": [
+    "~/.config/sandbox", "~/dotfiles/.config/sandbox",
+    "~/.config/renv", "~/dotfiles/.config/renv",
+    "~/.config/git/hooks", "~/dotfiles/.config/git/hooks",
+    "~/.local/scripts", "~/dotfiles/.local/scripts",
+    "~/.claude/hooks", "~/dotfiles/.claude/hooks",
+    "~/.claude/settings.json", "~/dotfiles/.claude/settings.json",
+    "~/.config/pi/agent/extensions", "~/dotfiles/.config/pi/agent/extensions",
+    "~/.config/pi/agent/settings.json", "~/dotfiles/.config/pi/agent/settings.json",
+    "~/.config/opencode/opencode.jsonc", "~/dotfiles/.config/opencode/opencode.jsonc",
+    "~/.agents/guardrails", "~/dotfiles/.agents/guardrails"
+  ]
+}

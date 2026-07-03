@@ -1,0 +1,47 @@
+#!/usr/bin/env sh
+set -eu
+
+mode="${1:-full}"
+dir="$HOME/Pictures/screenshots"
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/mango"
+log="$log_dir/screenshot.log"
+PATH="$HOME/.local/bin:$HOME/.local/scripts:$PATH"
+export PATH
+
+mkdir -p "$dir" "$log_dir"
+
+log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >>"$log"; }
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a screenshot "$@" || true; }
+
+die() {
+	log "$1"
+	notify -u critical "Screenshot failed" "$2"
+	exit "${3:-1}"
+}
+
+require() { command -v "$1" >/dev/null 2>&1 || die "missing command: $1" "Missing command: $1" 127; }
+
+require grim
+require wl-copy
+
+file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+log "start mode=$mode file=$file"
+
+case "$mode" in
+full) grim "$file" ;;
+region)
+	require slurp
+	region="$(slurp)"
+	if [ -z "$region" ]; then
+		log "cancelled: empty region"
+		notify -u low "Screenshot cancelled"
+		exit 0
+	fi
+	grim -g "$region" "$file"
+	;;
+*) die "invalid mode: $mode" "Invalid mode: $mode" 64 ;;
+esac
+
+wl-copy --type image/png <"$file"
+log "ok file=$file"
+notify -u low -i "$file" "Screenshot saved" "$file"

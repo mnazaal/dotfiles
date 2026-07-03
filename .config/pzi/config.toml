@@ -1,0 +1,20 @@
+translation_server_url = "http://127.0.0.1:1969"
+api_listen_host = "127.0.0.1"
+api_listen_port = 8765
+# API auth token is auto-read from <data-home>/api_token (written by `pzi init`); nothing secret is stored here. To use a manager instead: # api_auth_token_cmd = "pass show pzi-token"
+# pzi_data_home = "~/.local/share/pzi"  # defaults to $XDG_DATA_HOME/pzi (~/.local/share/pzi)
+# unpaywall_email = "your@email.com" # optional OA PDF lookup
+# unpaywall_email_cmd = "pass show unpaywall-email"
+# semantic_scholar_api_key_cmd = "pass show semantic-scholar"
+# citekey_format = "auth.lower + shorttitle(3,3) + year"
+# pdf_filename_format = "{{ firstCreator suffix=\" - \" }}{{ year suffix=\" - \" }}{{ title truncate=\"100\" }}"
+# pdf_file_path_style = "absolute" # or "relative" for paths relative to .bib
+# page_metadata_cmd = "paper-meta --json" # optional page HTML metadata hook
+# page_metadata_timeout_seconds = 5
+browser_pdf_cmd = "~/.local/share/uv/tools/paperazzi/bin/python3 -m pzi.browser_pdf_hook --browser chromium"
+
+[[bibs]]
+name = "main"
+path = "~/projects/bibliography/bibliography.bib"
+# papers_dir = "~/bibs/papers"  # defaults to <bib-dir>/papers/
+default = true

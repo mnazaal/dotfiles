@@ -1,0 +1,73 @@
+*zcomp*
+.agent-shell
+.netrwhist
+.viminfo
+.git-credentials
+.config/git/credentials/
+.envrc
+.direnv/
+*.pem
+*.key
+*.p12
+*.pfx
+.ssh/known_hosts
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+credentials.json
+secrets.json
+.config/gh/hosts.yml
+
+# Never commit full Firefox profiles or runtime/secrets files.
+.mozilla/firefox/*
+!.mozilla/firefox/bpw3h4pa.BetterFox/
+.mozilla/firefox/bpw3h4pa.BetterFox/*
+!.mozilla/firefox/bpw3h4pa.BetterFox/user.js
+!.mozilla/firefox/bpw3h4pa.BetterFox/chrome/
+!.mozilla/firefox/bpw3h4pa.BetterFox/chrome/**
+.config/mozilla/firefox/
+
+# Local editor/system noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Local env/secrets files
+.env
+.env.*
+*.secret
+*.secrets
+
+# Common build/cache artifacts
+node_modules/
+coverage/
+dist/
+__pycache__/
+.pytest_cache/
+
+# Local agent/tool state
+.opencode/
+.kiro/
+
+# Claude Code: track the curated config, ignore runtime/state and local overrides
+.claude/*
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/keybindings.json
+!.claude/mcp-servers.json
+!.claude/install-mcp.sh
+!.claude/README.org
+!.claude/agents/
+!.claude/commands/
+!.claude/hooks/
+!.claude/skills
+.claude/settings.local.json
+
+# Assets
+.local/share/*
+
+# Logs
+*.log

@@ -1,0 +1,1626 @@
+#+PROPERTY: header-args :results none
+#+STARTUP: showall
+
+* Introduction
+A lot of this configuration is adapted from other configurations and sources.
+
+Sharp bits:
+- Information such as API keys come from =auth-source-pass-get= which would return =nil= if the corresponding information is not found. This can lead to unexpected bugs.
+
+#+begin_src emacs-lisp
+;;; config.el --- Tangled Emacs configuration -*- lexical-binding: t; -*-
+#+end_src
+
+* Packages
+** emacs                                                              :emacs:
+Sensible defaults.
+# TODO: Find a way to exclude specific files such as .env, .gpg, and files opened with sudo from backups and recent files.
+
+#+begin_src emacs-lisp
+(use-package emacs
+  :init
+  (defvar custom-font "IosevkaTerm Nerd Font")
+  (defconst my-normal-gc-cons-threshold (* 16 1024 1024))
+  (setq gc-cons-threshold (* 128 1024 1024)) ;; 128 MB
+  :hook
+  (emacs-startup . (lambda ()
+                     (setq gc-cons-threshold my-normal-gc-cons-threshold
+                           gc-cons-percentage 0.1)))
+  (prog-mode . display-line-numbers-mode)
+  (text-mode . display-line-numbers-mode)
+  :custom
+  (user-full-name "Nazaal")
+  (tramp-default-method "ssh")
+  (use-dialog-box nil)
+  (native-comp-async-report-warnings-errors 'silent)
+  (vc-follow-symlinks t)
+  (calendar-date-style 'iso)
+  (global-visual-line-mode t)
+  (global-hl-line-mode t)
+  (global-so-long-mode t)
+  (pixel-scroll-precision-mode t)
+  (scroll-preserve-screen-position t)
+  (auto-save-default t)
+  (menu-bar-mode nil)
+  (tool-bar-mode nil)
+  (scroll-bar-mode nil)
+  (blink-cursor-mode nil)
+  (read-file-name-completion-ignore-case t)
+  (completion-ignore-case t)
+  (use-package-compute-statistics t)
+  (column-number-mode nil)
+  (large-file-warning-threshold (* 64 1024 1024)) ;; 64 MB
+  (read-process-output-max (* 1 1024 1024)) ;; 1 MB
+  (save-interprogram-paste-before-kill t)
+  (auto-revert-verbose nil)
+  (auto-revert-interval 1)
+  (max-lisp-eval-depth 10000) ;; For Magit
+  (display-time-format "%H:%M")
+  (use-short-answers t)
+  (help-window-select t)
+  (ring-bell-function 'ignore)
+  (warning-minimum-level :warning)
+  (trash-directory "~/.local/share/Trash/") ;; TODO Figure out how to make deletions via Tramp not be sent to local trash directory
+  (delete-by-moving-to-trash t)
+  (backup-by-copying t)
+  (version-control t)
+  (delete-old-versions t)
+  (kept-new-versions 5)
+  (kept-old-versions 5)
+  (vc-make-backup-files t)
+  (epa-file-cache-passphrase-for-symmetric-encryption t)
+  (epa-file-select-keys 'silent)
+  (epa-pinentry-mode 'loopback)
+  :config
+  (set-language-environment "utf-8")
+  (prefer-coding-system 'utf-8)
+  (when (find-font (font-spec :family custom-font))
+    (set-face-attribute 'default nil
+                        :family custom-font
+                        :height 120))
+  (when (and (not window-system) (stringp (getenv "WAYLAND_DISPLAY")))
+    (setq interprogram-paste-function
+          (lambda () (string-trim (shell-command-to-string "wl-paste")))))
+  (setq browse-url-browser-function
+        (lambda (url &optional _new-window)
+          (start-process "xdg-open" nil "setsid" "-f" "xdg-open" url)
+          t))
+  (setq plstore-cache-passphrase-for-symmetric-encryption t)
+  (setq epa-file-cache-directory (expand-file-name "~/.cache/gnupg"))
+  (setq bib-directory (expand-file-name "~/projects/bibliography"))
+  (setq bib-file (expand-file-name "zotero.bib" bib-directory))
+  (setq select-enable-clipboard t)
+  (setq frame-resize-pixelwise t)
+  (setq-default indent-tabs-mode nil)
+  (setq-default tab-width 4)
+  (setq-default tab-bar-show 1)
+  (setq-default fill-column 80)
+  (setq-default display-line-numbers-width 5)
+  (global-auto-revert-mode t)
+  (setq global-auto-revert-non-file-buffers t)
+  (defvar sensitive-file-regexps
+    '("\\.gpg\\'"
+      "\\.env\\'"
+      "\\.envrc\\'"
+      "/\\.ssh/"
+      "/\\.gnupg/"
+      "^/\\(?:ssh\\|su\\|sudo\\)?:")
+    "Regexps for files that should not be saved in history, previews, or backups.")
+  (setq backup-enable-predicate
+        (lambda (name)
+          (and (normal-backup-enable-predicate name)
+               (not (catch 'sensitive-file
+                      (dolist (regexp sensitive-file-regexps)
+                        (when (string-match-p regexp name)
+                          (throw 'sensitive-file t)))
+                      nil))))))
+#+end_src
+
+** package                                               :package_management:
+Package management.
+
+Desiderata:
+- Should work well with Emacs built-ins and normal package archives.
+- Should have an easy interface to install packages only available on git repositories.
+
+#+begin_src emacs-lisp
+(require 'package)
+(setq package-archives '(("gnu"    . "https://elpa.gnu.org/packages/")
+                         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
+                         ("melpa"  . "https://melpa.org/packages/")))
+(package-initialize)
+
+(unless (require 'use-package nil t)
+  (unless package-archive-contents
+    (package-refresh-contents))
+  (package-install 'use-package)
+  (require 'use-package))
+
+(setq use-package-always-ensure t)
+#+end_src
+
+** no-littering                                                       :emacs:
+Keep Emacs directory clean from automatically generated files.
+
+#+begin_src emacs-lisp
+(use-package no-littering
+  :custom
+  (auto-save-file-name-transforms
+   `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+  (backup-directory-alist
+   `((".*" . ,(no-littering-expand-var-file-name "backups/")))))
+#+end_src
+
+** dashboard                                                         :visual:
+This should be loaded before the =server= package to make sure the dashboard is actually available when running =emacsclient=.
+#+begin_src emacs-lisp
+(use-package dashboard
+  :init
+  (dashboard-setup-startup-hook))
+#+end_src
+
+** server                                                             :emacs:
+Start emacs blazingly fast. May have some issues with the =dashboard= package.
+#+begin_src emacs-lisp
+(use-package server
+  :config
+  (unless (server-running-p)
+    (server-start)))
+#+end_src
+
+** recentf                                                       :navigation:
+Maintain a list of recently visited files.
+
+#+begin_src emacs-lisp
+(use-package recentf
+  :init
+  (recentf-mode t)
+  :config
+  (dolist (regexp sensitive-file-regexps)
+    (add-to-list 'recentf-exclude regexp)))
+#+end_src
+
+** saveplace                                                     :navigation:
+Save cursor position in files.
+
+#+begin_src emacs-lisp
+(use-package saveplace
+  :ensure nil
+  :hook (after-init . save-place-mode))
+#+end_src
+
+** savehist                                                      :navigation:
+Persist command history across Emacs sessions.
+
+#+begin_src emacs-lisp
+(use-package savehist
+  :ensure nil
+  :hook (after-init . savehist-mode)
+  :custom
+  (history-length t)
+  (history-delete-duplicates t)
+  (savehist-additional-variables '(search-ring regexp-search-ring)))
+#+end_src
+
+** catppuccin-theme                                                  :visual:
+#+begin_src emacs-lisp
+(use-package catppuccin-theme
+  :config
+  (load-theme 'catppuccin t))
+#+end_src
+
+** doom-modeline                                                     :visual:
+#+begin_src emacs-lisp
+(use-package doom-modeline
+  :hook (after-init . doom-modeline-mode)
+  :custom
+  (doom-modeline-buffer-encoding nil)
+  (doom-modeline-buffer-file-name-style 'file-name)
+  (doom-modeline-height 30)
+  (doom-modeline-modal-icon t))
+#+end_src
+
+** unicode-fonts                                                     :visual:
+#+begin_src emacs-lisp
+(use-package unicode-fonts
+  :defer 2
+  :config
+  (unicode-fonts-setup))
+#+end_src
+
+** helpful                                                          :utility:
+Better documentation for the help functions.
+
+#+begin_src emacs-lisp
+(use-package helpful
+  :bind
+  ([remap describe-function] . helpful-callable) ;; C-h f
+  ([remap describe-command]  . helpful-command)  ;; C-h x
+  ([remap describe-variable] . helpful-variable) ;; C-h v
+  ([remap describe-key]      . helpful-key))     ;; C-h k
+#+end_src
+
+** which-key                                          :completion:minibuffer:
+See suggested completions for incomplete command prefixes in the minibuffer.
+
+#+begin_src emacs-lisp
+(use-package which-key
+  :hook (after-init . which-key-mode))
+#+end_src
+
+** async                                                            :utility:
+Make =dired= work asynchronously for moving around with larger files.
+See also [[https://github.com/jwiegley/emacs-async][README]] for more ways to offload heavier =dired= work.
+
+#+begin_src emacs-lisp
+(use-package async
+  :hook (dired-mode . dired-async-mode))
+#+end_src
+
+** org                                                                  :org:
+[[https://orgmode.org/worg/org-quotes.html][Some quotes]] regarding org-mode.
+
+Current workflow:
+- TODO items go to a single =inbox.org=.
+- TODO items that may not be done (INACTIVE and CANCELLED) go to =backlog.org=.
+- Follow the Eisenhower matrix:
+  - TODO #A: Very important and very urgent. Tasks with deadlines/consequences.
+  - TODO: Important and urgent. Tasks with unclear deadline but need to be done as soon as possible.
+  - TODO #C or WAITING: Not that important or urgent, or your task depends on some input you are waiting for.
+  - DELEGATED: Not important but urgent, and main responsibility of the task is handed to someone else.
+  - INACTIVE or CANCELLED: Not important and not urgent.
+
+- =C-c C-s=   : Schedule a headline entry.
+- =C-c C-d=   : Set a deadline to a headline entry.
+- =C-c C-t=   : Change TODO state.
+
+#+begin_src emacs-lisp
+(use-package org
+  :ensure nil
+  :bind
+  ("C-x 8 s" . (lambda () (interactive) (insert "\u200B"))) ;; 0-width space
+  (:map org-mode-map
+        ("C-c [" . nil)
+        ("C-c ]" . nil))
+  :hook
+  (org-mode . (lambda () (setq-local evil-shift-width 2)))
+  :custom
+  (org-directory (expand-file-name "~/org"))
+  (org-archive-location (expand-file-name "archive/%s_archive::" org-directory))
+  (org-preview-latex-image-directory (expand-file-name "var/ltximg/" user-emacs-directory))
+  (org-pretty-entities t)
+  (org-hide-emphasis-markers t)
+  (org-export-allow-bind-keywords t)
+  (org-fontify-quote-and-verse-blocks t)
+  (org-image-actual-width '(0.9))
+  (org-preview-latex-default-process 'dvipng)
+  (org-complete-tags-always-offer-all-agenda-tags nil)
+  (org-tag-persistent-alist '(("@aalto"    . ?W)   ;; Work
+                              ("@personal" . ?P)   ;; Own things e.g. side-projects
+                              ("flexible"  . ?F)   ;; Can be done anytime e.g. on phone and/or when outside
+                              ("crypt"     . ?C)   ;; Encrypt entry
+                              ("noexport"  . ?N)   ;; Do not export entry
+                              ("payment"   . ?M)   ;; Payment/money payable/receivable
+                              ("research"  . ?R)   ;; Research related
+                              ("admin"     . ?A)   ;; Admin
+                              ("errand"    . ?E))) ;; Miscellaneous e.g. cleaning, buying groceries etc
+  (org-babel-load-languages
+   '((emacs-lisp . t)
+     (C          . t)
+     (shell      . t) ;; M-& to run async shell command
+     (python     . t)))
+  (org-src-preserve-indentation t)
+  (org-babel-python-command "python3")
+  (org-confirm-babel-evaluate t)
+  (org-src-fontify-natively t)
+  (org-src-window-setup 'current-window)
+  (org-footnote-auto-adjust t)
+  (org-bookmark-names-plist nil)
+  (org-export-with-toc nil)
+  (org-export-with-section-numbers nil)
+  (org-export-with-smart-quotes t)
+  (org-use-sub-superscripts '{})
+  (org-export-with-sub-superscripts '{})
+  (org-log-into-drawer t)
+  (org-treat-S-cursor-todo-selection-as-state-change nil)
+  (org-todo-keywords
+   '((sequence "TODO(t)" "WAITING(w)" "DELEGATED(o@/!)" "|" "DONE(d@/!)")
+     (sequence "|" "INACTIVE(i)" "CANCELLED(c@/!)")))
+  :config
+  (setq org-export-async-debug nil)
+  (plist-put org-format-latex-options :foreground 'default)
+  (plist-put org-format-latex-options :background 'default)
+  (plist-put org-format-latex-options :scale 0.9)
+  (add-to-list 'org-file-apps '("pdf" . "sioyek %s")))
+#+end_src
+
+** org-capture                                    :personal_management:notes:
+The ease of org-mode is perhaps best captured by =org-capture=.
+
+Desiderata for capture templates:
+- TODO items.
+- Writing down current notes if pausing work unexpectedly.
+- Writing miscellaneous notes.
+- Journal entries.
+- Bookmarks.
+
+To add multiple tags, add =:= after current tag.
+#+begin_src emacs-lisp
+(use-package org-capture
+  :ensure nil
+  :hook (org-capture-mode . evil-insert-state)
+  :bind
+  ("C-c c" . org-capture)
+  :custom
+  (org-capture-templates
+   '(("t"
+      "TODO"
+      entry
+      (file "agenda/inbox.org")
+      "* TODO %? %^G\n\n%u")
+     ("m"
+      "Working memory dump"
+      entry
+      (file "data/notes.org")
+      "* %U Working Memory Dump\n%?\n\n%a\n"
+      :prepend t
+      :empty-lines 1)
+     ("e"
+      "Process Email Todo"
+      entry
+      (file "agenda/inbox.org")
+      "* TODO %:fromname: %:subject\nDEADLINE: %(org-insert-time-stamp (org-read-date nil t \"+2d\"))\nEmail link: %a\n\n%?\n\n%u")
+     ("n"
+      "Random Note (Refile later)"
+      entry
+      (file "data/notes.org")
+      "* %U %^{Title}\n\n%^{Note}\n"
+      :prepend t
+      :empty-lines 1)
+     ("j"
+      "Journal entry"
+      item
+      (file+olp+datetree "data/journal.org.gpg")
+      "%?\n\nEntered on %^U"
+      :time-prompt t
+      :empty-lines 1)
+     ("b"
+      "Bookmark"
+      entry
+      (file+headline "roam/org/20220123134828-bookmarks.org" "Bookmarks")
+      "* %^{Title} %^G\n** Link: %c%?\n\n%u"
+      :empty-lines 1))))
+#+end_src
+
+** org-agenda                                  :personal_management:calendar:
+- =C-c . +1 5pm+1= : Put an active timestamp for tomorrow (+1) from 5-6pm (5pm+1).
+- =C-c C-x C-i=    : Clock in for org-heading task.
+- =C-c C-x C-o=    : Clock out of currently clocked in task.
+
+# TODO: Send tasks to an archive whenever a task is marked DONE or CANCELLED in an org-agenda file.
+# TODO: Create an agenda view without personal tasks, or an easy way to toggle them.
+
+#+begin_src emacs-lisp
+(use-package org-agenda
+  :ensure nil
+  :bind
+  ("C-c a" . org-agenda)
+  (:map org-agenda-mode-map
+        ("j" . org-agenda-next-item)
+        ("k" . org-agenda-previous-item))
+  :hook
+  (org-trigger . save-buffer)
+  (org-agenda-mode . (lambda () (display-line-numbers-mode -1)))
+  :custom
+  (org-agenda-files (mapcar (lambda (file) (expand-file-name file org-directory))
+                            '(;; Generated by `.local/scripts/cal-sync-cron`
+                              ;; via pass entry `primary-gcal-ics`
+                              "agenda/primary-gcal.org"
+                              "agenda/inbox.org"
+                              "data/projects.org"
+                              "agenda/aalto-outlook.org"
+                              "agenda/inbox-recurring.org")))
+  (org-agenda-start-with-log-mode t)
+  (org-agenda-prefix-format '((dashboard-agenda . " %i %-12:c %s ")
+                              (agenda . "○  %-12t %s")
+                              (todo . "○ %s")))
+  (org-done-archive-file (expand-file-name "agenda/inbox.org_archive" org-directory))
+  (org-archive-mark-done t)
+  (org-agenda-window-setup 'only-window)
+  (org-agenda-sorting-strategy '((agenda time-up)
+                                 (todo priority-down category-keep)
+                                 (tags priority-down category-keep)
+                                 (search category-keep)))
+  (org-agenda-restore-windows-after-quit t)
+  (calendar-week-start-day 1)
+  (org-agenda-start-day "0d")
+  (org-agenda-span 5)
+  (org-agenda-start-on-weekday nil)
+  (org-deadline-warning-days 14)
+  (org-agenda-custom-commands '(("c" "Agenda and Tasks"
+                                 ((agenda "")
+                                  (alltodo "")))))
+  (org-agenda-skip-scheduled-if-deadline-is-shown t)
+  (org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
+  (org-agenda-skip-scheduled-if-done t)
+  (org-agenda-skip-deadline-if-done t)
+  (org-agenda-skip-timestamp-if-done t)
+  (org-agenda-todo-ignore-scheduled 'future)
+  (org-agenda-todo-ignore-deadlines 'far))
+#+end_src
+
+** org-habit                                            :personal_management:
+#+begin_src emacs-lisp
+(use-package org-habit
+  :after org
+  :ensure nil
+  :custom
+  (org-habit-show-habits-only-for-today t)
+  (org-habit-graph-column 50)
+  (org-habit-preceding-days 10)
+  (org-habit-following-days 20))
+#+end_src
+
+** org-crypt                                                 :authentication:
+Perform encryption on org headings with the =crypt= tag.
+
+#+begin_src emacs-lisp
+(use-package org-crypt
+  :ensure nil
+  :config
+  (org-crypt-use-before-save-magic)
+  :custom
+  (org-tags-exclude-from-inheritance '("crypt"))
+  (org-crypt-key nil)
+  (org-crypt-disable-auto-save t))
+#+end_src
+
+** org-roam                                       :personal_management:notes:
+# TODO: Figure out why the BibTeX note capture template does not create new lines.
+
+#+begin_src emacs-lisp
+(use-package org-roam
+  :commands (org-roam-node-find
+             org-roam-node-insert
+             org-roam-buffer-toggle
+             org-roam-db-sync)
+  :custom
+  (org-roam-directory (file-truename (expand-file-name "roam/org" org-directory)))
+  (org-roam-capture-templates
+   '(("g" "general" plain
+      "%?\n\n* Thoughts   :noexport: \n"
+      :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+title: ${title}\n\n")
+      :unnarrowed t)
+     ("b" "bibtex-note" plain
+      "\n\n* Details\nTitle    : ${citar-title}\nAuthor(s): ${citar-author}\nLink(s)  : ${citar-url}\n\n* Rough Notes\n%?\n* Thoughts   :noexport:\n"
+      :if-new (file+head "%<%Y%m%d%H%M%S>-${citar-citekey}.org" "#+title: ${citar-title} - ${citar-date}\n")
+      :unnarrowed t)))
+  :bind
+  ("C-c n f" . org-roam-node-find)
+  ("C-c n l" . org-roam-buffer-toggle)
+  (:map org-mode-map
+        ("C-c n i" . org-roam-node-insert))
+  :config
+  (org-roam-setup)
+  (setq org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
+  (org-roam-db-autosync-mode))
+#+end_src
+
+** org-roam-ui                                                 :notes:visual:
+#+begin_src emacs-lisp
+(use-package org-roam-ui
+  :after org-roam
+  :commands org-roam-ui-mode
+  :custom
+  (org-roam-ui-sync-theme     t)
+  (org-roam-ui-follow         t)
+  (org-roam-ui-update-on-save t)
+  (org-roam-ui-open-on-start  nil))
+#+end_src
+
+** org-fragtog                                                       :visual:
+To see mathematical expressions written in =org= mode right after moving the cursor.
+Show LaTeX fragments nicely in =org= files. Also makes the LaTeX expressions the same size as surrounding text.
+
+# TODO: Keep an eye out for the faster version of [[https://abode.karthinks.com/org-latex-preview/][org-latex-preview]].
+
+#+begin_src emacs-lisp
+(use-package org-fragtog
+  :hook
+  (org-mode . org-fragtog-mode))
+#+end_src
+
+** org-expose-emphasis-markers                                       :visual:
+Show markers for things like bold, italic, etc. when the cursor is at point.
+
+#+begin_src emacs-lisp
+(use-package org-expose-emphasis-markers
+  :hook
+  (org-mode . (lambda () (org-expose-emphasis-markers-mode t))))
+#+end_src
+
+** ox-latex                                                         :writing:
+#+begin_src emacs-lisp
+(use-package ox-latex
+  :ensure nil
+  :config
+  (dolist (pkg '(("" "fullpage")
+                 ("" "xcolor")))
+    (add-to-list 'org-latex-packages-alist pkg))
+  :custom
+  (org-latex-pdf-process
+   '("xelatex -interaction nonstopmode -output-directory %o %f"
+     "biber %b"
+     "xelatex -interaction nonstopmode -output-directory %o %f"
+     "xelatex -interaction nonstopmode -output-directory %o %f"))
+  (TeX-engine 'xetex)
+  (org-latex-logfiles-extensions
+   '("lof" "lot" "tex~" "aux" "idx"
+     "log" "out" "toc" "nav" "snm"
+     "vrb" "dvi" "fdb_latexmk" "blg" "bbl"
+     "brf" "fls" "entoc" "ps" "spl"
+     "run.xml" "bcf"))
+  (org-latex-remove-logfiles t)
+  (org-latex-hyperref-template
+   "\\hypersetup{\n pdfauthor={%a},\n pdftitle={%t},\n pdfkeywords={%k},\n pdfsubject={%d},\n pdfcreator={%c},\n linktoc=all,\n colorlinks=true,\n linkcolor=blue,\n urlcolor=blue,\n citecolor=blue\n}"))
+#+end_src
+
+** ox-twbs                                                          :writing:
+#+begin_src emacs-lisp
+(use-package ox-twbs)
+#+end_src
+
+** ox-beamer                                                        :writing:
+#+begin_src emacs-lisp
+(use-package ox-beamer
+  :ensure nil
+  :after org)
+#+end_src
+
+** ox-hugo                                                          :writing:
+#+begin_src emacs-lisp
+(use-package ox-hugo)
+#+end_src
+
+** clipetty                                                            :text:
+#+begin_src emacs-lisp
+(use-package clipetty
+  :hook (after-init . global-clipetty-mode))
+#+end_src
+
+** evil                                                     :text:navigation:
+Use vim keybindings in Emacs.
+
+#+begin_src emacs-lisp
+(use-package evil
+  :init
+  (setq evil-want-C-i-jump nil)  ;; Fix TAB behaviour in `emacs -nw`
+  (setq evil-want-keybinding nil) ;; Otherwise shows some warnings
+  (evil-mode t)
+  :config
+  (evil-define-key 'normal flymake-mode-map
+    "[d" 'flymake-goto-prev-error
+    "]d" 'flymake-goto-next-error))
+#+end_src
+
+** evil-collection                                          :text:navigation:
+Get vim keybindings in many modes.
+See [[https://github.com/emacs-evil/evil-collection][documentation]] for comprehensive details on how vim keybindings are set.
+
+#+begin_src emacs-lisp
+(use-package evil-collection
+  :after evil
+  :init
+  (evil-collection-init))
+#+end_src
+
+** evil-commentary                                          :text:navigation:
+- =g c c=              : Comment current line.
+- =g c N j=            : Comment N lines down.
+- =g c / <search-seq>= : Comment until a given search sequence.
+
+#+begin_src emacs-lisp
+(use-package evil-commentary
+  :init
+  (evil-commentary-mode t))
+#+end_src
+
+** evil-escape                                                   :navigation:
+- =C-g= : Escape from nearly any mode.
+
+#+begin_src emacs-lisp
+(use-package evil-escape
+  :after evil
+  :init
+  (evil-escape-mode t)
+  :bind
+  ("C-g" . evil-escape))
+#+end_src
+
+** bookmark                                          :saved_items:navigation:
+Save different locations within buffers for easy navigation.
+- =C-x r m= : Create a new bookmark to current point.
+- =C-x r b= : Jump to bookmark.
+- =C-x r l= : List all bookmarks
+
+#+begin_src emacs-lisp
+(use-package bookmark
+  :ensure nil
+  :custom
+  (bookmark-save-flag t)
+  (bookmark-set-fringe-mark nil)
+  (bookmark-default-file (expand-file-name "bookmarks" org-directory)))
+#+end_src
+
+** undo-tree                                                           :text:
+Visualise undo history as it is - a tree structure.
+- =C-x u= : View undo tree.
+- =d=     : While in undo tree - shows diffs in separate window.
+
+#+begin_src emacs-lisp
+(use-package undo-tree
+  :after evil
+  :hook
+  (conf-mode . undo-tree-mode)
+  (prog-mode . undo-tree-mode)
+  (text-mode . undo-tree-mode)
+  :bind
+  ([remap evil-redo] . undo-tree-redo) ;; C-r
+  ([remap evil-undo] . undo-tree-undo) ;; u
+  :custom
+  (undo-tree-auto-save-message nil)
+  (evil-undo-system 'undo-tree)
+  (undo-tree-limit (* 1 1024 1024)) ;; 1 MB
+  (undo-tree-visualizer-timestamps t)
+  (undo-tree-visualizer-diff t)
+  (undo-tree-auto-save-history t)
+  (undo-tree-history-directory-alist
+   `(("." . ,(expand-file-name "var/undo" user-emacs-directory)))))
+#+end_src
+
+** dired                                               :directory_management:
+Directory management.
+- =C-x C-f= : Navigate to a directory.
+- =(= : Toggle hide/show details in current directory.
+- =m= : Mark a file/directory.
+- =u= : Unmark a marked file/directory.
+- =d= : Mark a file/directory only for deletion.
+- =D= : Delete a marked file/directory.
+- =x= : Delete marked files/directories.
+- =C= : Copy file/directories.
+- =Z= : Compress/uncompress file.
+- =c= : Compress to specific file name with specific format e.g. =.zip=.
+- =L= : Load =.el= file into Emacs.
+
+#+begin_src emacs-lisp
+(use-package dired
+  :ensure nil
+  :hook
+  (dired-mode . (lambda ()
+                  (dired-hide-details-mode)
+                  (require 'dired-x)
+                  (dired-omit-mode)))
+  :bind
+  (:map dired-mode-map
+        ([remap dired-clean-directory] . dired-omit-mode)
+        ("C-j"     . evil-scroll-page-down)
+        ("C-k"     . evil-scroll-page-up)
+        ("C-c C-o" . (lambda ()
+                       (interactive)
+                       (start-process "xdg-open" nil "xdg-open" (dired-get-file-for-visit)))))
+  :config
+  (evil-define-key 'normal dired-mode-map
+    "h" 'dired-up-directory)
+  :custom
+  (dired-recursive-deletes 'always)
+  (dired-recursive-copies 'always)
+  ;; (dired-kill-when-opening-new-dired-buffer t)
+  (dired-omit-files "^\\.[^.].*")
+  (dired-omit-size-limit nil)
+  (dired-listing-switches "-aBhoD --group-directories-first"))
+#+end_src
+
+** flash                                                         :navigation:
+#+begin_src emacs-lisp
+(use-package flash
+  :commands (flash-jump flash-jump-continue
+              flash-treesitter)
+  :bind ("s-j" . flash-jump)
+  :custom
+  (flash-multi-window t)
+  :config
+  (with-eval-after-load 'evil
+    (require 'flash-evil)
+    (flash-evil-setup t))
+  (require 'flash-isearch)
+  (flash-isearch-mode 1))
+#+end_src
+
+** ace-window                                                    :navigation:
+Quicker navigation between windows.
+- =C-w w=: Move to another window.
+- =C-w c=: Kill another window.
+- =C-w ?=: Show above keybindings and more.
+
+#+begin_src emacs-lisp
+(use-package ace-window
+  :bind
+  ([remap evil-window-next]   . ace-window)         ;; C-w w
+  ([remap evil-window-delete] . ace-delete-window)  ;; C-w c
+  :custom
+  (aw-keys '(?a ?s ?d ?f ?g ?h)))
+#+end_src
+
+** persist-state                                                 :navigation:
+Periodically save state related to packages like =prescient=, =recentf=, =savehist=, =saveplace= etc. instead of relying on the =kill-emacs-hook=.
+
+#+begin_src emacs-lisp
+(use-package persist-state
+  :init
+  (persist-state-mode t))
+#+end_src
+
+** tramp                                                                :ssh:
+Remote server access.
+- =C-x C-f //sshx:user@server=: Login to =server= as =user=. If SSH configuration file is setup, can also use =//sshx:server=.
+Some tips and tricks of using TRAMP is detailed in [[https://willschenk.com/articles/2020/tramp_tricks/][this blog post]].
+
+#+begin_src emacs-lisp
+(use-package tramp
+  :ensure nil
+  :config
+  (with-eval-after-load 'tramp (setenv "SHELL" "/bin/zsh"))
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+  (add-to-list 'tramp-remote-path "~/.local/bin")
+  (tramp-set-completion-function "ssh"
+                                 '((tramp-parse-sconfig "~/.ssh/config"))))
+#+end_src
+
+** zotra                                               :reference_management:
+# TODO: Set =zotra= variables properly.
+# TODO: Find a way to save PDF files automatically, then rename them like in Zotero.
+
+#+begin_src emacs-lisp
+(use-package zotra
+  :custom
+  (zotra-backend 'zotra-server)
+  (zotra-local-server-directory "~/.local/src/zotra-server/"))
+#+end_src
+
+** citar                                               :reference_management:
+Citation management.
+# TODO: Find a way to go back in =citar-open= after an entry is opened.
+
+[2024-09-03 Tue 21:41]
+Important note, the fontifying org-cite links takes a lot of time, so manually remove =org-cite-activate= from =font-lock-keywords= via the =Set= command.
+# TODO: Figure out how to use =font-lock-remove-keywords= instead of manually fixing the font-lock speed issue.
+#+begin_src emacs-lisp
+(use-package citar
+  :custom
+  (citar-templates
+   '((main    . "${author editor:30}   ${date year issued:4}    ${title:110}")
+     (suffix  . "     ${=type=:20}    ${tags keywords keywords:*}")
+     (preview . "${author editor} (${year issued date}) ${title}, ${journal journaltitle publisher container-title collection-title}.\n")
+     (note    . "${title} by ${author editor}")))
+  (org-cite-global-bibliography (list bib-file))
+  (org-cite-insert-processor 'citar)
+  (org-cite-follow-processor 'citar)
+  (org-cite-activate-processor 'citar)
+  (citar-notes-paths (list (expand-file-name "data" org-directory)))
+  (citar-symbol-separator "  ")
+  ;; (citar-org-activation-functions ((lambda (&rest _args) nil))) ;; *Significant* speedup when using org-citar with large .bib files
+  (citar-org-activation-functions '(ignore))
+  (citar-bibliography org-cite-global-bibliography)
+  (org-cite-csl-styles-dir (expand-file-name "csl" bib-directory))
+  (org-cite-export-processors '((latex biblatex) ;; for LaTeX exports
+                                (html csl)       ;; for other exports like HTML, ODT
+                                (odt csl)))
+  :bind
+  ("C-c r" . citar-open) ;; r for references
+  (:map org-mode-map
+        ("C-c b" . org-cite-insert))
+  :config
+  (add-to-list 'citar-file-open-functions
+               '("pdf" . (lambda (file-path)
+                           (call-process "sioyek" nil 0 nil file-path))))
+  :hook
+  ((LaTeX-mode org-mode) . citar-capf-setup))
+#+end_src
+
+** citar-org-roam                                                     :notes:
+#+begin_src emacs-lisp
+(use-package citar-org-roam
+  :after (citar org-roam)
+  :init
+  (citar-org-roam-mode t)
+  :custom
+  (citar-org-roam-template-fields
+   '((:citar-title "title")
+     (:citar-author "author" "editor")
+     (:citar-date "date" "year" "issued")
+     (:citar-pages "pages")
+     (:citar-url "url")
+     (:citar-type "=type=")))
+  (citar-org-roam-capture-template-key "b"))
+#+end_src
+
+** citar-embark                                        :reference_management:
+#+begin_src emacs-lisp
+(use-package citar-embark
+  :init
+  (citar-embark-mode))
+#+end_src
+
+** citeproc                                            :reference_management:
+Add CSL citations for org exports, which can be set by via =#+cite_export:=, as mentioned [[https://orgmode.org/manual/Citation-export-processors.html][here]].
+
+#+begin_src emacs-lisp
+(use-package citeproc
+  :custom
+  (citar-citeproc-csl-styles-dir (expand-file-name "csl" bib-directory)))
+#+end_src
+
+** consult                                                       :navigation:
+Functions for better navigation in files, buffers, bookmarks, etc.
+=consult-ripgrep= requires =ripgrep= to be installed in the system.
+Keybindings are based on suggestions from the =consult= documentation.
+
+#+begin_src emacs-lisp
+(use-package consult
+  :custom
+  (xref-show-xrefs-function       #'consult-xref)
+  (xref-show-definitions-function #'consult-xref)
+  (completion-ignore-case t)
+  (consult-async-split-style nil)
+  :config
+  (dolist (regexp sensitive-file-regexps)
+    (add-to-list 'consult-preview-excluded-files regexp))
+  ;; (add-to-list 'consult-preview-excluded-files "[.]\\(gpg\\|GPG\\)$")
+  (setq consult-ripgrep-args (concat consult-ripgrep-args " --hidden --ignore-vcs -g !.git/"))
+  ;; (setq consult-find-args "find . -not ( -path '*/.git*' -prune )")
+  (setq consult-fd-args "fd --full-path --hidden --exclude .git --color=never")
+  :bind
+  ([remap isearch-forward]      . consult-line)           ;; C-s
+  ([remap switch-to-buffer]     . consult-buffer)         ;; C-x b
+  ([remap bookmark-bmenu-list]  . consult-bookmark)       ;; C-x r l
+  ([remap goto-line]            . consult-goto-line)      ;; M-g g
+  ([remap project-list-buffers] . consult-project-buffer) ;; C-c s p
+  ("M-y"   . consult-yank-pop)
+  ("M-s r" . consult-ripgrep)
+  ("M-s d" . consult-fd)
+  ("M-s l" . consult-line)
+  ("M-s F" . consult-recent-file)
+  ("M-g f" . consult-flymake) ;; For programming diagnostics
+  ("M-g i" . consult-imenu)
+  ("M-g o" . consult-outline))
+#+end_src
+
+** consult-org-roam                                        :notes:navigation:
+Having =consult= as an interface to =org-roam= is nice mainly because of the live preview feature.
+[2025-07-22 Tue] For some reason, the first call to =consult-org-roam= after starting Emacs requires =C-g= to show results, then works fine afterwards.
+
+#+begin_src emacs-lisp
+(use-package consult-org-roam
+  :after (consult org-roam)
+  :commands (consult-org-roam-file-find
+             consult-org-roam-search
+             consult-org-roam-backlinks)
+  :custom
+  (consult-org-roam-grep-func #'consult-ripgrep)
+  (consult-org-roam-buffer-after-buffers t)
+  :config
+  (consult-customize consult-org-roam-forward-links :preview-key (kbd "M-."))
+  :hook (after-init . consult-org-roam-mode)
+  :bind
+  ("C-c n f" . consult-org-roam-file-find)
+  ("C-c n r" . consult-org-roam-search)
+  ("C-c n b" . consult-org-roam-backlinks))
+#+end_src
+
+** vertico                                            :completion:minibuffer:
+Minibuffer completion UI.
+Shows list of suggestions/results nicely, e.g. shows files in directories when finding a file via =C-x C-f=.
+
+#NOTE Possible future simplification: evaluate the built-in completion stack, see [[https://thanosapollo.org/posts/emacs-built-in-completions-video/][this blog post]] for an introduction.
+
+#+begin_src emacs-lisp
+(use-package vertico
+  :init
+  (vertico-mode t)
+  :bind
+  (:map vertico-map
+        ("C-j" . vertico-next)
+        ("C-k" . vertico-previous))
+  :config
+  (setq vertico-cycle t))
+#+end_src
+
+** prescient                                             :completion:utility:
+Sorting and history layer for completions.
+#NOTE Prescient handles ranking/persistence here, while =orderless= remains the main matching style.
+
+#+begin_src emacs-lisp
+(use-package prescient
+  :config
+  (prescient-persist-mode t))
+#+end_src
+
+** vertico-prescient                                     :completion:utility:
+#+begin_src emacs-lisp
+(use-package vertico-prescient
+  :after (vertico prescient)
+  :init
+  (vertico-prescient-mode t))
+#+end_src
+
+** marginalia                                            :completion:utility:
+Show extra information on suggestions presented by completion UIs like =vertico=.
+
+#+begin_src emacs-lisp
+(use-package marginalia
+  :after vertico
+  :init
+  (marginalia-mode t))
+#+end_src
+
+** orderless                                             :completion:utility:
+Matching style for minibuffer and in-buffer completion.
+See also [[https://github.com/oantolin/orderless#style-dispatchers][style dispatchers]] for more fine grained control.
+
+#+begin_src emacs-lisp
+(use-package orderless
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
+** embark                                                           :utility:
+Perform actions on targets in a context-specific manner.
+For e.g. if the target if a region of text, we can use embark to convert all of it into upper case.
+If the target is a file suggestion in the minibuffer, we can use embark to delete the file etc.
+
+#+begin_src emacs-lisp
+(use-package embark
+  :bind
+  ("C-;"   . embark-act)
+  ("C-M-;" . embark-collect)
+  :custom
+  (embark-indicators
+   '(embark-minimal-indicator
+     embark-highlight-indicator
+     embark-isearch-highlight-indicator)))
+#+end_src
+
+** embark-consult                                                   :utility:
+#+begin_src emacs-lisp
+(use-package embark-consult
+  :after (embark consult)
+  :hook
+  (embark-collect-mode . embark-consult-preview-minor-mode))
+#+end_src
+
+** nerd-icons                                                        :visual:
+#+begin_src emacs-lisp
+(use-package nerd-icons)
+#+end_src
+
+** nerd-icons-completions                                            :visual:
+Icons for completions e.g. within =vertico=.
+
+#+begin_src emacs-lisp
+(use-package nerd-icons-completion
+  :config
+  (nerd-icons-completion-mode))
+#+end_src
+
+** corfu                                                         :completion:
+In-buffer completion UI.
+Get auto-completion as a mini popup window.
+See [[https://elpa.gnu.org/packages/corfu.html][documentation]] for more configuration details.
+# TODO: Look at =quit-at-boundary 'separator=, =preview-current 'insert=, and =preselect-first nil=.
+
+#+begin_src emacs-lisp
+(use-package corfu
+  :init
+  (corfu-history-mode t)
+  :hook
+  (prog-mode . corfu-mode)
+  (prog-mode . (lambda () (when (display-graphic-p) (corfu-popupinfo-mode))))
+  :custom
+  (corfu-auto t)
+  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0.05)
+  (corfu-popupinfo-delay 0.05)
+  (corfu-cycle t)
+  (corfu-quit-at-boundary t)
+  (corfu-preselect 'prompt)
+  :bind
+  (:map corfu-map
+        ("SPC"   . corfu-insert-separator)
+        ("C-M-j" . corfu-popupinfo-scroll-up)
+        ("C-M-k" . corfu-popupinfo-scroll-down)))
+#+end_src
+
+** corfu-terminal                                                :completion:
+Allow corfu popups in terminal emacs.
+
+#+begin_src emacs-lisp
+(use-package corfu-terminal
+  :if (< emacs-major-version 31)
+  :vc (:url "https://codeberg.org/akib/emacs-corfu-terminal" :branch "master")
+  :config
+  (unless (display-graphic-p)
+    (corfu-terminal-mode 1)))
+#+end_src
+
+** corfu-prescient                                               :completion:
+#+begin_src emacs-lisp
+(use-package corfu-prescient
+  :after (corfu prescient)
+  :init
+  (corfu-prescient-mode))
+#+end_src
+
+** flymake-popon                                              :coding:visual:
+Show flymake diagnostics at point. Helpful to show LSP errors and warnings.
+# TODO: Output from this package is also shown in the minibuffer at the same time, so remove it from the minibuffer.
+
+#+begin_src emacs-lisp
+(use-package flymake-popon
+  :vc (:url "https://codeberg.org/akib/emacs-flymake-popon" :branch "master")
+  :hook
+  (prog-mode . flymake-popon-mode))
+#+end_src
+
+** cape                                                          :completion:
+Extra completion-at-point backends. For e.g. =cape-tex= gives autocompletion suggestions for LaTeX.
+
+#+begin_src emacs-lisp
+(use-package cape
+  :hook
+  (text-mode . (lambda ()
+                 (add-to-list 'completion-at-point-functions #'cape-dict)))
+  :init
+  (add-to-list 'completion-at-point-functions #'cape-file))
+#+end_src
+
+** tempel                                                        :templating:
+Template expansion layered on top of CAPF completion.
+#NOTE Consider using =abbrev=, or =capf= for template expansion.
+
+#+begin_src emacs-lisp
+(use-package tempel
+  :custom
+  (tempel-path (expand-file-name "templates/tempel.eld" org-directory))
+  (tempel-trigger-prefix "\\")
+  :init
+  (defun tempel-setup-capf ()
+    (setq-local completion-at-point-functions
+                (cons #'tempel-complete
+                      completion-at-point-functions)))
+  :hook
+  ((prog-mode org-mode) . tempel-setup-capf)
+  :bind
+  ("M-+" . tempel-complete) ;; Alternative tempel-expand
+  ("M->" . tempel-insert) ;; M->
+  (:map tempel-map
+        ("RET" . tempel-next)))
+#+end_src
+
+** gptel                                                :personal_management:
+Access LLMs within Emacs.
+- =C-u C-c p= : Menu for more refined querying, e.g. prompt inside minibuffer and receive output in minibuffer.
+# TODO: Fix the bug where the model cannot be changed with =gptel-menu= when the gptel buffer is a popper buffer.
+
+#+begin_src emacs-lisp
+(use-package gptel
+  :hook (gptel-mode . evil-insert-state)
+  :config
+  (setq gptel-default-mode 'org-mode)
+  (setq gptel-directives '((default . "You are a large language model living in Emacs and a helpful assistant. Respond concisely.")))
+  (setq gptel-model 'gemini-flash-latest)
+  (setq gptel-backend (gptel-make-gemini "Gemini"
+                        :key (auth-source-pass-get 'secret "gemini-gptel")
+                        :stream t))
+  :bind
+  ("C-c l" . gptel)
+  ("C-c p" . gptel-send))
+#+end_src
+
+** minuet                                                            :coding:
+#+begin_src emacs-lisp
+(use-package minuet
+  :config
+  (setq minuet-provider 'gemini)
+  (plist-put minuet-gemini-options :model "gemini-2.5-flash")
+  (plist-put minuet-gemini-options :api-key (auth-source-pass-get 'secret "gemini-gptel"))
+  (minuet-set-optional-options
+   minuet-gemini-options :generationConfig
+   '(:thinkingConfig (:thinkingBudget 0)))
+  :commands (minuet-active-mode minuet-complete-with-minibuffer)
+  ;; :hook
+  ;; (prog-mode . minuet-active-mode)
+  :bind
+  (:map minuet-active-mode-map
+        ("C-k" . #'minuet-previous-suggestion)
+        ("C-j" . #'minuet-next-suggestion)
+        ("C-c RET" . #'minuet-complete-with-minibuffer)))
+#+end_src
+
+** agent-shell                                                       :coding:
+#+begin_src emacs-lisp
+(use-package agent-shell
+  :custom
+  (agent-shell-prefer-viewport-interaction t)
+  (agent-shell-session-strategy 'prompt)
+  (agent-shell-tool-use-expand-by-default t)
+  (agent-shell-thought-process-expand-by-default t)
+  (agent-shell-write-inhibit-minor-modes
+   '(aggressive-indent-mode apheleia-mode))
+  :config
+  (with-eval-after-load 'evil
+    (evil-define-key 'insert agent-shell-mode-map (kbd "RET") #'newline)
+    (evil-define-key 'normal agent-shell-mode-map (kbd "RET") #'comint-send-input))
+  :hook
+  (agent-shell-mode . (lambda () (display-line-numbers-mode -1)))
+  (agent-shell-mode . (lambda ()
+                        (setq-local doom-modeline-buffer-name nil)
+                        (setq-local doom-modeline-enable-buffer-position nil)
+                        (force-mode-line-update)))
+  :bind (:map agent-shell-mode-map
+              ("TAB" . agent-shell-cycle-session-mode)
+              ("C-c C-k" . agent-shell-interrupt)
+              ("C-c a" . agent-shell-set-session-mode)
+              ("C-k" . agent-shell-previous-item)
+              ("C-j" . agent-shell-next-item)
+              ("C-c m" . agent-shell-set-session-model)))
+#+end_src
+
+** agent-shell-sidebar                                               :coding:
+#+begin_src emacs-lisp
+(use-package agent-shell-sidebar
+  :vc (:url "https://github.com/cmacrae/agent-shell-sidebar" :branch "main")
+  :custom
+  (agent-shell-sidebar-width "35%")
+  :bind
+  ("C-c s" . agent-shell-sidebar-toggle)
+  (:map agent-shell-mode-map
+        ([remap kill-buffer] . agent-shell-sidebar-reset)))
+#+end_src
+
+** tree-sitter                                                       :coding:
+#+begin_src emacs-lisp
+(setq treesit-language-source-alist
+      '((c . ("https://github.com/tree-sitter/tree-sitter-c.git" "v0.24.2"))
+        (bash . ("https://github.com/tree-sitter/tree-sitter-bash.git" "v0.25.1"))
+        (css "https://github.com/tree-sitter/tree-sitter-css")
+        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
+        (go "https://github.com/tree-sitter/tree-sitter-go")
+        (html "https://github.com/tree-sitter/tree-sitter-html")
+        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+        (json "https://github.com/tree-sitter/tree-sitter-json")
+        (make "https://github.com/alemuller/tree-sitter-make")
+        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
+        (python "https://github.com/tree-sitter/tree-sitter-python")
+        (toml "https://github.com/tree-sitter/tree-sitter-toml")
+        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+#+end_src
+
+** treesit-auto                                                      :coding:
+Note that the tree-sitter ABI version used by emacs should match that of the system.
+
+#+begin_src emacs-lisp
+(use-package treesit-auto
+  :init
+  (add-to-list 'auto-mode-alist '("\\.jsonc\\'" . js-json-mode))
+  :custom
+  (treesit-auto-install nil)
+  :hook (after-init . global-treesit-auto-mode))
+#+end_src
+
+** python                                                     :coding:python:
+#+begin_src emacs-lisp
+(use-package python
+  :ensure nil
+  :interpreter ("python3" . python-mode)
+  :custom
+  (python-indent-guess-indent-offset nil)
+  :hook
+  (python-base-mode . eglot-ensure))
+#+end_src
+
+** eglot                                                             :coding:
+Language Server Protocol client.
+Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however does not come with as many features as =lsp-mode= for e.g. debuggers.
+- =C ]= or =g d= : Go to xref definition.
+- =M-,= or =C-t= : Go back from xref search.
+- =C-M-,=      : Go forward from xref search.
+- =M ]= or =g r= : Find all xref references in current project.
+
+# TODO: Find a way to ignore certain directories. For example, many log files in the project directory can make functions like =evil-goto-definition= slow. [2025-04-08 Tue] This is probably a language-server-specific issue, so it may be better to see how Pyright handles it.
+
+#+begin_src emacs-lisp
+(use-package eglot
+  :hook
+  (prog-mode . (lambda () (setq-local eldoc-echo-area-use-multiline-p nil)))
+  (sh-mode . eglot-ensure)
+  :config
+  (add-to-list 'eglot-server-programs
+               '((python-mode python-ts-mode) . ("pyright-langserver" "--stdio")))
+  (add-to-list 'eglot-server-programs
+               '((sh-mode bash-ts-mode) . ("bash-language-server" "start")))
+  (add-to-list 'eglot-server-programs
+               '((markdown-mode org-mode latex-mode LaTeX-mode) . ("harper-ls" "--stdio")))
+  :custom
+  (eglot-prefer-plaintext t) ;; TODO Fix HTML artefacts in eldoc-doc-buffer
+  (eglot-log-events nil)
+  (eglot-events-buffer-size 2000)
+  :bind
+  ([remap pop-tag-mark] . xref-go-back) ;; C-t
+  ("M-<"                . xref-go-forward)
+  ("M-]"                . xref-find-references))
+#+end_src
+
+** apheleia                                                          :coding:
+# TODO: Make this depend on project configurations when they exist.
+
+#+begin_src emacs-lisp
+(use-package apheleia
+  :hook (prog-mode . apheleia-mode)
+  :config
+  (setf (alist-get 'python-mode    apheleia-mode-alist) '(ruff-isort ruff))
+  (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff))
+  (setf (alist-get 'sh-mode        apheleia-mode-alist) '(shfmt))
+  (setf (alist-get 'bash-ts-mode   apheleia-mode-alist) '(shfmt)))
+#+end_src
+
+** dap-mode                                                          :coding:
+Python debugger via Debug Adapter Protocol. Requires =debugpy=.
+- =C-c d d= : Start debug session.
+- =C-c d b= : Toggle breakpoint.
+- =C-c d n= / =C-c d i= : Step over / into.
+
+#+begin_src emacs-lisp
+(use-package dap-mode
+  :after eglot
+  :hook
+  (dap-stopped . (lambda (_arg) (call-interactively #'dap-hydra)))
+  :config
+  (require 'dap-python)
+  (setq dap-python-debugger 'debugpy)
+  :bind-keymap
+  ("C-c d" . dap-mode-map)
+  :bind
+  (:map dap-mode-map
+        ("d" . dap-debug)
+        ("b" . dap-breakpoint-toggle)
+        ("n" . dap-next)
+        ("i" . dap-step-in)
+        ("o" . dap-step-out)
+        ("c" . dap-continue)
+        ("q" . dap-disconnect)))
+#+end_src
+
+** rainbow-delimiters                                           :text:visual:
+#+begin_src emacs-lisp
+(use-package rainbow-delimiters
+  :hook
+  (prog-mode . rainbow-delimiters-mode))
+#+end_src
+
+** vim-tab-bar                                                       :visual:
+#+begin_src emacs-lisp
+(use-package vim-tab-bar
+  :commands vim-tab-bar-mode
+  :hook
+  (after-init . vim-tab-bar-mode))
+#+end_src
+
+** envrc                                                 :project_management:
+Loading the Python environment in the .envrc file works with eglot.
+
+#+begin_src emacs-lisp
+(use-package envrc
+  :hook (after-init . envrc-global-mode))
+#+end_src
+
+** magit                                                    :version_control:
+Git interface.
+
+The =magit= keybindings override some other Emacs keybindings for =goto= style actions.
+
+- Fixup: If some changes were forgotten in the last commit, stage them, then use =c c F= (=F= for instant fixup). This would put the forgotten changes to the last commit.
+- Merge conflicts: If there are merge conflicts, use =e= to get a better view, then press =A= or =B= depending on changes you wish to keep.
+- Spinoff branches: If there are many local changes that are meant to be in a new branch, use =b s= in the magit buffer (=s= for spinoff) to put them in a new 'spinoff' branch.
+- Stash/Pop: In the magit buffer, use =z z= to stash current changes, =z p= to pop them which will show them as unstaged changes in the magit buffer.
+
+- Sometimes you need to apply your changes on top of some changes in a remote branch. One approach is to merge the =main= to your feature branch, however this creates an extra commit whose message is not that helpful. The other option is to do a =rebase=. This takes new commits from the branch you are pulling from, and then reapplies your own commits on top of the commits from the remote branch. This involves changing the history (so be careful to only use it with your own branches). To do the rebasing, first press =P=, then press =r= to turn on rebasing. Now, choosing the remote repository will do a rebase instead of a merge - it will show any conflicts if they exist. If at this point you want to undo everything, press =r a= (=a= for =abort=), or if everything is fine, finish the rebase with =r r=. After this, you can force push to the remote branch (by turning on =- f= after going to the Push menu after pressing =P=).
+- To add files to =.gitignore=, go to the file you want to ignore in the =magit= buffer, and press =i= to show the =git ignore= menu, then press =t= for the simplest option to add the file to =.gitignore=.
+- Interactive rebasing:
+  - Good idea to backup your branch to a new branch, via =b n= (=n= for =new branch=) - this is because editing the history may delete some changes is rebasing goes wrong.
+  - Suppose you want to edit a commit message (=reword=). Use =r i= to go to the magit interactive rebase buffer, then press the key word =reword= and change the commit message.
+  - Reordering commits: In the interactive =magit= buffer, use =M-j,M-k= to move the commits up and down as needed.
+  - If reordering commits introduces a conflict, first fix the conflicts, then *do not commit the new changes via* =c c=, instead use =r r=.
+  - If the update needs changing the commit message, do a =squash=.
+  - =d= to delete commits (in the rebase menu of course).
+- Git worktrees:
+  - Use case - you checked out a branch, and need to move onto something else. Normally, you would commit everything you have or stash your changes. In the meantime you need to checkout other branches etc. Worktrees allow of multiple commits to be checked out at the same time.
+  - To start, use =git clone --bare xxxx=. Then checkout a worktree via =git worktree add foo=, =git worktree add bar= etc. This means you have separate checkouts in their own state. To remove them, use =git worktree remove foo=.
+
+#+begin_src emacs-lisp
+(use-package magit
+  :bind
+  ("C-x g" . magit-status)
+  :hook
+  (magit-pre-refresh  . diff-hl-magit-pre-refresh)
+  (magit-post-refresh . diff-hl-magit-post-refresh)
+  :custom
+  (git-commit-major-mode 'org-mode)
+  (magit-diff-refine-hunk 'word)
+  (magit-show-long-lines-warning nil)
+  (magit-clone-default-directory "~/projects/")
+  (magit-display-buffer-function 'magit-display-buffer-fullframe-status-v1)
+  (magit-bury-buffer-function 'magit-restore-window-configuration))
+
+#+end_src
+
+** magit-delta                                       :visual:version_control:
+Keeping this since output is cleaner than after setting =magit-diff-refine-hunk=.
+#+begin_src emacs-lisp
+(use-package magit-delta
+  :hook (magit-mode . magit-delta-mode))
+#+end_src
+
+** vdiff                                              :visual:version_control:
+Side-by-side diffs, preferred over =ediff= for reviewing and staging changes.
+Evil users get vimdiff-style bindings from =evil-collection=; the vdiff command
+prefix map is on =,= in normal state.
+#+begin_src emacs-lisp
+(use-package vdiff
+  :custom
+  (vdiff-diff-algorithm 'git-diff)
+  :config
+  (evil-define-key 'normal vdiff-mode-map "," vdiff-mode-prefix-map))
+#+end_src
+
+** vdiff-magit                                        :visual:version_control:
+Review and stage hunks side-by-side from the =magit= buffer. =e= now opens a
+side-by-side =vdiff= for normal diffs and falls back to =ediff= for 3-way merge
+conflicts (so the =e= then =A=/=B= merge workflow above still applies).
+- =e= on a file/hunk: side-by-side view (=vdiff-magit-dwim=).
+- =E=: pick revisions to compare (=vdiff-magit=).
+- =C-c g s= in the magit buffer: stage a file hunk-by-hunk, worktree vs index
+  (=vdiff-magit-stage=). In the vdiff buffer, =,n= / =,p= move between hunks and
+  =,s= sends (stages) the change under point.
+#+begin_src emacs-lisp
+(use-package vdiff-magit
+  :after magit
+  :bind (:map magit-mode-map
+              ("e" . vdiff-magit-dwim)
+              ("E" . vdiff-magit)
+              ("C-c g s" . vdiff-magit-stage))
+  :custom
+  (vdiff-magit-stage-is-2way t)
+  (vdiff-magit-use-ediff-for-merges t)
+  :config
+  (transient-suffix-put 'magit-dispatch "e" :description "vdiff (dwim)")
+  (transient-suffix-put 'magit-dispatch "e" :command 'vdiff-magit-dwim)
+  (transient-suffix-put 'magit-dispatch "E" :description "vdiff")
+  (transient-suffix-put 'magit-dispatch "E" :command 'vdiff-magit))
+#+end_src
+
+** ediff                                                             :visual:
+#+begin_src emacs-lisp
+(use-package ediff
+  :ensure nil
+  :custom
+  (ediff-window-setup-function 'ediff-setup-windows-plain)
+  (ediff-split-window-function 'split-window-horizontally))
+#+end_src
+
+** diff-hl                                                  :version_control:
+#+begin_src emacs-lisp
+(use-package diff-hl
+  :custom
+  (diff-hl-update-async t)
+  :hook
+  ;; (after-init . global-diff-hl-mode)
+  ((prog-mode text-mode conf-mode) . diff-hl-mode)
+  (diff-hl-mode . diff-hl-flydiff-mode)
+  (vc-dir-mode . turn-on-diff-hl-mode))
+#+end_src
+
+** why-this                                                 :version_control:
+#+begin_src emacs-lisp
+(use-package why-this
+  :vc (:url "https://codeberg.org/akib/emacs-why-this" :branch "master")
+  :bind
+  ("C-c g w" . global-why-this-mode))
+#+end_src
+
+** git-timemachine                                          :version_control:
+Helpful when searching for old code.
+- =C-j= : Next commit.
+- =C-k= : Previous commit.
+
+#+begin_src emacs-lisp
+(use-package git-timemachine
+  :bind
+  ("C-c g t" . git-timemachine))
+#+end_src
+
+** eshell                                                             :shell:
+#+begin_src emacs-lisp
+(use-package eshell
+  :ensure nil
+  :config
+  (require 'em-hist))
+#+end_src
+
+** multi-vterm                                                        :shell:
+Manage multiple =vterm= buffers.
+
+#+begin_src emacs-lisp
+(use-package multi-vterm
+  :after popper
+  :hook
+  (vterm-mode . (lambda () (display-line-numbers-mode -1)))
+  :bind
+  ("C-c t" . (lambda () (interactive) (multi-vterm) (popper-toggle-latest)))
+  ([remap project-shell] . multi-vterm-project)
+  (:map vterm-mode-map ;; To allow popper-cycle
+        ("M-`" . nil)))
+#+end_src
+
+** popper                                                      :coding:shell:
+# TODO: Figure out a way to group =gptel= buffers by project too, otherwise those buffers cannot be popped open from a project buffer.
+
+#+begin_src emacs-lisp
+(use-package popper
+  :bind
+  ("C-`"   . popper-toggle)
+  ("M-`"   . popper-cycle)
+  ("C-M-`" . popper-toggle-type)
+  :hook
+  (after-init . popper-mode)
+  (after-init . popper-echo-mode)
+  :custom
+  (popper-reference-buffers '("^\\*vterm.*\\*$"
+                              "^\\*eldoc.*\\*$"
+                              "^\\*ChatGPT.*\\*$"
+                              "^\\*Gemini.*\\*$"
+                              "^\\*Claude.*\\*$"
+                              helpful-mode
+                              compilation-mode))
+  (popper-window-height 0.25))
+#+end_src
+
+** writeroom-mode                                            :writing:visual:
+#+begin_src emacs-lisp
+(use-package writeroom-mode
+  :custom
+  (writeroom-width 120))
+#+end_src
+
+** jinx                                                             :writing:
+Spell checking. Requires =libenchant-2-dev= to be installed on the system.
+
+# TODO: Make =jinx-exclude-faces= more robust. For example, it already includes =org-verbatim=, which means anything in verbatim text is not spellchecked.
+
+#+begin_src emacs-lisp
+(use-package jinx
+  :hook
+  (text-mode . jinx-mode)
+  :config
+  (set-face-attribute 'jinx-misspelled nil
+                      :background "#3d1a2a"
+                      :underline '(:style line :color "#ff6b8a"))
+  (evil-define-key 'normal jinx-mode-map
+    "[s" 'jinx-previous
+    "]s" 'jinx-next)
+  :bind
+  ([remap ispell-word] . jinx-correct)) ;; z =
+#+end_src
+
+** tex                                                        :writing:latex:
+AUCTex installation is taken from a reply in [[https://www.reddit.com/r/emacs/comments/om8qmy/does_anyone_use_emacs_to_write_papers_for_college/][this]] thread.
+
+To preview the current tex file with properly formatted mathematics etc. use =C-c C-p C-d=.
+For shortcuts to commands are listed [[https://tex.stackexchange.com/questions/20843/useful-shortcuts-or-key-bindings-or-predefined-commands-for-emacsauctex/21026#21026][here]].
+
+Part of the following is from [[https://emacs.stackexchange.com/questions/44849/how-to-get-live-preview-in-real-time-while-editing-latex-source-code-using-aucte][this]] post, for a LaTeX workflow where the PDF is opened in a 3rd application and updated whenever the tex file is saved.
+#+begin_src emacs-lisp
+(use-package tex
+  :ensure auctex
+  :custom
+  (TeX-save-query nil) ;; No need for the save command before compilation is completed
+  (ConTeXt-Mark-version "IV")
+  :hook
+  (TeX-after-compilation-finished-functions .
+                                            (lambda (file)
+                                              (TeX-revert-document-buffer file)
+                                              (pdf-outline))))
+#+end_src
+
+** markdown-mode                                                    :writing:
+#+begin_src emacs-lisp
+(use-package markdown-mode
+  :custom
+  (markdown-enable-math t))
+#+end_src
+
+** yaml-mode                                                        :utility:
+#+begin_src emacs-lisp
+(use-package yaml-mode)
+#+end_src
+
+** nov                                                              :reading:
+For reading EPUB files.
+
+#+begin_src emacs-lisp
+(use-package nov
+  :mode ("\\.epub\\'" . nov-mode)
+  :custom
+  (nov-variable-pitch nil))
+#+end_src
+
+** sqlite3                                                            :notes:
+#+begin_src emacs-lisp
+(use-package sqlite3)
+#+end_src
+
+** ledger-mode                                          :personal_management:
+#+begin_src emacs-lisp
+(use-package ledger-mode
+  :mode
+  ("\\.dat\\'"     . ledger-mode)
+  ("\\.dat.gpg\\'" . ledger-mode))
+#+end_src
+
+** csv-mode                                                         :utility:
+#+begin_src emacs-lisp
+(use-package csv-mode
+  :mode
+  ("\\.csv\\'"     . csv-mode)
+  ("\\.csv.gpg\\'" . csv-mode))
+#+end_src
+
+** notmuch                                                            :email:
+See [[https://www.reddit.com/r/emacs/comments/okfw91/notmuch_with_multiple_inboxes/][this Reddit thread]] on getting multiple inboxes.
+
+#+begin_src emacs-lisp
+(use-package notmuch
+  :custom
+  (notmuch-search-oldest-first nil)
+  (notmuch-hello-recent-searches-max 0))
+#+end_src
+
+** consult-notmuch                                                    :email:
+#+begin_src emacs-lisp
+(use-package consult-notmuch
+  :bind
+  ("M-s e" . consult-notmuch))
+#+end_src
+
+** ol-notmuch                                                         :email:
+#+begin_src emacs-lisp
+(use-package ol-notmuch)
+#+end_src
+
+** notmuch-maildir                                                    :email:
+#+begin_src emacs-lisp
+(use-package notmuch-maildir
+  :vc (:url "https://github.com/emacsmirror/notmuch-maildir" :branch "master"))
+#+end_src
+
+** notmuch-transient                                                  :email:
+#+begin_src emacs-lisp
+(use-package notmuch-transient
+  :vc (:url "https://github.com/emacsmirror/notmuch-transient" :branch "master")
+  :bind
+  ("C-c m m" . notmuch-search-transient)
+  ("C-c m t" . notmuch-hello-mode-transient))
+#+end_src

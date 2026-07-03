@@ -1,0 +1,87 @@
+[global]
+    # Display
+    monitor = 0
+    follow = mouse
+
+    # Wayland
+    force_xwayland = false
+
+    # Geometry
+    width = 300
+    height = (0, 300)
+    origin = top-right
+    offset = (20, 20)
+    scale = 0
+
+    # Frame
+    frame_width = 1
+    frame_color = "#313244"
+    corner_radius = 0
+
+    # Separators
+    separator_height = 1
+    separator_color = frame
+
+    # Padding
+    padding = 8
+    horizontal_padding = 16
+    text_icon_padding = 8
+
+    # Icons
+    enable_recursive_icon_lookup = true
+    icon_theme = "Adwaita, hicolor"
+    icon_position = left
+    min_icon_size = 48
+    max_icon_size = 48
+
+    # Text
+    font = Iosevka Term Nerd Font 12
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+
+    # Progress bar
+    progress_bar = true
+    progress_bar_height = 10
+
+    # History
+    sticky_history = yes
+    history_length = 20
+
+    # Misc
+    dmenu = /usr/bin/dmenu -p dunst:
+    browser = /usr/bin/xdg-open
+    always_run_script = true
+    title = Dunst
+    class = Dunst
+    indicate_hidden = yes
+    notification_limit = 20
+    show_indicators = yes
+    show_age_threshold = 60
+
+    # Mouse
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#313244"
+    foreground = "#a6adc8"
+    frame_color = "#313244"
+    timeout = 10
+    default_icon = dialog-question
+
+[urgency_normal]
+    background = "#1e1e2e"
+    foreground = "#cdd6f4"
+    frame_color = "#313244"
+    timeout = 10
+    default_icon = dialog-information
+
+[urgency_critical]
+    background = "#f38ba8"
+    foreground = "#11111b"
+    frame_color = "#f38ba8"
+    timeout = 0
+    default_icon = dialog-warning

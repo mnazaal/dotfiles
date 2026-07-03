@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+ERROR_PREFIX="GIT PRE-PUSH HOOK ERROR:"
+
+PREFIX="${AGENT_BRANCH_PREFIX:-}"
+[[ -z "$PREFIX" && "${OPENCODE:-0}" == "1" ]] && PREFIX="opencode"
+[[ -n "$PREFIX" ]] || exit 0
+is_zero() { [[ "$1" =~ ^0+$ ]]; }
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+    [[ "$remote_ref" == refs/heads/* ]] || continue
+    branch="${remote_ref#refs/heads/}"
+    # See reference-transaction: `claude -w <name>` hardcodes the branch as
+    # worktree-<name>, so allow worktree-$PREFIX* too (e.g. -w claude-feat).
+    [[ "$branch" == "$PREFIX"/* || "$branch" == worktree-"$PREFIX"* ]] || {
+        echo "$ERROR_PREFIX $PREFIX agent may only push to $PREFIX/* (or worktree-$PREFIX*) branches" >&2
+        exit 1
+    }
+    is_zero "$local_oid" && {
+        echo "$ERROR_PREFIX $PREFIX agent may not delete remote branches" >&2
+        exit 1
+    }
+    if ! is_zero "$remote_oid"; then
+        git merge-base --is-ancestor "$remote_oid" "$local_oid" || {
+            echo "$ERROR_PREFIX $PREFIX agent may not force-update remote branches" >&2
+            exit 1
+        }
+    fi
+done
+exit 0

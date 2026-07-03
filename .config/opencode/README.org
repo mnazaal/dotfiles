@@ -1,0 +1,33 @@
+OpenCode Configuration
+
+* Dependencies
+
+Some components of this configuration require manual installation. Install the base packages you want first, then install the following:
+
+** Required
+*** bun
+JavaScript runtime required for local MCP servers such as grepika.
+
+#+begin_src bash
+curl -fsSL https://bun.sh/install | bash
+#+end_src
+
+*** grepika
+Indexed code search MCP launched via =bunx=. No separate global install is required beyond =bun=.
+
+*** DCP plugin
+This config uses =@tarquinen/opencode-dcp@latest= for dynamic context pruning. Plugin installation is managed by OpenCode.
+
+* Token-efficiency defaults
+
+- DCP compression starts at =128000= tokens via =dcp.json=
+- Default inspection path is =grepika=, not ad-hoc shell reads
+- =plan= remains the default primary agent
+- =plan= and =build= are configured for concise output and always-on caveman mode unless you ask for normal mode
+
+* Structure
+- =opencode.jsonc= :: Main configuration (models, MCP servers, permissions, plugins)
+- =dcp.json= :: Dynamic context pruning threshold
+- =tui.json= :: TUI theme and keybindings
+- =agents/= :: Agent definitions (plan, explore, code-review, etc.)
+- =skills/= :: Skill definitions (caveman, viz, etc.)

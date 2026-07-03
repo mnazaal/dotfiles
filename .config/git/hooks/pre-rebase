@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+ERROR_PREFIX="GIT PRE-REBASE HOOK ERROR:"
+
+PREFIX="${AGENT_BRANCH_PREFIX:-}"
+[[ -z "$PREFIX" && "${OPENCODE:-0}" == "1" ]] && PREFIX="opencode"
+if [[ -n "$PREFIX" ]]; then
+    branch="$(git symbolic-ref --quiet --short HEAD || true)"
+    if [[ -z "$branch" || ( "$branch" != "$PREFIX"/* && "$branch" != worktree-"$PREFIX"* ) ]]; then
+        echo "$ERROR_PREFIX $PREFIX agent may only rebase on $PREFIX/* (or worktree-$PREFIX*) branches" >&2
+        exit 1
+    fi
+fi
+exit 0
+

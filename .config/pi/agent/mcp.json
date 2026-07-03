@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "asta-mcp": {
+      "headers": {
+        "x-api-key": "$env:ASTA_MCP_API_KEY"
+      },
+      "lifecycle": "lazy",
+      "url": "https://asta-tools.allen.ai/mcp/v1"
+    },
+    "deepwiki": {
+      "lifecycle": "lazy",
+      "url": "https://mcp.deepwiki.com/mcp"
+    },
+    "grepika": {
+      "args": ["-y", "@agentika/grepika", "--mcp"],
+      "command": "bunx",
+      "lifecycle": "lazy"
+    }  },
+  "settings": {
+    "directTools": false,
+    "idleTimeout": 10,
+    "toolPrefix": "server"
+  }
+}
+

@@ -1,0 +1,13 @@
+.stow-local-ignore
+.stowrc
+.git
+.gitignore
+README.*
+.agent-shell
+skills-lock.json
+^/\.config/zsh/\.zcompdump$
+Makefile
+.claude/settings.local.json
+.claude/projects
+
+^/org$

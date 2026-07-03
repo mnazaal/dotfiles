@@ -1,0 +1,4 @@
+Config(
+  // No prefix required (like rofi's run mode)
+  require_prefix: false,
+)

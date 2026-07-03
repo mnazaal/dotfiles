@@ -1,0 +1,937 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import socket
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import asdict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, NoReturn
+
+
+DEFAULT_PROMPT = "Reply with only the single character 2."
+DEFAULT_LABEL = "fixed-overhead"
+
+
+class OcbenchError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class ResolvedConfig:
+    base_config: Path
+    config_dir: Path
+
+
+@dataclass(frozen=True)
+class ArtifactContext:
+    root: Path
+    data_home: Path
+    config_home: Path
+
+
+@dataclass(frozen=True)
+class TrialResult:
+    tokens: int
+    cost: float
+    elapsed_ms: int
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    label: str
+    base_config: str
+    config_dir: str
+    prompt: str
+    model: str | None
+    agent: str | None
+    repeats: int
+    tokens: int
+    cost: float
+    elapsed_ms: int
+
+
+@dataclass(frozen=True)
+class SurfaceSummary:
+    label: str
+    mode: str
+    model: str
+    tool_count: int
+    response_bytes: int
+    tools: list[str]
+    raw_response: Any
+
+
+def fail(message: str) -> NoReturn:
+    raise OcbenchError(message)
+
+
+def require_opencode() -> str:
+    path = shutil.which("opencode")
+    if path is None:
+        fail("opencode command not found")
+    return path
+
+
+def resolve_existing_file(path_text: str) -> Path:
+    path = Path(path_text).expanduser().resolve()
+    if not path.is_file():
+        fail(f"base config not found: {path}")
+    return path
+
+
+def resolve_existing_dir(path_text: str, *, label: str) -> Path:
+    path = Path(path_text).expanduser().resolve()
+    if not path.is_dir():
+        fail(f"{label} not found: {path}")
+    return path
+
+
+def resolve_config(base_path: str, explicit_dir: str | None) -> ResolvedConfig:
+    base_config = resolve_existing_file(base_path)
+    config_dir = resolve_existing_dir(
+        explicit_dir if explicit_dir is not None else str(base_config.parent),
+        label="config dir",
+    )
+    return ResolvedConfig(base_config=base_config, config_dir=config_dir)
+
+
+def resolve_run_dir(path_text: str) -> Path:
+    return resolve_existing_dir(path_text, label="run directory")
+
+
+def validate_repeats(value: int) -> int:
+    if value < 1:
+        fail("--repeats must be a positive integer")
+    return value
+
+
+def parse_provider_model(model: str) -> tuple[str, str]:
+    provider, separator, model_id = model.partition("/")
+    if not separator or not provider or not model_id:
+        fail("--model must be in provider/model form")
+    return provider, model_id
+
+
+def parse_override(item: str) -> tuple[str, Any]:
+    if "=" not in item:
+        fail(f"invalid override (expected key=value): {item}")
+    key_path, raw_value = item.split("=", 1)
+    if not key_path:
+        fail("override key cannot be empty")
+    try:
+        value = json.loads(raw_value)
+    except json.JSONDecodeError:
+        value = raw_value
+    return key_path, value
+
+
+def merge_override(root: dict[str, Any], key_path: str, value: Any) -> None:
+    current = root
+    parts = key_path.split(".")
+    for part in parts[:-1]:
+        existing = current.get(part)
+        if existing is None:
+            child: dict[str, Any] = {}
+            current[part] = child
+            current = child
+            continue
+        if not isinstance(existing, dict):
+            fail(f"override path collision at: {part}")
+        current = existing
+    current[parts[-1]] = value
+
+
+def build_override_dict(items: list[str]) -> dict[str, Any]:
+    root: dict[str, Any] = {}
+    for item in items:
+        key_path, value = parse_override(item)
+        merge_override(root, key_path, value)
+    return root
+
+
+def parse_jsonc(text: str) -> dict[str, Any]:
+    cleaned = re.sub(r'(?m)^\s*//.*$', '', text)
+    cleaned = re.sub(r'(?<=[,{\[\s])//[^\n]*', '', cleaned)
+    cleaned = re.sub(r',(\s*[}\]])', r'\1', cleaned)
+    return json.loads(cleaned)
+
+
+def discover_enabled_mcps(config_path: Path) -> list[str]:
+    config = parse_jsonc(config_path.read_text(encoding="utf-8"))
+    mcp = config.get("mcp", {})
+    if not isinstance(mcp, dict):
+        return []
+    return sorted(
+        name for name, spec in mcp.items()
+        if isinstance(spec, dict) and spec.get("enabled") is not False
+    )
+
+
+def parse_scenario_spec(spec: str) -> tuple[str, dict[str, Any]]:
+    if ":" not in spec:
+        return spec, {}
+    label, rest = spec.split(":", 1)
+    if not label:
+        fail("scenario label cannot be empty")
+    items = [item.strip() for item in rest.split(",") if item.strip()]
+    return label, build_override_dict(items)
+
+
+def generate_mcp_toggle_scenarios(config_path: Path) -> list[tuple[str, dict[str, Any]]]:
+    enabled = discover_enabled_mcps(config_path)
+    scenarios: list[tuple[str, dict[str, Any]]] = [("all-enabled", {})]
+    for name in enabled:
+        overrides: dict[str, Any] = {"mcp": {name: {"enabled": False}}}
+        scenarios.append((f"no-{name}", overrides))
+    if len(enabled) > 1:
+        overrides = {"mcp": {name: {"enabled": False} for name in enabled}}
+        scenarios.append(("no-mcps", overrides))
+    return scenarios
+
+
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    result = base.copy()
+    for key, value in overlay.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def create_artifact_context() -> ArtifactContext:
+    root = Path(tempfile.mkdtemp(prefix="ocbench."))
+    data_home = root / "data"
+    config_home = root / "config"
+    data_home.mkdir(parents=True, exist_ok=True)
+    config_home.mkdir(parents=True, exist_ok=True)
+    return ArtifactContext(root=root, data_home=data_home, config_home=config_home)
+
+
+def seed_auth_state(artifacts: ArtifactContext) -> None:
+    source_data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")).expanduser()
+    source_auth = source_data_home / "opencode" / "auth.json"
+    if not source_auth.is_file():
+        return
+    target_dir = artifacts.data_home / "opencode"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_auth, target_dir / "auth.json")
+
+
+def cleanup_artifact_context(artifacts: ArtifactContext) -> None:
+    shutil.rmtree(artifacts.root, ignore_errors=True)
+
+
+def build_opencode_env(
+    *,
+    config: ResolvedConfig,
+    overrides: dict[str, Any],
+    artifacts: ArtifactContext,
+) -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "XDG_CONFIG_HOME": str(artifacts.config_home),
+            "XDG_DATA_HOME": str(artifacts.data_home),
+            "OPENCODE_CONFIG": str(config.base_config),
+            "OPENCODE_CONFIG_DIR": str(config.config_dir),
+            "OPENCODE_CONFIG_CONTENT": json.dumps(overrides, separators=(",", ":")),
+            "OPENCODE_DISABLE_AUTOUPDATE": "1",
+            "OPENCODE_DISABLE_TERMINAL_TITLE": "1",
+        }
+    )
+    return env
+
+
+def run_command(
+    command: list[str],
+    *,
+    env: dict[str, str],
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            command,
+            env=env,
+            cwd=str(cwd) if cwd is not None else None,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        fail(f"failed to execute {' '.join(command)}: {exc}")
+
+
+def warmup(env: dict[str, str]) -> None:
+    result = run_command(["opencode", "session", "list", "--format", "json"], env=env)
+    if result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip() or "warmup failed"
+        fail(f"warmup failed: {message}")
+
+
+def extract_error_message(event: dict[str, Any]) -> str | None:
+    error = event.get("error")
+    if not isinstance(error, dict):
+        return None
+    data = error.get("data")
+    if isinstance(data, dict):
+        message = data.get("message")
+        if isinstance(message, str) and message.strip():
+            return message.strip()
+    name = error.get("name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    return None
+
+
+def parse_last_step_finish(ndjson_text: str) -> tuple[int, float]:
+    last_metrics: tuple[int, float] | None = None
+    for raw_line in ndjson_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as exc:
+            fail(f"invalid JSON event stream: {exc}")
+        if not isinstance(event, dict):
+            continue
+        if event.get("type") == "error":
+            message = extract_error_message(event)
+            fail(message or "opencode returned an error event")
+        if event.get("type") != "step_finish":
+            continue
+        part = event.get("part")
+        if not isinstance(part, dict):
+            continue
+        tokens_info = part.get("tokens")
+        total_tokens = 0
+        if isinstance(tokens_info, dict):
+            raw_tokens = tokens_info.get("total", 0)
+            if isinstance(raw_tokens, (int, float)):
+                total_tokens = int(raw_tokens)
+        raw_cost = part.get("cost", 0)
+        cost = float(raw_cost) if isinstance(raw_cost, (int, float)) else 0.0
+        last_metrics = (total_tokens, cost)
+    if last_metrics is None:
+        fail("missing step_finish event in opencode output")
+    return last_metrics
+
+
+def run_trial(
+    *,
+    prompt: str,
+    run_dir: Path,
+    env: dict[str, str],
+    model: str | None,
+    agent: str | None,
+) -> TrialResult:
+    command = ["opencode", "run", "--format", "json", "--dir", str(run_dir)]
+    if model is not None:
+        command.extend(["--model", model])
+    if agent is not None:
+        command.extend(["--agent", agent])
+    command.append(prompt)
+
+    started = time.perf_counter_ns()
+    result = run_command(command, env=env)
+    elapsed_ms = (time.perf_counter_ns() - started) // 1_000_000
+
+    if result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip() or f"trial failed with exit code {result.returncode}"
+        fail(message)
+
+    tokens, cost = parse_last_step_finish(result.stdout)
+    return TrialResult(tokens=tokens, cost=cost, elapsed_ms=int(elapsed_ms))
+
+
+def aggregate_trials(
+    *,
+    label: str,
+    config: ResolvedConfig,
+    prompt: str,
+    model: str | None,
+    agent: str | None,
+    trials: list[TrialResult],
+) -> RunSummary:
+    token_values = [trial.tokens for trial in trials]
+    cost_values = [trial.cost for trial in trials]
+    elapsed_values = [trial.elapsed_ms for trial in trials]
+    return RunSummary(
+        label=label,
+        base_config=str(config.base_config),
+        config_dir=str(config.config_dir),
+        prompt=prompt,
+        model=model,
+        agent=agent,
+        repeats=len(trials),
+        tokens=int(statistics.median(token_values)),
+        cost=float(statistics.median(cost_values)),
+        elapsed_ms=int(statistics.median(elapsed_values)),
+    )
+
+
+@dataclass(frozen=True)
+class ServerHandle:
+    process: subprocess.Popen[str]
+    stdout_path: Path
+    stderr_path: Path
+
+
+def find_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def start_server(*, env: dict[str, str], artifacts: ArtifactContext, port: int) -> ServerHandle:
+    stdout_path = artifacts.root / "serve.out"
+    stderr_path = artifacts.root / "serve.err"
+    try:
+        with stdout_path.open("w", encoding="utf-8") as stdout_handle, stderr_path.open(
+            "w", encoding="utf-8"
+        ) as stderr_handle:
+            process = subprocess.Popen(
+                ["opencode", "serve", "--hostname", "127.0.0.1", "--port", str(port)],
+                env=env,
+                text=True,
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+            )
+    except OSError as exc:
+        fail(f"failed to start opencode serve: {exc}")
+    return ServerHandle(process=process, stdout_path=stdout_path, stderr_path=stderr_path)
+
+
+def read_log_excerpt(path: Path) -> str:
+    if not path.exists():
+        return ""
+    content = path.read_text(encoding="utf-8", errors="replace").strip()
+    if not content:
+        return ""
+    lines = content.splitlines()
+    return "\n".join(lines[-20:])
+
+
+def fetch_json(url: str, *, timeout: float) -> Any:
+    request = urllib.request.Request(url, headers={"accept": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = response.read().decode("utf-8")
+    except urllib.error.URLError as exc:
+        fail(f"request failed: {exc}")
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        fail(f"invalid JSON response: {exc}")
+    return data
+
+
+def wait_for_health(server: ServerHandle, *, port: int, timeout_seconds: float) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    health_url = f"http://127.0.0.1:{port}/global/health"
+    while time.monotonic() < deadline:
+        if server.process.poll() is not None:
+            excerpt = read_log_excerpt(server.stderr_path)
+            fail(f"opencode serve exited early{': ' + excerpt if excerpt else ''}")
+        try:
+            payload = fetch_json(health_url, timeout=1.0)
+        except OcbenchError:
+            time.sleep(0.2)
+            continue
+        if not isinstance(payload, dict):
+            time.sleep(0.2)
+            continue
+        if payload.get("healthy") is True:
+            return
+        time.sleep(0.2)
+    excerpt = read_log_excerpt(server.stderr_path)
+    fail(f"timed out waiting for opencode serve health{': ' + excerpt if excerpt else ''}")
+
+
+def fetch_tool_surface(*, port: int, provider: str, model_id: str) -> Any:
+    query = urllib.parse.urlencode({"provider": provider, "model": model_id})
+    return fetch_json(f"http://127.0.0.1:{port}/experimental/tool?{query}", timeout=30.0)
+
+
+def summarize_surface(*, label: str, model: str, payload: Any) -> SurfaceSummary:
+    raw_tools = payload if isinstance(payload, list) else payload.get("tools") if isinstance(payload, dict) else None
+    tool_names: list[str] = []
+    if isinstance(raw_tools, list):
+        for item in raw_tools:
+            if not isinstance(item, dict):
+                continue
+            identifier = item.get("id") or item.get("name")
+            if isinstance(identifier, str):
+                tool_names.append(identifier)
+    tool_names.sort()
+    response_bytes = len(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    return SurfaceSummary(
+        label=label,
+        mode="surface",
+        model=model,
+        tool_count=len(raw_tools) if isinstance(raw_tools, list) else 0,
+        response_bytes=response_bytes,
+        tools=tool_names,
+        raw_response=payload,
+    )
+
+
+def stop_server(server: ServerHandle | None) -> None:
+    if server is None:
+        return
+    if server.process.poll() is None:
+        server.process.terminate()
+        try:
+            server.process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            server.process.kill()
+            server.process.wait(timeout=5)
+
+
+def emit_json(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, separators=(",", ":"), sort_keys=False))
+
+
+def emit_run_text(summary: RunSummary) -> None:
+    print(f"label: {summary.label}")
+    print(f"base_config: {summary.base_config}")
+    print(f"config_dir: {summary.config_dir}")
+    if summary.model is not None:
+        print(f"model_override: {summary.model}")
+    if summary.agent is not None:
+        print(f"agent_override: {summary.agent}")
+    print(f"prompt: {summary.prompt}")
+    print(f"repeats: {summary.repeats}")
+    print(f"elapsed_ms: {summary.elapsed_ms}ms")
+    print(f"tokens: {summary.tokens}")
+    print(f"cost: {summary.cost}")
+
+
+def emit_surface_text(summary: SurfaceSummary) -> None:
+    print(f"label: {summary.label}")
+    print(f"mode: {summary.mode}")
+    print(f"model: {summary.model}")
+    print(f"tool_count: {summary.tool_count}")
+    print(f"response_bytes: {summary.response_bytes}")
+    if summary.tools:
+        print(",".join(summary.tools))
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    validate_repeats(args.repeats)
+    config = resolve_config(args.base, args.config_dir)
+    run_dir = resolve_run_dir(args.run_dir)
+    overrides = build_override_dict(args.set)
+    artifacts = create_artifact_context()
+    try:
+        seed_auth_state(artifacts)
+        env = build_opencode_env(config=config, overrides=overrides, artifacts=artifacts)
+        warmup(env)
+        trials = [
+            run_trial(
+                prompt=args.prompt,
+                run_dir=run_dir,
+                env=env,
+                model=args.model,
+                agent=args.agent,
+            )
+            for _ in range(args.repeats)
+        ]
+        summary = aggregate_trials(
+            label=args.label,
+            config=config,
+            prompt=args.prompt,
+            model=args.model,
+            agent=args.agent,
+            trials=trials,
+        )
+    finally:
+        cleanup_artifact_context(artifacts)
+
+    if args.json:
+        emit_json(asdict(summary))
+    else:
+        emit_run_text(summary)
+    return 0
+
+
+def cmd_surface(args: argparse.Namespace) -> int:
+    config = resolve_config(args.base, args.config_dir)
+    provider, model_id = parse_provider_model(args.model)
+    overrides = build_override_dict(args.set)
+    artifacts = create_artifact_context()
+    server: ServerHandle | None = None
+    try:
+        seed_auth_state(artifacts)
+        env = build_opencode_env(config=config, overrides=overrides, artifacts=artifacts)
+        warmup(env)
+        port = find_free_port()
+        server = start_server(env=env, artifacts=artifacts, port=port)
+        wait_for_health(server, port=port, timeout_seconds=6.0)
+        payload = fetch_tool_surface(port=port, provider=provider, model_id=model_id)
+        summary = summarize_surface(label=args.label, model=args.model, payload=payload)
+    finally:
+        stop_server(server)
+        cleanup_artifact_context(artifacts)
+
+    if args.json:
+        emit_json(asdict(summary))
+    else:
+        emit_surface_text(summary)
+    return 0
+
+
+def run_surface_scenario(
+    *,
+    label: str,
+    config: ResolvedConfig,
+    overrides: dict[str, Any],
+    provider: str,
+    model_id: str,
+    model: str,
+) -> SurfaceSummary:
+    artifacts = create_artifact_context()
+    server: ServerHandle | None = None
+    try:
+        seed_auth_state(artifacts)
+        env = build_opencode_env(config=config, overrides=overrides, artifacts=artifacts)
+        warmup(env)
+        port = find_free_port()
+        server = start_server(env=env, artifacts=artifacts, port=port)
+        wait_for_health(server, port=port, timeout_seconds=6.0)
+        payload = fetch_tool_surface(port=port, provider=provider, model_id=model_id)
+        return summarize_surface(label=label, model=model, payload=payload)
+    finally:
+        stop_server(server)
+        cleanup_artifact_context(artifacts)
+
+
+def run_trial_scenario(
+    *,
+    label: str,
+    config: ResolvedConfig,
+    overrides: dict[str, Any],
+    prompt: str,
+    run_dir: Path,
+    model: str | None,
+    agent: str | None,
+    repeats: int,
+) -> RunSummary:
+    artifacts = create_artifact_context()
+    try:
+        seed_auth_state(artifacts)
+        env = build_opencode_env(config=config, overrides=overrides, artifacts=artifacts)
+        warmup(env)
+        trials = [
+            run_trial(prompt=prompt, run_dir=run_dir, env=env, model=model, agent=agent)
+            for _ in range(repeats)
+        ]
+        return aggregate_trials(
+            label=label, config=config, prompt=prompt,
+            model=model, agent=agent, trials=trials,
+        )
+    finally:
+        cleanup_artifact_context(artifacts)
+
+
+def emit_surface_comparison(summaries: list[SurfaceSummary]) -> None:
+    if not summaries:
+        return
+    baseline = summaries[0]
+    print(f"{'SCENARIO':<25} {'TOOLS':>6} {'BYTES':>8} {'DELTA':>8}")
+    print("-" * 51)
+    for s in summaries:
+        delta = s.response_bytes - baseline.response_bytes
+        delta_str = "-" if s is baseline else f"{delta:+d}"
+        print(f"{s.label:<25} {s.tool_count:>6} {s.response_bytes:>8} {delta_str:>8}")
+    if len(summaries) > 1:
+        baseline_tools = set(baseline.tools)
+        print()
+        for s in summaries[1:]:
+            removed = baseline_tools - set(s.tools)
+            if removed:
+                print(f"{s.label} removes: {', '.join(sorted(removed))}")
+
+
+def emit_run_comparison(summaries: list[RunSummary]) -> None:
+    if not summaries:
+        return
+    baseline = summaries[0]
+    print(f"{'SCENARIO':<25} {'TOKENS':>8} {'COST':>10} {'MS':>8} {'T_DELTA':>8}")
+    print("-" * 63)
+    for s in summaries:
+        delta = s.tokens - baseline.tokens
+        delta_str = "-" if s is baseline else f"{delta:+d}"
+        print(f"{s.label:<25} {s.tokens:>8} {s.cost:>10.6f} {s.elapsed_ms:>8} {delta_str:>8}")
+
+
+def cmd_compare(args: argparse.Namespace) -> int:
+    config = resolve_config(args.base, args.config_dir)
+    global_overrides = build_override_dict(args.set)
+
+    scenarios: list[tuple[str, dict[str, Any]]] = []
+    if args.toggle_mcps:
+        scenarios = generate_mcp_toggle_scenarios(config.base_config)
+    for spec in args.scenario:
+        label, overrides = parse_scenario_spec(spec)
+        scenarios.append((label, overrides))
+    if not scenarios:
+        fail("no scenarios specified (use --scenario or --toggle-mcps)")
+
+    if args.mode == "surface":
+        provider, model_id = parse_provider_model(args.model)
+        results: list[SurfaceSummary] = []
+        for label, scenario_overrides in scenarios:
+            merged = deep_merge(global_overrides, scenario_overrides)
+            print(f"  {label}...", file=sys.stderr, flush=True)
+            summary = run_surface_scenario(
+                label=label, config=config, overrides=merged,
+                provider=provider, model_id=model_id, model=args.model,
+            )
+            results.append(summary)
+        if args.json:
+            emit_json({"scenarios": [asdict(r) for r in results]})
+        else:
+            emit_surface_comparison(results)
+    else:
+        validate_repeats(args.repeats)
+        run_dir = resolve_run_dir(args.run_dir)
+        run_results: list[RunSummary] = []
+        for label, scenario_overrides in scenarios:
+            merged = deep_merge(global_overrides, scenario_overrides)
+            print(f"  {label}...", file=sys.stderr, flush=True)
+            summary = run_trial_scenario(
+                label=label, config=config, overrides=merged,
+                prompt=args.prompt, run_dir=run_dir,
+                model=args.model, agent=args.agent, repeats=args.repeats,
+            )
+            run_results.append(summary)
+        if args.json:
+            emit_json({"scenarios": [asdict(r) for r in run_results]})
+        else:
+            emit_run_comparison(run_results)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="ocbench",
+        description="Benchmark OpenCode token usage across different configurations.",
+        epilog="""commands:
+  run        Send a prompt and measure total tokens, cost, and latency.
+  surface    Inspect the tool surface (definitions sent to the model).
+  compare    Run multiple scenarios and display a side-by-side comparison.
+
+environment:
+  ocbench creates an isolated XDG environment for each invocation so
+  that benchmarks do not pollute your real OpenCode state. Auth
+  credentials are copied from your current XDG_DATA_HOME automatically.
+
+config overrides:
+  Use --set KEY=VALUE with dot-separated paths to override any config
+  field inline. Values are parsed as JSON when possible, otherwise kept
+  as strings. Multiple --set flags are merged in order.
+
+    --set mcp.grepika.enabled=false
+    --set 'plugin=[]'
+    --set small_model=openai/gpt-4.1-mini
+
+examples:
+  # Measure fixed overhead of a single config:
+  ocbench run --base ~/.config/opencode/opencode.jsonc
+
+  # Compare tool surface with and without an MCP:
+  ocbench surface --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4
+
+  # Auto-toggle every enabled MCP and compare:
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --toggle-mcps
+
+  # Custom scenario matrix (run mode, 3 repeats):
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --mode run --repeats 3 \\
+    --scenario baseline \\
+    --scenario "no-grepika:mcp.grepika.enabled=false" \\
+    --scenario "no-deepwiki:mcp.deepwiki.enabled=false"
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = subparsers.add_parser(
+        "run",
+        help="benchmark opencode run overhead",
+        description=(
+            "Send a prompt to opencode and measure total tokens consumed, "
+            "cost, and wall-clock latency. Runs in an isolated environment "
+            "so results are not affected by prior session state."
+        ),
+        epilog="""examples:
+  # Minimal overhead measurement (default prompt "Reply with only the
+  # single character 2."):
+  ocbench run --base ~/.config/opencode/opencode.jsonc
+
+  # Custom prompt with 3 trials (reports median):
+  ocbench run --base ~/.config/opencode/opencode.jsonc \\
+    --prompt "Explain what 2+2 is." --repeats 3
+
+  # Measure with a specific MCP disabled:
+  ocbench run --base ~/.config/opencode/opencode.jsonc \\
+    --set mcp.grepika.enabled=false --label no-grepika
+
+  # JSON output for scripting:
+  ocbench run --base ~/.config/opencode/opencode.jsonc --json
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    run_parser.add_argument("--base", required=True, help="path to the base OpenCode config file (e.g. opencode.jsonc)")
+    run_parser.add_argument("--config-dir", help="OpenCode config directory (defaults to parent of --base)")
+    run_parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="prompt to send (default: %(default)r)")
+    run_parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="inline config override (dot-notation, repeatable)")
+    run_parser.add_argument("--model", help="model override passed to opencode run")
+    run_parser.add_argument("--agent", help="agent override passed to opencode run")
+    run_parser.add_argument("--dir", dest="run_dir", default=os.getcwd(), help="working directory for opencode (default: cwd)")
+    run_parser.add_argument("--label", default=DEFAULT_LABEL, help="label for the output row (default: %(default)s)")
+    run_parser.add_argument("--repeats", type=int, default=1, help="number of trials; result is the median (default: %(default)s)")
+    run_parser.add_argument("--json", action="store_true", help="emit output as a JSON object")
+    run_parser.set_defaults(handler=cmd_run)
+
+    surface_parser = subparsers.add_parser(
+        "surface",
+        help="inspect the tool surface for a model",
+        description=(
+            "Start an ephemeral opencode server, query the tool definitions "
+            "that would be sent to the given model, and report the tool count "
+            "and serialized size in bytes. This measures the fixed per-request "
+            "token overhead from MCP servers, plugins, and built-in tools "
+            "without making any LLM API calls."
+        ),
+        epilog="""examples:
+  # List all tools for the default config:
+  ocbench surface --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4
+
+  # Measure surface with grepika disabled:
+  ocbench surface --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --set mcp.grepika.enabled=false
+
+  # JSON output with full tool list:
+  ocbench surface --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --json
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    surface_parser.add_argument("--base", required=True, help="path to the base OpenCode config file")
+    surface_parser.add_argument("--config-dir", help="OpenCode config directory (defaults to parent of --base)")
+    surface_parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="inline config override (dot-notation, repeatable)")
+    surface_parser.add_argument("--model", required=True, help="model in provider/model form (e.g. openai/gpt-5.4)")
+    surface_parser.add_argument("--label", default=DEFAULT_LABEL, help="label for the output row (default: %(default)s)")
+    surface_parser.add_argument("--json", action="store_true", help="emit output as a JSON object (includes full tool list)")
+    surface_parser.set_defaults(handler=cmd_surface)
+
+    compare_parser = subparsers.add_parser(
+        "compare",
+        help="compare token usage across configurations",
+        description=(
+            "Run multiple configuration scenarios and display a comparison "
+            "table. In surface mode (default), each scenario starts an "
+            "ephemeral server and measures the tool definition overhead. In "
+            "run mode, each scenario sends a prompt and measures actual token "
+            "usage. The first scenario is treated as the baseline for delta "
+            "calculations."
+        ),
+        epilog="""scenario format:
+  Each --scenario value is LABEL or LABEL:KEY=VAL,KEY=VAL where KEY
+  uses dot-notation config paths. A bare label with no overrides uses
+  the base config as-is.
+
+    --scenario baseline                        # no overrides
+    --scenario "no-grepika:mcp.grepika.enabled=false"
+    --scenario "bare:mcp.grepika.enabled=false,mcp.deepwiki.enabled=false"
+
+  --toggle-mcps is a shortcut that reads the base config, finds all
+  enabled MCPs, and generates: one baseline ("all-enabled"), one
+  scenario per MCP ("no-<name>"), and one with all MCPs disabled
+  ("no-mcps"). Can be combined with --scenario.
+
+  --set applies global overrides to every scenario (e.g. --set 'plugin=[]'
+  to remove plugins across the board while toggling MCPs).
+
+surface mode output:
+  SCENARIO                  TOOLS    BYTES    DELTA
+  all-enabled                  24    45632        -
+  no-grepika                   15    38000    -7632
+  no-mcps                       8    12000   -33632
+
+run mode output:
+  SCENARIO                  TOKENS       COST       MS  T_DELTA
+  all-enabled                 1850   0.003700      920        -
+  no-grepika                  1200   0.002400      780     -650
+
+examples:
+  # Auto-toggle every enabled MCP (surface mode):
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --toggle-mcps
+
+  # Custom scenarios, run mode, 3 repeats:
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --mode run --repeats 3 \\
+    --scenario baseline \\
+    --scenario "no-grepika:mcp.grepika.enabled=false"
+
+  # Toggle MCPs with plugins stripped globally:
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --toggle-mcps --set 'plugin=[]'
+
+  # JSON output for further analysis:
+  ocbench compare --base ~/.config/opencode/opencode.jsonc \\
+    --model openai/gpt-5.4 --toggle-mcps --json
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    compare_parser.add_argument("--base", required=True, help="path to the base OpenCode config file")
+    compare_parser.add_argument("--config-dir", help="OpenCode config directory (defaults to parent of --base)")
+    compare_parser.add_argument("--model", required=True, help="model in provider/model form (e.g. openai/gpt-5.4)")
+    compare_parser.add_argument("--mode", choices=["surface", "run"], default="surface", help="comparison mode (default: %(default)s)")
+    compare_parser.add_argument("--scenario", action="append", default=[], metavar="LABEL[:KEY=VAL,...]", help="scenario specification (repeatable)")
+    compare_parser.add_argument("--toggle-mcps", action="store_true", help="auto-generate one scenario per enabled MCP")
+    compare_parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="global config override applied to all scenarios")
+    compare_parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="prompt for run mode (default: %(default)r)")
+    compare_parser.add_argument("--dir", dest="run_dir", default=os.getcwd(), help="working directory for run mode (default: cwd)")
+    compare_parser.add_argument("--agent", help="agent override for run mode")
+    compare_parser.add_argument("--repeats", type=int, default=1, help="trials per scenario for run mode; reports median (default: %(default)s)")
+    compare_parser.add_argument("--json", action="store_true", help="emit output as a JSON object")
+    compare_parser.set_defaults(handler=cmd_compare)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        require_opencode()
+        return args.handler(args)
+    except OcbenchError as exc:
+        print(f"ocbench: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

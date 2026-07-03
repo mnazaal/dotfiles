@@ -1,0 +1,80 @@
+[user]
+    name = Nazaal
+    email = 18580527+mnazaal@users.noreply.github.com
+[diff]
+    tool = meld
+    colorMoved = default
+[log]
+    date = iso-local
+[alias]
+    sclone = clone --depth 1
+
+    graph = log --graph --oneline --decorate --all --abbrev-commit --date=relative \
+  --color --pretty=format:'%C(yellow)%h%C(reset)%C(cyan) (%ar)%C(reset) %s %C(green)%d%C(reset) %C(bold)<%an>%C(reset)'
+
+    pullsub = "!f() { \
+	   echo 'Pulling latest changes...'; \
+	   git pull --recurse-submodules; \
+	   echo 'Syncing submodules...'; \
+	   git submodule sync --recursive; \
+	   echo 'Updating submodules...'; \
+	   git submodule update --init --recursive; \
+	   }; f"
+
+    fetchall = "!f() { \
+        root=${1:-.}; \
+        find \"$root\" \
+          -type d -name .git \
+          -not -path '*/.cache/*' \
+          -not -path '*/node_modules/*' \
+          -not -path '*/target/*' \
+          -not -path '*/dist/*' \
+          -not -path '*/.venv/*' \
+          -exec sh -c 'for d in \"$@\"; do r=${d%/.git}; printf \"Fetching in %s\\n\" \"$r\"; git -C \"$r\" fetch --verbose; done' sh {} +; \
+      }; f"
+[branch]
+    sort = -committerdate
+[tag]
+    sort = version:refname
+[init]
+    defaultBranch = main
+[github]
+    user = mnazaal
+[core]
+    # git-delta needs to be installed on system
+    pager = delta
+    hooksPath = ~/.config/git/hooks
+    excludesFile = ~/.config/git/ignore
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true # use n and N to move between diff sections
+    side-by-side = true
+[push]
+    autoSetupRemote = true
+    followTags = true
+[pull]
+    rebase = false
+[fetch]
+    prune = true
+    pruneTags = true
+[merge]
+    conflictStyle = zdiff3
+[help]
+    autocorrect = prompt
+[commit]
+    verbose = true
+[rerere]
+    enabled = true
+    autoupdate = true
+[rebase]
+    autoSquash = true
+    autoStash = true
+    updateRefs = true
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+[credential]
+    helper = cache --timeout=3600

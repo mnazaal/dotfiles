@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+notmuch-cron - wrapper with private email address from pass
+
+USAGE:
+  notmuch-cron [args...]
+  notmuch-cron --help-wrapper
+
+DESCRIPTION:
+  Looks up the real `notmuch` binary outside this wrapper, creates a temporary
+  config from the tracked public config, injects the primary email from `pass`,
+  and then delegates to the real command with `--config`.
+
+ENVIRONMENT:
+  NOTMUCH_BASE_CONFIG   Path to the tracked notmuch config
+  NOTMUCH_EMAIL_ENTRY   pass entry containing the primary email address
+
+NOTES:
+  NOTMUCH_EMAIL_ENTRY defaults to `primary-gmail`.
+EOF
+}
+
+if [[ "${1:-}" == "--help-wrapper" || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	show_help
+	exit 0
+fi
+
+NOTMUCH_BASE_CONFIG="${NOTMUCH_BASE_CONFIG:-$HOME/.config/notmuch/default/config}"
+NOTMUCH_EMAIL_ENTRY="${NOTMUCH_EMAIL_ENTRY:-primary-gmail}"
+REAL_NOTMUCH=$(which -a notmuch | grep -Fvx "$HOME/.local/scripts/notmuch-cron" | head -1)
+
+{ [ -z "$REAL_NOTMUCH" ] || [ ! -x "$REAL_NOTMUCH" ]; } && {
+	echo "notmuch: command not found" >&2
+	exit 127
+}
+
+[ -f "$NOTMUCH_BASE_CONFIG" ] || {
+	echo "notmuch: config not found: $NOTMUCH_BASE_CONFIG" >&2
+	exit 1
+}
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+cp "$NOTMUCH_BASE_CONFIG" "$tmp"
+
+primary=$(pass show "$NOTMUCH_EMAIL_ENTRY" | sed -n '1p')
+
+[ -n "$primary" ] || {
+	echo "notmuch: no email found in pass entry: $NOTMUCH_EMAIL_ENTRY" >&2
+	exit 1
+}
+
+"$REAL_NOTMUCH" --config "$tmp" config set user.primary_email "$primary"
+
+exec "$REAL_NOTMUCH" --config "$tmp" "$@"

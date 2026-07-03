@@ -1,0 +1,93 @@
+Claude Code Configuration
+
+This mirrors the =.config/opencode= and =.config/pi= setups for Claude Code,
+reusing the shared instructions (=~/.agents/AGENTS.md=) and skills
+(=~/.agents/skills/=). Deployed with the repo's =make link= (GNU =stow
+--no-folding=), which symlinks these files into =~/.claude/=.
+
+* Dependencies
+
+** bun
+JavaScript runtime for skill management (=bunx skills ...=). Note: =grepika= is
+no longer registered for Claude Code (dropped to save per-session context), so it
+is not needed for an MCP server here — but =bun= is still required for the shared
+skills tooling.
+
+#+begin_src bash
+curl -fsSL https://bun.sh/install | bash
+#+end_src
+
+** ASTA_MCP_API_KEY (via pass + renv)
+The =asta-mcp= key is read from =pass= at runtime, not baked into config. Launch
+Claude through the repo's =renv= wrapper, which sources =~/.config/renv/claude.sh=
+(=ASTA_MCP_API_KEY="$(pass show asta-mcp)"=) and then execs =claude=:
+
+#+begin_src bash
+renv claude
+#+end_src
+
+This mirrors =renv opencode= / =renv pi=. The MCP header is stored literally as
+=${ASTA_MCP_API_KEY}= and expanded at connect time, so the secret never lands in
+=~/.claude.json=.
+
+* Install
+
+1. Resolve the settings.json conflict (one-time). The live =~/.claude/settings.json=
+   is an untracked file (=model: opus=, =effortLevel: high=); those values are now
+   in the tracked =./.claude/settings.json=, so remove the untracked one before
+   linking:
+
+   #+begin_src bash
+   rm ~/.claude/settings.json   # values preserved in the tracked copy
+   #+end_src
+
+2. Link the dotfiles:
+
+   #+begin_src bash
+   make link        # stow --target=$HOME --no-folding .
+   #+end_src
+
+   This also deploys =~/.claude/skills= — it is an in-repo relative symlink
+   (=.claude/skills= -> =../.agents/skills=) that stow links like any other file,
+   so Claude discovers the same shared skills as opencode/pi.
+
+3. Register the MCP servers (user scope). No key needed here — the asta-mcp
+   header is stored literally and expanded at runtime under =renv claude=:
+
+   #+begin_src bash
+   sh ~/.claude/install-mcp.sh
+   #+end_src
+
+* What does NOT carry over from opencode/pi
+
+- *Model strategy* — opencode/pi route to gpt-5.5 / deepseek / kimi. Claude Code
+  is Anthropic-only; kept at =model: opus=, =effortLevel: high=.
+- *DCP / context pruning* — no equivalent; Claude Code auto-compacts.
+- *catppuccin theme* — not a built-in Claude theme; set one with =/config=.
+- Per-agent =temperature= / =thinking= level — not configurable per subagent.
+
+* Structure
+
+- =CLAUDE.md=        :: Global instructions; =@=-imports =~/.agents/AGENTS.md=.
+- =settings.json=    :: Model, permissions (allow/ask/deny), default plan mode, PreToolUse hooks.
+- =settings.local.json= :: Machine-local permission overrides (not the place for shared config).
+- =hooks/=           :: =guardrails.ts= — a =bun= CLI PreToolUse hook that gates
+                        privilege/destructive/git-bypass commands and blocks
+                        secret/machinery paths. A thin adapter over the shared core
+                        (=~/.agents/guardrails/core.ts= + JSON data), the same logic
+                        pi and opencode use. Guarded (=[ -f "$f" ]=) so inert until
+                        deployed under =~/.claude/hooks/=. (Legacy =dangerous-bash.py=
+                        / =sensitive-paths.py= are the pre-convergence hooks, removed
+                        after the bun cutover — see =~/.agents/guardrails/README.md=.)
+- =agents/=          :: Subagents (=plan=, =build=, =brainstormer=, =idea-critic=,
+                        =research-strategist=, =second-brain=, =docs-verify=,
+                        =eval-review=, =writer-critic=, =writing-review=).
+- =commands/=        :: Slash commands (=/commit-msg=, =/debug=, =/refactor=,
+                        =/diff-review=, =/security-check=, =/test-plan=). =review= is
+                        named =/diff-review= to avoid Claude's built-in =/review=.
+- =keybindings.json= :: Adds =shift+enter= = newline (=enter= submit and =alt+t=
+                        thinking-toggle are already Claude defaults).
+- =mcp-servers.json= :: Reference for the MCP servers; install via =install-mcp.sh=.
+- =install-mcp.sh=   :: Registers asta-mcp at user scope (deepwiki and grepika dropped to save context).
+- =skills=           :: Relative symlink -> =../.agents/skills=; stow deploys it as
+                        =~/.claude/skills= so Claude shares the skills with opencode/pi.

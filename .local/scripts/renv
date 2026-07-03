@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# renv — run a command after loading an optional per-command environment file.
+# The env file may set RENV_WRAP=(prog args...) to run the command under a
+# wrapper (e.g. a sandbox). See `renv --help`.
+set -euo pipefail
+
+die() { printf 'renv: %s\n' "$1" >&2; exit "${2:-1}"; }
+
+show_help() {
+	cat <<'EOF'
+renv — run a command with an optional per-command environment file
+
+USAGE
+  renv <command> [args...]
+  renv --help
+
+DESCRIPTION
+  If ~/.config/renv/<command>.sh exists, source it first, then exec the
+  resolved command with the remaining arguments.
+
+  The env file may set RENV_WRAP=(prog args...) to run the command under a
+  wrapper (e.g. a sandbox): renv execs "${RENV_WRAP[@]}" <command> <args>.
+EOF
+}
+
+case "${1:-}" in
+	-h|--help) show_help; exit 0 ;;
+esac
+[ "$#" -ge 1 ] || die 'usage: renv <command> [args...]' 2
+
+cmd=$1
+shift
+
+cmd_path=$(command -v -- "$cmd") || die "command not found: $cmd" 127
+envfile="${XDG_CONFIG_HOME:-$HOME/.config}/renv/$cmd.sh"
+
+[ ! -e "$envfile" ] || [ -r "$envfile" ] || die "env file is not readable: $envfile"
+
+if [ -f "$envfile" ]; then
+	# shellcheck source=/dev/null
+	. "$envfile" || die "failed to load env file: $envfile"
+fi
+
+# An env file may set RENV_WRAP to a wrapper command (a bash array) to run the
+# resolved command under — e.g. RENV_WRAP=(sandbox -p agent-claude --) to confine
+# it, or (nice -n10), (chrt -i 0), etc. renv stays agnostic about the wrapper.
+# Secrets sourced above are already in the environment, so a sandbox wrapper hides
+# the vault from the command while still passing the resolved keys through.
+# Fails closed: if a wrapper is requested but missing, error rather than run bare.
+if [ -n "${RENV_WRAP+x}" ] && [ "${#RENV_WRAP[@]}" -gt 0 ]; then
+	command -v -- "${RENV_WRAP[0]}" >/dev/null 2>&1 || die "RENV_WRAP set but '${RENV_WRAP[0]}' not found"
+	exec "${RENV_WRAP[@]}" "$cmd_path" "$@"
+fi
+
+exec "$cmd_path" "$@"

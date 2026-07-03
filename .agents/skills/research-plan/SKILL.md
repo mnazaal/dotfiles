@@ -1,0 +1,42 @@
+---
+name: research-plan
+description: Use when writing or revising a research-project plan document (PLAN.md): framing, decision records, novelty lit-gate, experiments, execution order, risks.
+---
+
+# Skill: Research Plan
+
+## Purpose
+
+Write a research-project plan that records decisions, pins dependencies, and
+gates novelty claims — so a later session can start cold from the document.
+
+## Rules
+
+- If pursue/park/kill is still open, run `research-session` Idea Triage
+  first; a plan presumes the project is worth planning.
+- Interview unresolved decisions first (`plan-interview`); the plan records
+  decisions and rationale, not open options.
+- Section shape: setting/framing → decisions with rationale → core
+  model/derivation → pinned dependency API surface → baselines + experiments
+  → repo shape → execution order → early tests → open risks.
+- Execution order starts with a mandatory step-0 novelty lit-search gate
+  (`research-protocol`); mark novelty UNVERIFIED under risks until it runs,
+  and list pivot options in case it fails.
+- Record hard-to-reverse decisions inline as the question a future reader
+  would ask, with the rejected alternatives.
+- Pin upstream API surfaces exactly (module paths, function names); flag
+  anything unverified as a scaffold-time task rather than guessing.
+- Name the load-bearing ablation: the experiment separating the claimed
+  mechanism from the nearest cheap heuristic.
+- State what graduates to the shared library vs stays project-side
+  (promote on second duplication).
+- Unpublished-idea privacy: the plan lives in the project repo, never in a
+  to-be-published library's docs/ or git history.
+
+## Related Skills
+
+- `context-project-docs` for the standing-document set PLAN.md belongs to.
+- `plan-interview` for resolving decisions before writing.
+- `research-protocol` for the lit-gate and citation verification.
+- `research-lit-search` for the step-0 sweep itself.
+- `dev-python` for the repo scaffold conventions.

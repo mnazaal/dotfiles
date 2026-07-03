@@ -1,0 +1,12 @@
+# .notmuch-config - Configuration file for the notmuch mail system
+[database]
+path=.local/share/mail
+
+[user]
+name=Nazaal
+
+[new]
+
+[search]
+
+[maildir]

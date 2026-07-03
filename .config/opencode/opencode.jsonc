@@ -1,0 +1,254 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "autoupdate": "notify",
+
+    "default_agent": "plan",
+    "model": "openai/gpt-5.5",
+    "small_model": "opencode-go/kimi-k2.5",
+    "instructions": ["AGENTS.md"],
+
+    "provider": {
+        "openrouter": {
+            "models": {
+                "deepseek/deepseek-v4-pro": {
+                    "options": {
+                        "provider": {
+                            "order": ["DeepSeek"],
+                            "allow_fallbacks": false
+                        }
+                    }
+                }
+            }
+        },
+        "openai": {
+            "models": {
+                "gpt-5.5": {
+                    "options": {
+                        "reasoningEffort": "low"
+                    }
+                }
+            }
+        }
+    },
+
+    // MCP servers for external tools and data sources.
+    "mcp": {
+        // Documentation lookup.
+        "deepwiki": {
+            "type": "remote",
+            "url": "https://mcp.deepwiki.com/mcp",
+            "enabled": true
+        },
+        // Faster code search.
+        "grepika": {
+            "type": "local",
+            "command": ["bunx", "-y", "@agentika/grepika", "--mcp"],
+            "enabled": true
+        },
+        // Browser automation.
+        "playwright": {
+            "type": "local",
+            "command": ["bunx", "-y", "@playwright/mcp@latest"],
+            "enabled": false
+        },
+        "asta-mcp": {
+            "type": "remote",
+            "url": "https://asta-tools.allen.ai/mcp/v1",
+            "headers": {
+                "x-api-key": "{env:ASTA_MCP_API_KEY}"
+            },
+            "enabled": true
+        },
+        // Context compression: compress tool outputs, logs, files
+        // LLM calls headroom_compress / headroom_retrieve / headroom_stats
+        "headroom": {
+            "type": "local",
+            "command": ["headroom", "mcp", "serve"],
+            "enabled": false
+        }
+    },
+
+    "watcher": {
+        "ignore": [
+            ".git/**",
+            ".venv/**",
+            "target/**",
+            ".cache/**",
+            ".pytest_cache/**",
+            "coverage/**",
+            "__pycache__/**",
+            "node_modules/**",
+            "dist/**",
+            ".ipynb_checkpoints/**",
+            ".ruff_cache/**",
+            ".mypy_cache/**"
+        ]
+    },
+
+    // Permission rules control which operations require confirmation.
+    "permission": {
+        // Deny reads of secrets/credentials even with the sandbox off. TRANSITIONAL
+        // FALLBACK: plugins/guardrails.ts now enforces the same paths from the shared
+        // core (~/.agents/guardrails/, used by claude + pi too) and also covers bash,
+        // which this list does not. Remove this block once the plugin is confirmed
+        // loading. Last matching rule wins, so the "*" allow must come first.
+        "read": {
+            "*": "allow",
+            "**/.env": "deny",
+            "**/.env.*": "deny",
+            "**/.git/**": "deny",
+            "**/node_modules/**": "deny",
+            "~/.aws/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.gpg/**": "deny",
+            "~/.ssh/**": "deny",
+            "~/.bashrc": "deny",
+            "~/.bash_profile": "deny",
+            "~/.profile": "deny",
+            "~/.zshrc": "deny",
+            "~/.zprofile": "deny",
+            "~/.config/git/credentials": "deny",
+            "~/.netrc": "deny",
+            "~/.npmrc": "deny",
+            "~/.docker/config.json": "deny",
+            "~/.kube/config": "deny",
+            "~/.password-store/**": "deny",
+            "~/.claude/.credentials.json": "deny",
+            "~/.config/pi/agent/auth.json": "deny",
+            "~/.pi/agent/auth.json": "deny",
+            "~/.local/share/opencode/auth.json": "deny"
+        },
+        "edit": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "ask",
+        "bash": {
+            "*": "ask",
+
+            "bash -n *": "allow",
+
+            "ls": "allow",
+            "ls *": "allow",
+
+            "echo *": "allow",
+
+            "head": "allow",
+            "head *": "allow",
+
+            "tail": "allow",
+            "tail *": "allow",
+
+            "pwd": "allow",
+
+            "wc": "allow",
+            "wc *": "allow",
+
+            "ruff": "allow",
+            "ruff *": "allow",
+
+            "pytest": "allow",
+            "pytest *": "allow",
+
+            "python -m pytest": "deny",
+            "python -m pytest *": "deny",
+
+            "uv run pytest": "deny",
+            "uv run pytest *": "deny",
+
+            "pyright": "allow",
+            "pyright *": "allow",
+
+            "python -m pyright": "deny",
+            "python -m pyright *": "deny",
+
+            "uv run pyright": "deny",
+            "uv run pyright *": "deny",
+
+            "rg": "deny",
+            "rg *": "deny",
+
+            "grep": "deny",
+            "grep *": "deny",
+
+            "find": "allow",
+            "find *": "allow",
+
+            "sort": "allow",
+            "sort *": "allow",
+
+            // git: allowlist of safe ops (read-only + add/commit/stash/branch);
+            // everything else — push, checkout, switch, merge, fetch, pull, reset,
+            // rebase, … — falls through to the "*": "ask" default. Mirrors claude's
+            // settings.json git policy (allow-list, not allow-by-default). Destructive
+            // subcommands of an allowed verb stay explicit "ask" below so they prompt.
+            "git status": "allow",
+            "git status *": "allow",
+            "git diff": "allow",
+            "git diff *": "allow",
+            "git log": "allow",
+            "git log *": "allow",
+            "git show": "allow",
+            "git show *": "allow",
+            "git branch": "allow",
+            "git branch *": "allow",
+            "git add": "allow",
+            "git add *": "allow",
+            "git commit": "allow",
+            "git commit *": "allow",
+            "git stash": "allow",
+            "git stash *": "allow",
+
+            "git push": "ask",
+            "git push *": "ask",
+
+            "git clean *": "ask",
+
+            "git reset --hard *": "ask",
+
+            "git push --force *": "ask",
+
+            "git push -f *": "ask",
+
+            "git branch -D *": "ask",
+
+            "git rebase *": "ask",
+
+            "git cherry-pick *": "ask",
+
+            "git restore *": "ask",
+
+            "git checkout -- *": "ask",
+
+            "git tag -d *": "ask",
+
+            "git stash drop *": "ask",
+
+            "git stash clear": "ask",
+
+            // Branch-confinement guards: forms that escape the AGENT_BRANCH_PREFIX
+            // git hooks (~/.config/git/hooks). TRANSITIONAL FALLBACK: plugins/
+            // guardrails.ts now enforces these from the shared core, catching the
+            // cases globs can't — GIT_CONFIG_* env injection, `git -ccore.hooksPath`
+            // (no space), and mid-string flags. Remove this block once the plugin is
+            // confirmed loading. Last-match-wins, placed after the git allowlist.
+            "git -c *": "ask",
+            "git update-ref*": "deny",
+            "git symbolic-ref*": "deny",
+            "git fast-import*": "deny",
+            "git replace*": "deny",
+            "git config core.hooksPath*": "deny",
+            "git commit *--no-verify*": "deny",
+            "git branch -f*": "deny",
+            "git branch --force*": "deny",
+        },
+        "task": { "*": "deny" },
+        "question": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "external_directory": "deny",
+        "todowrite": "deny",
+        "todoread": "deny",
+        "skill": "allow"
+    },
+    "plugin": ["@tarquinen/opencode-dcp@latest"]
+}

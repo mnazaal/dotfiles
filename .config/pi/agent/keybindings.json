@@ -1,0 +1,10 @@
+{
+  "tui.input.newLine": [
+    "shift+enter"
+  ],
+  "tui.input.submit": [
+    "enter"
+  ],
+  "tui.input.tab": [],
+  "app.thinking.cycle": ["alt+t"]
+}

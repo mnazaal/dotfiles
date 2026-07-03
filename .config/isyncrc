@@ -1,0 +1,57 @@
+IMAPAccount gmail
+Host imap.gmail.com
+UserCmd "pass show primary-gmail"
+PassCmd "pass show primary-gmail-secret"
+TLSType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+IMAPStore gmail-remote
+Account gmail
+
+MaildirStore gmail-local
+Subfolders Verbatim 
+Path ~/.local/share/mail/gmail/
+Inbox ~/.local/share/mail/gmail/inbox
+
+Channel gmail-inbox
+Far ":gmail-remote:INBOX"
+Near ":gmail-local:inbox"
+Create Both
+SyncState ~/.local/state/mbsync/
+CopyArrivalDate yes
+
+Channel gmail-drafts
+Far ":gmail-remote:[Gmail]/Drafts"
+Near ":gmail-local:drafts"
+Create Both
+SyncState *
+CopyArrivalDate yes
+
+Channel gmail-sent
+Far ":gmail-remote:[Gmail]/Sent Mail"
+Near ":gmail-local:sent"
+Create Both
+SyncState *
+CopyArrivalDate yes
+
+Channel gmail-archive
+Far ":gmail-remote:[Gmail]/All Mail"
+Near ":gmail-local:archive"
+Create Both
+SyncState *
+CopyArrivalDate yes
+
+Channel gmail-trash
+Far ":gmail-remote:[Gmail]/Trash"
+Near ":gmail-local:trash"
+Create Both
+SyncState *
+CopyArrivalDate yes
+ExpireUnread yes
+
+Group gmail
+Channel gmail-inbox
+Channel gmail-drafts
+Channel gmail-sent
+Channel gmail-archive
+Channel gmail-trash

@@ -1,0 +1,24 @@
+{
+  "_comment": "Command-name sets for the bash guard. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, pi, and opencode via their adapters. Data only — the logic lives in core.ts. See README.md. Add a dangerous command here once; all three agents pick it up.",
+
+  "escalators": ["sudo", "doas", "pkexec", "su", "run0", "machinectl"],
+
+  "destructive": [
+    "mkfs", "mkfs.ext2", "mkfs.ext3", "mkfs.ext4", "mkfs.fat", "mkfs.vfat",
+    "mkfs.ntfs", "mkfs.btrfs", "mkfs.xfs", "mkfs.zfs", "mkswap", "dd", "shred",
+    "sfdisk", "fdisk", "parted", "pvcreate", "vgcreate", "lvcreate"
+  ],
+
+  "command_wrappers": ["command", "builtin", "env", "time", "nice", "nohup", "setsid", "stdbuf", "timeout"],
+
+  "shell_runners": ["sh", "bash", "zsh", "dash", "ksh"],
+
+  "find_exec_primaries": ["-exec", "-execdir", "-delete", "-fprintf", "-ok", "-okdir"],
+
+  "git_ref_write_subcmds": ["update-ref", "symbolic-ref", "fast-import", "replace"],
+
+  "git_global_value_opts": ["-C", "--git-dir", "--work-tree", "--namespace"],
+
+  "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
+  "find_policy": { "claude": "exec", "pi": "exec", "opencode": "exec" }
+}

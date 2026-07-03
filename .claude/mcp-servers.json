@@ -1,0 +1,12 @@
+{
+  "_comment": "Reference for the MCP server Claude Code uses (asta-mcp). Claude Code does not read this file directly — register at user scope with install-mcp.sh (claude mcp add -s user ...). Requires ASTA_MCP_API_KEY in the environment. grepika and deepwiki are intentionally NOT registered for Claude (token cost); the opencode/pi configs keep them.",
+  "mcpServers": {
+    "asta-mcp": {
+      "type": "http",
+      "url": "https://asta-tools.allen.ai/mcp/v1",
+      "headers": {
+        "x-api-key": "${ASTA_MCP_API_KEY}"
+      }
+    }
+  }
+}

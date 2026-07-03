@@ -1,0 +1,434 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+shell-share - expose a local shell to the web via Cloudflare Tunnel + ttyd
+
+USAGE:
+  shell-share                  Start sharing (tmux session + ttyd + tunnel)
+  shell-share --stop           Stop sharing (kill ttyd + tunnel)
+  shell-share --status         Show current sharing status
+  shell-share --help           Show this help
+
+DESCRIPTION:
+  Shares a local tmux session as a web terminal accessible at a URL like
+  https://shell.yourdomain.com. Uses ttyd for the browser-based terminal
+  and cloudflared to tunnel traffic through Cloudflare's edge network.
+
+  No open ports, no VPS, no port forwarding required. Works behind NAT,
+  hotel wifi, corporate firewalls, etc.
+
+ARCHITECTURE:
+  [localhost] → ttyd (:7681) → cloudflared → Cloudflare Edge → browser
+                                                 ↑
+                                        Cloudflare Access (auth)
+
+PREREQUISITES:
+  1. ttyd          Web terminal emulator
+                     apt install ttyd  OR  brew install ttyd
+  2. cloudflared   Cloudflare Tunnel client
+                     apt install cloudflared  OR  brew install cloudflared
+  3. tmux          Terminal multiplexer (for session sharing)
+
+ONE-TIME SETUP (before first use):
+  1. Authenticate cloudflared:
+       cloudflared tunnel login
+  2. Create a named tunnel:
+       cloudflared tunnel create shell-share
+  3. Route your subdomain to the tunnel:
+       cloudflared tunnel route dns shell-share shell.yourdomain.com
+  4. Write ~/.cloudflared/config.yml:
+       tunnel: <TUNNEL_UUID>
+       credentials-file: ~/.cloudflared/<TUNNEL_UUID>.json
+       ingress:
+         - hostname: shell.yourdomain.com
+           service: http://localhost:7681
+         - service: http_status:404
+  5. (Recommended) Add a Cloudflare Access policy in Zero Trust dashboard:
+       - Application: Self-hosted, domain shell.yourdomain.com
+       - Policy: Allow specific emails (OTP) or GitHub usernames
+       - Session duration: 1 hour
+
+SECURITY NOTES:
+  - ttyd binds to localhost only (--interface lo) — never exposed directly
+  - Cloudflare Tunnel provides TLS end-to-end
+  - Cloudflare Access adds authentication (configure in Zero Trust dashboard)
+  - read-only by default; writable is opt-in (SHELL_SHARE_ALLOW_WRITABLE=1)
+    and prints a warning, since it exposes an interactive shell over the tunnel
+  - tmux session lets you monitor activity from your local terminal
+  - Run as your normal user, never as root
+
+ENVIRONMENT VARIABLES:
+  SHELL_SHARE_PORT      ttyd listen port (default: 7681)
+  SHELL_SHARE_SESSION   tmux session name (default: shell-share)
+  SHELL_SHARE_TUNNEL    cloudflared tunnel name (default: shell-share)
+  SHELL_SHARE_READONLY  set to "1" to force read-only (no browser input)
+  SHELL_SHARE_ALLOW_WRITABLE
+                        set to "1" to ENABLE a writable terminal. Default is
+                        read-only: a writable tunnel is a public remote shell,
+                        so writable is opt-in and assumes a Cloudflare Access
+                        policy is enforced for the hostname.
+  SHELL_SHARE_FONT      font family (default: Iosevka Term)
+  SHELL_SHARE_FONT_SIZE font size in px (default: 12)
+  SHELL_SHARE_THEME     xterm.js theme JSON (default: Catppuccin Mocha)
+                        (passed via ttyd -t client-option)
+  SHELL_SHARE_LOG_DIR   log directory (default: $XDG_RUNTIME_DIR/shell-share)
+
+EXAMPLES:
+  shell-share                          Start (read-only by default)
+  SHELL_SHARE_PORT=9090 shell-share    Use a custom port
+  SHELL_SHARE_ALLOW_WRITABLE=1 shell-share
+                                       Enable a writable terminal (opt-in)
+  shell-share --stop                   Tear down everything
+EOF
+}
+
+# Configuration values can be overridden with environment variables.
+
+PORT="${SHELL_SHARE_PORT:-7681}"
+SESSION="${SHELL_SHARE_SESSION:-shell-share}"
+TUNNEL="${SHELL_SHARE_TUNNEL:-shell-share}"
+READONLY="${SHELL_SHARE_READONLY:-0}"
+# Writable mode is fail-closed: the public web terminal is read-only unless the
+# user knowingly opts in with SHELL_SHARE_ALLOW_WRITABLE=1. A writable tunnel is
+# a remote shell to anyone who reaches the URL, so the opt-in is deliberate.
+ALLOW_WRITABLE="${SHELL_SHARE_ALLOW_WRITABLE:-0}"
+FONT_FAMILY="${SHELL_SHARE_FONT:-Iosevka Term}"
+FONT_SIZE="${SHELL_SHARE_FONT_SIZE:-12}"
+
+# ttyd theme defaults to Catppuccin Mocha.
+# Override it with SHELL_SHARE_THEME='{"background":"#000",...}'.
+
+CATPPUCCIN_MOCHA='{"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#585b70","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
+THEME="${SHELL_SHARE_THEME:-$CATPPUCCIN_MOCHA}"
+
+# ANSI colors for status output.
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# PID files track background processes for --stop.
+
+if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+	echo -e "${RED}Error: XDG_RUNTIME_DIR is not set — refusing to use /tmp${NC}" >&2
+	exit 1
+fi
+
+PID_DIR="${XDG_RUNTIME_DIR}/shell-share"
+LOG_DIR="${SHELL_SHARE_LOG_DIR:-$PID_DIR}"
+TTYD_PID_FILE="${PID_DIR}/ttyd.pid"
+CF_PID_FILE="${PID_DIR}/cloudflared.pid"
+TTYD_LOG_FILE="${LOG_DIR}/ttyd.log"
+CF_LOG_FILE="${LOG_DIR}/cloudflared.log"
+
+ensure_pid_dir() {
+	if [[ -d "$PID_DIR" ]]; then
+		local owner
+		owner=$(stat -c %U "$PID_DIR" 2>/dev/null || true)
+		if [[ "$owner" != "$USER" ]]; then
+			echo -e "${RED}Error: $PID_DIR is owned by '$owner', not '$USER'${NC}" >&2
+			exit 1
+		fi
+	fi
+	mkdir -p "$PID_DIR" || {
+		echo -e "${RED}Error: failed to create $PID_DIR${NC}" >&2
+		exit 1
+	}
+	chmod 700 "$PID_DIR"
+	if [[ "$LOG_DIR" != "$PID_DIR" ]]; then
+		if [[ -d "$LOG_DIR" ]]; then
+			local log_owner
+			log_owner=$(stat -c %U "$LOG_DIR" 2>/dev/null || true)
+			if [[ "$log_owner" != "$USER" ]]; then
+				echo -e "${RED}Error: $LOG_DIR is owned by '$log_owner', not '$USER'${NC}" >&2
+				exit 1
+			fi
+		fi
+		mkdir -p "$LOG_DIR" || {
+			echo -e "${RED}Error: failed to create $LOG_DIR${NC}" >&2
+			exit 1
+		}
+		chmod 700 "$LOG_DIR"
+	fi
+}
+
+pid_matches() {
+	local pid="$1"
+	local needle="$2"
+	[[ "$pid" =~ ^[0-9]+$ ]] || return 1
+	kill -0 "$pid" 2>/dev/null || return 1
+	ps -p "$pid" -o args= 2>/dev/null | grep -F -- "$needle" >/dev/null
+}
+
+read_pid_file() {
+	local file="$1"
+	[[ -f "$file" ]] || return 1
+	cat "$file"
+}
+
+# Verify required commands are available.
+
+check_deps() {
+	local missing=()
+
+	if ! command -v ttyd &>/dev/null; then
+		missing+=("ttyd")
+	fi
+	if ! command -v cloudflared &>/dev/null; then
+		missing+=("cloudflared")
+	fi
+	if ! command -v tmux &>/dev/null; then
+		missing+=("tmux")
+	fi
+
+	if ((${#missing[@]} > 0)); then
+		echo -e "${RED}Error: Missing required dependencies: ${missing[*]}${NC}" >&2
+		echo "" >&2
+		echo "Install them:" >&2
+		for dep in "${missing[@]}"; do
+			case "$dep" in
+			ttyd) echo "  apt install ttyd  OR  brew install ttyd" >&2 ;;
+			cloudflared) echo "  apt install cloudflared  OR  brew install cloudflared" >&2 ;;
+			tmux) echo "  apt install tmux  OR  brew install tmux" >&2 ;;
+			esac
+		done
+		exit 1
+	fi
+}
+
+# Verify the cloudflared config exists.
+
+check_tunnel_config() {
+	local config_file="${HOME}/.cloudflared/config.yml"
+
+	if [[ ! -f "$config_file" ]]; then
+		echo -e "${RED}Error: No cloudflared config found at ${config_file}${NC}" >&2
+		echo "" >&2
+		echo "Run the one-time setup first. See: shell-share --help" >&2
+		exit 1
+	fi
+}
+
+# Show the current shell-share status.
+
+cmd_status() {
+	local ttyd_running=false
+	local cf_running=false
+
+	if pid_matches "$(read_pid_file "$TTYD_PID_FILE" || true)" ttyd; then
+		ttyd_running=true
+	else
+		rm -f "$TTYD_PID_FILE"
+	fi
+	if pid_matches "$(read_pid_file "$CF_PID_FILE" || true)" cloudflared; then
+		cf_running=true
+	else
+		rm -f "$CF_PID_FILE"
+	fi
+
+	echo -e "${YELLOW}=== shell-share status ===${NC}"
+	echo ""
+
+	echo -n "  tmux session ($SESSION): "
+	if tmux has-session -t "$SESSION" 2>/dev/null; then
+		echo -e "${GREEN}active${NC}"
+	else
+		echo -e "${RED}not found${NC}"
+	fi
+
+	echo -n "  ttyd (port $PORT):        "
+	if [[ "$ttyd_running" == true ]]; then
+		echo -e "${GREEN}running (pid $(cat "$TTYD_PID_FILE"))${NC}"
+	else
+		echo -e "${RED}stopped${NC}"
+	fi
+
+	echo -n "  cloudflared tunnel:      "
+	if [[ "$cf_running" == true ]]; then
+		echo -e "${GREEN}running (pid $(cat "$CF_PID_FILE"))${NC}"
+	else
+		echo -e "${RED}stopped${NC}"
+	fi
+
+	echo ""
+	if [[ "$ttyd_running" == true && "$cf_running" == true ]]; then
+		echo -e "  ${GREEN}Sharing is active.${NC}"
+	else
+		echo -e "  ${YELLOW}Sharing is not active.${NC} Run: shell-share"
+	fi
+	echo ""
+	echo "  logs: $TTYD_LOG_FILE"
+	echo "        $CF_LOG_FILE"
+}
+
+# Stop ttyd, cloudflared, and the tmux session.
+
+cmd_stop() {
+	local stopped_something=false
+
+	echo -e "${YELLOW}Stopping shell-share...${NC}"
+
+	# Stop ttyd
+	if [[ -f "$TTYD_PID_FILE" ]]; then
+		local ttyd_pid
+		ttyd_pid=$(cat "$TTYD_PID_FILE")
+		if pid_matches "$ttyd_pid" ttyd; then
+			kill "$ttyd_pid"
+			echo -e "  ${GREEN}ttyd stopped${NC} (pid $ttyd_pid)"
+			stopped_something=true
+		fi
+		rm -f "$TTYD_PID_FILE"
+	fi
+
+	# Stop cloudflared
+	if [[ -f "$CF_PID_FILE" ]]; then
+		local cf_pid
+		cf_pid=$(cat "$CF_PID_FILE")
+		if pid_matches "$cf_pid" cloudflared; then
+			kill "$cf_pid"
+			echo -e "  ${GREEN}cloudflared stopped${NC} (pid $cf_pid)"
+			stopped_something=true
+		fi
+		rm -f "$CF_PID_FILE"
+	fi
+
+	# Kill tmux session
+	if tmux has-session -t "$SESSION" 2>/dev/null; then
+		tmux kill-session -t "$SESSION"
+		echo -e "  ${GREEN}tmux session '$SESSION' killed${NC}"
+		stopped_something=true
+	fi
+
+	if [[ "$stopped_something" == false ]]; then
+		echo -e "  ${YELLOW}Nothing was running.${NC}"
+	else
+		echo ""
+		echo -e "${GREEN}Shell sharing stopped.${NC}"
+	fi
+}
+
+# Start ttyd, cloudflared, and the tmux session.
+
+cmd_start() {
+	check_deps
+	check_tunnel_config
+	ensure_pid_dir
+
+	# Bail if already running
+	if pid_matches "$(read_pid_file "$TTYD_PID_FILE" || true)" ttyd; then
+		echo -e "${YELLOW}shell-share is already running.${NC}"
+		echo "Use 'shell-share --status' to check or 'shell-share --stop' to restart."
+		exit 0
+	else
+		rm -f "$TTYD_PID_FILE" "$CF_PID_FILE"
+	fi
+
+	# Use "tmux new-session -A" to create or attach in one step.
+	# This is more resilient than separate create and attach steps,
+	# especially before the WebSocket client has sent its terminal size.
+	local ttyd_args=(
+		--port "$PORT"
+		--interface lo
+		-t fontFamily="$FONT_FAMILY"
+		-t fontSize="$FONT_SIZE"
+		-t theme="$THEME"
+	)
+	# Fail closed: writable requires an explicit opt-in *and* READONLY!=1.
+	local writable=false
+	if [[ "$READONLY" != "1" && "$ALLOW_WRITABLE" == "1" ]]; then
+		writable=true
+		ttyd_args+=(--writable)
+	fi
+
+	if [[ "$writable" == true ]]; then
+		echo -e "${RED}======================================================${NC}" >&2
+		echo -e "${RED}  WARNING: writable web terminal — anyone who reaches${NC}" >&2
+		echo -e "${RED}  the tunnel URL gets an INTERACTIVE SHELL.${NC}" >&2
+		echo -e "${RED}  Ensure a Cloudflare Access policy is enforced for${NC}" >&2
+		echo -e "${RED}  this hostname (see 'shell-share --help').${NC}" >&2
+		echo -e "${RED}======================================================${NC}" >&2
+	fi
+
+	echo -e "  ${GREEN}Starting ttyd on localhost:${PORT}...${NC}"
+	ttyd "${ttyd_args[@]}" tmux new-session -A -s "$SESSION" >"$TTYD_LOG_FILE" 2>&1 &
+	echo $! >"$TTYD_PID_FILE"
+
+	# Start cloudflared after ttyd is up.
+	echo -e "  ${GREEN}Starting cloudflared tunnel '${TUNNEL}'...${NC}"
+	cloudflared tunnel run "$TUNNEL" >"$CF_LOG_FILE" 2>&1 &
+	echo $! >"$CF_PID_FILE"
+
+	# Brief pause to let processes initialize
+	sleep 1
+
+	# Verify both started
+	local failed=false
+
+	if ! pid_matches "$(cat "$TTYD_PID_FILE")" ttyd; then
+		echo -e "  ${RED}ttyd failed to start.${NC}" >&2
+		tail -n 20 "$TTYD_LOG_FILE" >&2 || true
+		failed=true
+	fi
+	if ! pid_matches "$(cat "$CF_PID_FILE")" cloudflared; then
+		echo -e "  ${RED}cloudflared failed to start.${NC}" >&2
+		tail -n 20 "$CF_LOG_FILE" >&2 || true
+		failed=true
+	fi
+
+	if [[ "$failed" == true ]]; then
+		echo -e "${RED}Startup failed. Cleaning up...${NC}" >&2
+		cmd_stop
+		exit 1
+	fi
+
+	# Print connection details after startup succeeds.
+	echo ""
+	echo -e "${GREEN}======================================${NC}"
+	echo -e "${GREEN}  Shell sharing is live!${NC}"
+	echo -e "${GREEN}======================================${NC}"
+	echo ""
+	echo -e "  tmux session:  ${YELLOW}${SESSION}${NC}"
+	echo -e "  ttyd:          ${YELLOW}http://localhost:${PORT}${NC}"
+	echo -e "  tunnel:        ${YELLOW}${TUNNEL}${NC}"
+	if [[ "$writable" == true ]]; then
+		echo -e "  mode:          ${YELLOW}writable${NC}"
+	else
+		echo -e "  mode:          ${YELLOW}read-only${NC}"
+	fi
+	echo ""
+	echo -e "  ${GREEN}Attach locally:${NC}  tmux attach -t ${SESSION}"
+	echo -e "  ${GREEN}Stop sharing:${NC}    shell-share --stop"
+	echo -e "  ${GREEN}Check status:${NC}    shell-share --status"
+	echo -e "  ${GREEN}Logs:${NC}            $TTYD_LOG_FILE"
+	echo -e "                   $CF_LOG_FILE"
+	echo ""
+}
+
+# Parse command-line arguments.
+
+case "${1:-}" in
+-h | --help)
+	show_help
+	exit 0
+	;;
+--stop)
+	cmd_stop
+	exit 0
+	;;
+--status)
+	cmd_status
+	exit 0
+	;;
+"")
+	cmd_start
+	;;
+*)
+	echo -e "${RED}Unknown argument: $1${NC}" >&2
+	echo "Run 'shell-share --help' for usage." >&2
+	exit 1
+	;;
+esac

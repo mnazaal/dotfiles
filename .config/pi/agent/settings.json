@@ -1,0 +1,40 @@
+{
+  "defaultProvider": "opencode-go",
+  "defaultModel": "deepseek-v4-pro",
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": false,
+  "npmCommand": [
+    "bun"
+  ],
+  "packages": [
+    "npm:pi-mcp-adapter",
+    "npm:pi-ask-user",
+    "npm:pi-web-access",
+    "npm:pi-simplify",
+    "npm:pi-subagents",
+    "npm:pi-tool-display",
+    "npm:@zackify/pi-claude-permissions"
+  ],
+  "lastChangelogVersion": "0.79.9",
+  "enableInstallTelemetry": false,
+  "enabledModels": [
+    "openai-codex/gpt-5.5",
+    "opencode-go/kimi-k2.6",
+    "opencode-go/deepseek-v4-pro",
+    "deepseek/deepseek-v4-pro"
+  ],
+  "piClaudePermissions": {
+    "defaultMode": "plan",
+    "allowCatastrophic": false,
+    "shiftTabOptions": [
+      "acceptEdits",
+      "plan"
+    ],
+    "planModeAllowedMcpServers": [
+      "deepwiki",
+      "grepika",
+      "asta-mcp"
+    ]
+  },
+  "theme": "dark"
+}

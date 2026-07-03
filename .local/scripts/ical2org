@@ -1,0 +1,95 @@
+#!/bin/bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+ical2org - sync one external calendar into org-mode format
+
+USAGE:
+  ical2org [calendar-name]
+  ical2org --help
+
+DESCRIPTION:
+  Downloads a remote iCal feed, converts it to org-mode, and writes a
+  generated agenda file that Emacs can read locally.
+
+  By default, a calendar name maps to:
+  - an encrypted ICS URL at ~/.local/share/pass/<calendar-name>-ics.gpg
+  - an output file at ~/org/agenda/<calendar-name>.org
+
+  You can override the secret file path and output file path with
+  PASS_FILE and ORGFILE, which is useful when pass entry names and
+  agenda file names should differ.
+
+EXAMPLE CALENDAR NAMES:
+  - primary-calendar
+  - secondary-calendar
+
+REQUIREMENTS:
+  - ical2orgpy (install: uv tool install ical2orgpy)
+  - wget
+  - gpg
+
+NOTES:
+  - Imported calendar files are generated; do not edit them manually.
+  - `cal-sync-cron` usually sets PASS_FILE and ORGFILE explicitly, so the
+    calendar name is mainly a human-readable label in that flow.
+  - If no calendar name is given, a backward-compatible default is used.
+EOF
+}
+
+# Show help when requested.
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	show_help
+	exit 0
+fi
+
+CALENDAR_NAME="${1:-${ICAL2ORG_CALENDAR_NAME:-${ICAL2ORG_PROFILE:-aalto-outlook}}}"
+
+if [[ ! "$CALENDAR_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+	echo "Error: invalid calendar name: $CALENDAR_NAME" >&2
+	echo "allowed: letters, numbers, dot, underscore, dash" >&2
+	exit 1
+fi
+
+# Default configuration.
+WGET="${WGET:-wget}"
+ICS2ORG="${ICS2ORG:-$HOME/.local/bin/ical2orgpy}"
+GPG_HOMEDIR="${GPG_HOMEDIR:-$HOME/.local/share/gnupg}"
+PASS_FILE="${PASS_FILE:-$HOME/.local/share/pass/${CALENDAR_NAME}-ics.gpg}"
+ORGFILE="${ORGFILE:-$HOME/org/agenda/${CALENDAR_NAME}.org}"
+HSTS_FILE="${HSTS_FILE:-$HOME/.local/share/wget-hsts}"
+
+# Verify required tools and input files.
+if ! command -v "$ICS2ORG" >/dev/null 2>&1; then
+	echo "Error: ical2orgpy not found at $ICS2ORG" >&2
+	echo "Install with: uv tool install ical2orgpy" >&2
+	exit 1
+fi
+
+if ! command -v gpg &>/dev/null; then
+	echo "Error: gpg is required but not installed" >&2
+	exit 1
+fi
+
+if [ ! -f "$PASS_FILE" ]; then
+	echo "Error: Encrypted URL file not found: $PASS_FILE" >&2
+	exit 1
+fi
+
+mkdir -p "$(dirname "$ORGFILE")"
+
+# Create temporary files.
+ICSFILE=$(mktemp)
+URLFILE=$(mktemp)
+trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
+
+# Decrypt the URL and download the calendar without exposing the URL in argv.
+gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty --decrypt "$PASS_FILE" >"$URLFILE"
+"$WGET" --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE"
+
+# Convert the calendar to org format.
+"$ICS2ORG" "$ICSFILE" "$ORGFILE"
+
+echo "Synced calendar '$CALENDAR_NAME' to: $ORGFILE"

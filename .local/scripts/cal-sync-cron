@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+cal-sync-cron - sync external calendars into local org agenda files
+
+USAGE:
+  cal-sync-cron
+  cal-sync-cron --help
+
+DESCRIPTION:
+  Runs `ical2org` for each configured calendar mapping.
+  Calendars without a matching encrypted ICS URL file are skipped.
+
+ENVIRONMENT:
+  SYNC_SCRIPT        Path to the `ical2org` script
+  PASSWORD_STORE_DIR Directory containing encrypted ICS URL files
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	show_help
+	exit 0
+fi
+
+SYNC_SCRIPT="${SYNC_SCRIPT:-$HOME/.local/scripts/ical2org}"
+PASSWORD_STORE_DIR="${PASSWORD_STORE_DIR:-$HOME/.local/share/pass}"
+
+if [ ! -x "$SYNC_SCRIPT" ]; then
+	echo "Error: sync script not executable: $SYNC_SCRIPT" >&2
+	exit 1
+fi
+
+sync_calendar() {
+	local calendar_name="$1"
+	local secret_name="$2"
+	local output_name="$3"
+	local pass_file="$PASSWORD_STORE_DIR/${secret_name}.gpg"
+	local org_file="$HOME/org/agenda/${output_name}.org"
+
+	if [ ! -f "$pass_file" ]; then
+		echo "Skipping calendar '$calendar_name': missing $pass_file" >&2
+		return 0
+	fi
+
+	PASS_FILE="$pass_file" ORGFILE="$org_file" "$SYNC_SCRIPT" "$calendar_name"
+}
+
+# Each mapping is: sync_calendar <calendar label> <pass entry basename> <generated org basename>.
+# Keep the generated org basenames aligned with `.config/emacs/config.org`
+# under `org-agenda-files`.
+sync_calendar "aalto-calendar" "aalto-outlook-ics" "aalto-outlook"
+sync_calendar "primary-calendar" "primary-gcal-ics" "primary-gcal"

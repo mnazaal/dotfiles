@@ -1,0 +1,7 @@
+Config(
+  // Enable desktop actions (right-click menu items)
+  desktop_actions: true,
+  
+  // Max entries to show
+  max_entries: 5,
+)
