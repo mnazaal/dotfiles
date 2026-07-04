@@ -14,7 +14,7 @@
 
   "sensitive_segments": [".ssh", ".gnupg", ".gpg", ".aws", ".password-store"],
 
-  "machinery_enabled": { "claude": false, "pi": true, "opencode": true },
+  "machinery_enabled": { "claude": true, "pi": true, "opencode": true },
 
   "machinery": [
     "~/.config/sandbox", "~/dotfiles/.config/sandbox",

@@ -1,33 +1,34 @@
 # Agent guardrails
 
 Single source of truth for the bash/path guards shared by all three coding agents
-(Claude Code, pi, opencode). Data is here; logic is here; each harness has a thin
+(Claude Code, pi, opencode). Data and logic is here; each harness has a thin
 adapter that wires its hook API to this core.
 
 ## Layout
 
-- `sensitive-paths.json`    — protected path prefixes + per-agent `machinery_enabled`
-- `dangerous-commands.json` — command-name sets + per-agent `find_policy`
-- `skill-gates.json`        — tool events that require a skill loaded this session,
+- `sensitive-paths.json`    - protected path prefixes + per-agent `machinery_enabled`
+- `dangerous-commands.json` - command-name sets + per-agent `find_policy`
+- `skill-gates.json`        - tool events that require a skill loaded this session,
                               by `trigger` type: bash command+subcommands, a Write/Edit
                               path glob, or a WebFetch domain (e.g. `git commit` → `dev-git`)
-- `core.ts`                 — the one implementation of the guard logic; no deps,
+- `core.ts`                 - the one implementation of the guard logic; no deps,
                               loads the JSONs, exports `createGuard(agent).evaluate()`,
                               `createSkillGate().requiredSkill()`, and `skillMentions()`
 
 Adapters (thin, import `core.ts`):
 
-| Agent    | Adapter                                        | Hook                          |
-|----------|------------------------------------------------|-------------------------------|
-| Claude   | `.claude/hooks/guardrails.ts`                  | bun CLI PreToolUse (settings.json) |
-| pi       | `.config/pi/agent/extensions/guardrails.ts`    | `tool_call` extension         |
-| opencode | `.config/opencode/plugins/guardrails.ts`       | `tool.execute.before` plugin  |
+| Agent    | Adapter                                     | Hook                               |
+|----------|---------------------------------------------|------------------------------------|
+| Claude   | `.claude/hooks/guardrails.ts`               | bun CLI PreToolUse (settings.json) |
+| pi       | `.config/pi/agent/extensions/guardrails.ts` | `tool_call` extension              |
+| opencode | `.config/opencode/plugins/guardrails.ts`    | `tool.execute.before` plugin       |
 
 ## Decisions
 
 `evaluate()` returns `deny` (secrets / machinery / ref-rewrites), `ask`
-(escalation / destructive / git-bypass / confinement / find), or `allow`. Adapters map:
+(escalation / destructive / git-bypass / confinement / find), or `allow`. 
 
+Adapters map:
 - Claude → PreToolUse `permissionDecision` (deny / ask)
 - pi → block (deny) / prompt then block-if-declined (ask)
 - opencode → throw on any non-allow (a plugin can't prompt, so `ask` becomes a hard block)
@@ -38,19 +39,11 @@ WebFetch URL, per the gate's `trigger` type. Each adapter supplies the session e
 that the skill was loaded, since that is host-specific — Claude scans the transcript
 (`skillMentions` over its text), pi/opencode accumulate `skillMentions` over tool payloads
 in-process. A gate miss blocks with a "load the skill, then retry" message, so it
-self-heals in one step. Gates fail open like everything else.
+self-heals in one step. Gates fail open like everything else. Note that the skill gate
+is more like a nudge than a full security boundary - it only makes sure the model has
+read them.
 
-A gate's `message` names only the event that tripped it ("committing or pushing"), never
-what the skill contains — the skill's purpose lives solely in its own description, so the
-two never drift. The skill name comes from the gate's `skill` field; the adapter renders it.
-
-### Skill-gate caveats (accepted trade-offs)
-
-The gate is a **routing nudge against skill under-triggering, not a security
-boundary** — the skills' own rules (staging ledger, trailers) protect
-correctness; the gate only makes sure the model has read them. Every trade-off
-below errs open, and the worst failure in any host is one false block that
-self-heals via the retry message (cost: one tool call + a redundant skill read).
+### Skill gate caveats
 
 - **Evidence is a mention scan, not proof of reading.** Any payload/transcript
   text containing `skills/<name>/SKILL.md` or `"skill": "<name>"` counts as
@@ -84,17 +77,3 @@ self-heals via the retry message (cost: one tool call + a redundant skill read).
 Add a path, a dangerous command, or a skill gate to the relevant JSON; all three
 agents pick it up (Claude/opencode read live per call/startup, pi at extension
 load). Keep `core.ts` dependency-free so every runtime can import it.
-
-## Fail-open
-
-If a JSON or `core.ts` can't load, the guards fail **open** (allow) with a loud
-stderr line — these are defense-in-depth; the filesystem sandbox is the real
-boundary. `dotfiles-doctor` checks the deployed guard so breakage isn't silent.
-
-## Deploy
-
-New files here must be stowed (`make link`) before the agents see them. Claude runs the
-single `bun .claude/hooks/guardrails.ts` PreToolUse hook (the cutover from the legacy
-python hooks is complete); pi/opencode import `core.ts` directly. Because the deployed
-`core.ts`/JSONs are symlinks to this tree, edits here go live on the next tool call —
-verify a `core.ts` change out of band (`bun` against fixtures) before relying on it.
