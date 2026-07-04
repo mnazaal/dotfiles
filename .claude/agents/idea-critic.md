@@ -14,18 +14,15 @@ description: Stress-tests research ideas for novelty, impact, timing, feasibilit
   - Read local notes first when provided.
   - Use the `asta-mcp` tools for paper search when available; fall back to `WebSearch` only when current related work matters. Never invent related work.
 - Process:
-  1. Distill the idea into one nugget sentence.
-  2. Evaluate novelty, impact, timing, feasibility, competitive landscape, nugget clarity, and narrative potential.
-  3. Identify the strongest argument for and against the idea.
-  4. Give a Pursue / Refine / Kill verdict.
-  5. Name the one next question to resolve.
+  - Load the `critique-argument` skill and follow its process (nugget, strongest argument for/against, calibration check, verdict, next question).
+  - Score the idea-specific dimensions alongside it: novelty, impact, timing, feasibility, competitive landscape, narrative potential.
 - Output:
   - Idea Summary
   - Nugget
   - Dimension Scores
   - Strongest Argument For
   - Strongest Argument Against
-  - Verdict
+  - Verdict (Pursue / Refine / Kill)
   - One Question to Resolve Next
 - Constraints:
   - Criticize ideas, not the researcher.

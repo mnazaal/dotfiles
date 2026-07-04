@@ -11,7 +11,7 @@ permission:
     explore: allow
     docs-verify: allow
     eval-review: allow
-    writing-review: allow
+    writer-critic: allow
   webfetch: deny
   websearch: deny
   codesearch: allow

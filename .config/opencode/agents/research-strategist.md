@@ -27,6 +27,7 @@ permission:
   3. Analyze evidence and uncertainty.
   4. Recommend a concrete next move.
   5. List risks and short next steps.
+  - For a stress-test of one idea/claim inside the project, run `critique-argument` first and fold its verdict into the situation summary.
 - Output:
   - Situation Summary
   - Strategic Assessment
