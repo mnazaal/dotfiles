@@ -64,12 +64,6 @@ For scientific algorithms (structure learning, constrained optimization, MCMC ke
 ## Anti-Patterns
 
 - Widening tolerance, skipping, or deleting an assertion to make parity pass.
-- Re-sampling in JAX instead of replaying recorded decisions.
-- Comparing only the final loss; skipping gradients and post-update weights.
-- Building higher layers before lower ones parity-pass.
-- Calling a constant-factor mismatch "noise" without a float64 or finite-diff check.
-- Implicit-dtype array creation that lets x64 silently upcast the float32 path.
-- Reimplementing a complex architecture by hand when a JAX module library covers it.
 - For optimization algorithm ports: skipping the finite-difference gradient check and only comparing final solutions — convergence parity is necessary but not sufficient; autograd can be silently wrong if a primitive is not differentiable through.
 - For optimization algorithm ports: comparing only at zero initialization — primitives that are correct at zero can still be wrong at nonzero due to reshape or indexing bugs.
 

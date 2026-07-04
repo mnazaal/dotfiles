@@ -55,7 +55,6 @@ a claim has been stated and stress-tests it.
 
 - Critique only: do not rewrite the user's argument or prose for them, and
   do not edit files or run shell commands as part of the critique itself.
-- Do not invent related work, competitors, or citations.
 
 ## Related Skills
 

@@ -9,13 +9,13 @@ description: Use when committing work or choosing integration path: stage correc
 
 - If anything looks like a private email/user's personal directories/password/secret/API token etc, stop and notify the user immediately.
 - Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included.
-- AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools; only add when AI substantially contributed. This deliberately overrides Claude Code's own built-in commit-heredoc example, which defaults to `Co-Authored-By:` — don't let the more prominent built-in template win.
+- AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides Claude Code's built-in commit-heredoc template, which defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
 - `Human-audited: yes` trailer: add only when the user explicitly confirms they reviewed every staged hunk (e.g. after a `review-loop` pass — staged = audited); never self-certify. A commit mixing audited and unaudited hunks gets no trailer — split it. Line-level audit coverage is computed from blame by `git-audit-coverage`.
 - Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial.
 - Do not amend a pushed commit without explicit user confirmation.
 - Verify status before integration decisions.
 - Inspect diff/scope and recent commits before recommending merge/PR.
-- When a readiness check surfaces failures, attribute each to your change vs pre-existing before deciding merge — cross-check the failure set against your changed files, then stash your changes and re-run a representative failure. A stash-and-rerun only clears *your diff*; in a worktree with its own `.venv`, it stays in the same environment, so it can't tell a real bug on the target branch apart from local dependency drift — for that, diff the failing file against the target branch and reproduce under the target branch's own venv (see `dev-worktree`). Unrelated pre-existing failures (env/dependency) don't block your merge; never report a red suite as green.
+- When a readiness check surfaces failures, attribute each to your change vs pre-existing before deciding merge: cross-check against your changed files, then stash and re-run a representative failure. Stash-and-rerun clears only your diff, not cross-venv dependency drift — for that use `dev-worktree`. Pre-existing env/dependency failures don't block your merge; never report a red suite as green.
 - Do not discard work or force-push without explicit confirmation.
 - If a commit/push/rebase is rejected with `GIT PRE-COMMIT/PRE-PUSH/REFERENCE TRANSACTION HOOK ERROR: <prefix> agent must/may only ... <prefix>/* (or worktree-<prefix>*) branches` — you're running under an agent branch-prefix guard (`AGENT_BRANCH_PREFIX`, set by the `renv <agent>.sh` env files; see `~/.config/git/hooks/`). Check `git branch --show-current`: it must be `<prefix>/*`, or `worktree-<prefix>*` if in a `-w`-created worktree. Fix by switching to a correctly named branch — never unset the guard or add `--no-verify` to work around it without explicit user confirmation.
 
@@ -59,14 +59,6 @@ description: Use when committing work or choosing integration path: stage correc
 - This skill commits work and chooses integration path.
 - It does not prove work is complete; `dev-verification` owns proof.
 - History rewriting and recovery (rebase scripting, reflog rescue, revert vs reset, bisect) live in `dev-git-rescue`.
-
-## Anti-Patterns
-
-- Subject line that describes *what* the diff shows rather than *why* it exists.
-- Adding `Assisted-by:` for minor AI suggestions (tab-completion, trivial fixes) — reserve for substantial contributions.
-- Using `Co-Authored-By: <AI> <noreply@...>` — misattributes copyright and may link to real GitHub accounts via the email.
-- Committing with broken tests or lint errors on non-trivial changes.
-- Assuming `git commit` only includes the files from the most recent `git add` — it commits the whole index; stray staged files ride along silently.
 
 ## Related Skills
 

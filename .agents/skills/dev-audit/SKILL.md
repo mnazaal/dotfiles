@@ -62,13 +62,6 @@ sequences a multi-unit campaign over standing code.
 - Trailer mechanics + coverage tool live in `dev-git`.
 - Single fresh AI diff → `review-loop`, not here.
 
-## Anti-Patterns
-
-- Uniform rigor across tiers; strong-auditing boilerplate.
-- Touching working code before a characterization test exists.
-- Reading "100% coverage" as "correct/safe."
-- Self-certifying Tier A.
-
 ## Related Skills
 
 - dev-git, review-loop, dev-tdd, debug-ml-research, dev-jax, dev-scout,

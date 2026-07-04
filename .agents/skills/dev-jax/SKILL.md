@@ -58,9 +58,7 @@ arr = arr.at[i].set(val)
 
 ## Anti-Patterns
 
-- Hidden mutable state, implicit RNG, or object-centered model state unless external API requires it.
 - Passing the same key variable into two sequential `jax.random.*`/sampler calls within one function — split one subkey per independent random decision up front (`k1, k2, ..., kN = jax.random.split(key, N)`), even when the decisions are small and sequential, not just across function boundaries.
-- Python loops inside jitted heavy paths when `scan`/`vmap` fits.
 - Printing inside jit except `jax.debug.print`.
 - Passing loop-varying scalars (penalty weights, dual variables, temperatures) via closure into a jitted function — they bake into the XLA graph and force recompilation on every change. Pass them as explicit positional args instead.
 - Un-jitted optimizer step functions called from a Python training loop — calling bare `jax.grad + optax.update` in a plain `for` retraces and dispatches on every iteration (100× slower). Always `@jax.jit` the `(grad + update)` step; iterate with a plain Python `for` over the jitted call.

@@ -73,18 +73,8 @@ Keep every change unstaged.
 - It does not stage, commit, or decide integration — `dev-git` owns that.
 - It does not prove the change is correct — `dev-verification` owns that.
 
-## Anti-Patterns
-
-- Staging or committing on the user's behalf — destroys the audit ledger.
-- Rewriting already-staged content to satisfy a marker without flagging it.
-- Editing code in response to a question-only marker.
-- Leaving resolved change-markers in the file.
-- Batch-guessing intent across many markers instead of asking on the ambiguous
-  ones.
-
 ## Related Skills
 
-- `diff-review` to surface issues in a diff before markers are added.
 - `dev-verification` for evidence before any completion claim.
 - `dev-git` to commit the staged-only result and choose integration path.
 - `decide-review` for the review gate before integration.
