@@ -88,3 +88,5 @@ Keep every change unstaged.
 - `dev-verification` for evidence before any completion claim.
 - `dev-git` to commit the staged-only result and choose integration path.
 - `decide-review` for the review gate before integration.
+- `dev-audit` when auditing a standing codebase to coverage — the macro
+  campaign that drives many such diffs — not resolving markers on one diff.

@@ -39,13 +39,14 @@ Use when evaluating a research idea, direction, or hunch ("should we try X", "is
 
 1. Restate idea and target contribution.
 2. Generate plausible framings and alternatives.
-3. Critique assumptions, threats, baselines, and failure modes.
+3. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, spawn the host's idea-critic agent.
 4. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
 5. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above.
 
 ## Related Skills
 
 - `research-protocol` before any citation/literature content this produces.
+- `critique-argument` for the stress-test in idea triage (step 3).
 - `decide-priority` for scoring pursue/refine/park/kill.
 - `research-lit-search` / `research-paper` / `research-run` as routed targets.
 - `plan-day` for day-level planning rather than research-thread orientation.

@@ -74,3 +74,4 @@ description: Use when committing work or choosing integration path: stage correc
 - `dev-git-rescue` for history rewriting and recovery.
 - `decide-review` for review gate before integration.
 - `dev-worktree` when a suspected pre-existing failure needs cross-venv verification, not just a stash.
+- `dev-audit` for a codebase-wide human-verification campaign that drives `Human-audited:` coverage across many commits.
