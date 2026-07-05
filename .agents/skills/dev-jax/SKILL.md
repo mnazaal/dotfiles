@@ -62,6 +62,9 @@ arr = arr.at[i].set(val)
 - Printing inside jit except `jax.debug.print`.
 - Passing loop-varying scalars (penalty weights, dual variables, temperatures) via closure into a jitted function — they bake into the XLA graph and force recompilation on every change. Pass them as explicit positional args instead.
 - Un-jitted optimizer step functions called from a Python training loop — calling bare `jax.grad + optax.update` in a plain `for` retraces and dispatches on every iteration (100× slower). Always `@jax.jit` the `(grad + update)` step; iterate with a plain Python `for` over the jitted call.
+- `jnp.where(mask, f(x), fallback)` still evaluates `f(x)` on the masked-out branch and adds its gradient — if `f` is singular there (`log`, `logcdf`, `sqrt`, `1/x` at `0` or `±inf`) the backward pass is NaN even though the forward value is correct. Substitute a safe finite input first (`x_safe = jnp.where(mask, x, 1.0)`), apply `f` to `x_safe`, then `where` to select. Verify with `jax.grad`, not just a forward eval — the value looks fine either way.
+- Piping a long/background job through `| tail` (buffers until EOF — output lost). Redirect to a file and read it; add `python -u` when you will grep or Monitor the log incrementally (block-buffered stdout never fires a match).
+- Module-level experiment drivers with no `if __name__ == "__main__":` guard — they re-run the whole experiment on import. Guard them so probes stay importable by other scripts.
 
 ## Related Skills
 

@@ -27,6 +27,7 @@ Decide what a run result means and what to do next.
 - What config/commit/log path?
 - Is effect bigger than noise?
 - Is there a simpler baseline/control?
+- Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
 
 ## Verdicts
 
@@ -58,6 +59,7 @@ If the project keeps a `LOG.md` (`context-project-docs`), append the filled bloc
 - Treating one seed as robust.
 - Reporting metric movement without variance/noise context.
 - Training longer instead of checking broken assumptions.
+- Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.
 
 ## Related Skills
 
