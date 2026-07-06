@@ -7,9 +7,11 @@ description: Use for ML experiment infrastructure: hydra-zen configs, config man
 
 ## Config (hydra-zen)
 
-- Configs are code: `builds()`/`just()`/`make_config()` live next to the components they configure; no YAML config trees.
+- Configs are code: `builds()`/`just()`/`make_config()` live next to the components they configure; no YAML config trees — except a launcher/cluster-resource config, the sanctioned exception (`dev-hpc`).
 - `instantiate` at the entry point only; library code never imports hydra-zen.
 - Every config field is typed and has a default a smoke run can use.
+- CLI entry: expose a script's `main(**params)` (defaults = the run defaults) via `zen(main).hydra_main(...)` over `builds(main, populate_full_signature=True)`; params become `key=value` overrides, lists as `xs=[a,b,c]`. Wrap this in one shared helper so each script's `__main__` stays a one-liner.
+- Migrating argparse → hydra-zen: turn each `add_argument` into a typed kwarg on `main`; comma-string sweep args (`--gammas 0.5,0.9`) become native list params.
 
 ## Tracking
 
@@ -48,3 +50,4 @@ description: Use for ML experiment infrastructure: hydra-zen configs, config man
 - `dev-tdd` and `dev-verification` for the e2e-evidence discipline.
 - `research-run` for interpreting the runs this infra produces.
 - `debug-ml-research` when a run is plausible but wrong.
+- `dev-hpc` for getting these configs/entry points running on a SLURM cluster.

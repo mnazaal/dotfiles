@@ -54,6 +54,7 @@ ty check                 # greenfield default; fall back to pyright/mypy where t
 - Mixing notebooks/scripts with core library behavior.
 - Inventing a new tracker/config system when project already has one.
 - `-p no:xdist` when `addopts` hardcodes `-n <workers>` — conflicts and errors; use `-n0` to override instead.
+- Waiting out a slow xdist run (`-n>1`) without checking cost: on memory-constrained machines it can swap-thrash instead of progressing — if a run is taking much longer than expected, check `free -h`/worker CPU-time growth, and rerun with `-n1` rather than waiting.
 
 ## Related Skills
 

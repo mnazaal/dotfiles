@@ -17,9 +17,15 @@ description: Use when committing work or choosing integration path: stage correc
 - Inspect diff/scope and recent commits before recommending merge/PR.
 - When a readiness check surfaces failures, attribute each to your change vs pre-existing before deciding merge: cross-check against your changed files, then stash and re-run a representative failure. Stash-and-rerun clears only your diff, not cross-venv dependency drift — for that use `dev-worktree`. Pre-existing env/dependency failures don't block your merge; never report a red suite as green.
 - Do not discard work or force-push without explicit confirmation.
-- If a commit/push/rebase is rejected with `GIT PRE-COMMIT/PRE-PUSH/REFERENCE TRANSACTION HOOK ERROR: <prefix> agent must/may only ... <prefix>/* (or worktree-<prefix>*) branches` — you're running under an agent branch-prefix guard (`AGENT_BRANCH_PREFIX`, set by the `renv <agent>.sh` env files; see `~/.config/git/hooks/`). Check `git branch --show-current`: it must be `<prefix>/*`, or `worktree-<prefix>*` if in a `-w`-created worktree. Fix by switching to a correctly named branch — never unset the guard or add `--no-verify` to work around it without explicit user confirmation.
+- If a commit/push/rebase is rejected with `GIT PRE-COMMIT/PRE-PUSH/REFERENCE TRANSACTION HOOK ERROR: <prefix> agent must/may only ... <prefix>/* (or worktree-<prefix>*) branches` — you're running under an agent branch-prefix guard (`AGENT_BRANCH_PREFIX`, set by the `renv <agent>.sh` env files; see `~/.config/git/hooks/`). Check `git branch --show-current`: it must be `<prefix>/*`, or `worktree-<prefix>*` if in a `-w`-created worktree. Fix by creating/switching to a fresh `<prefix>/<topic>` branch (Phase 1 "Branch first") — never unset the guard or add `--no-verify` to work around it without explicit user confirmation.
 
 ## Phase 1: Commit
+
+**Branch first.** Ensure you're on a FRESH `<prefix>/<topic>` branch created from
+the integration base (usually `main`) for *this* unit of work — don't commit onto
+a reused or already-merged branch (its name is about other work, and piling on
+mixes unrelated history into one merge). Under an agent branch-prefix guard this
+also avoids the rejected-commit round-trip.
 
 1. `git diff HEAD` — review what changed; confirm scope matches intent.
 2. Check `git config user.name` — the human must be the commit **author**; agent environments may default to a bot identity.
