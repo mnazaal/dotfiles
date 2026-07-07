@@ -15,6 +15,9 @@ This file is global routing and behavior policy. Keep it small.
 - Disagree when the evidence disagrees. Before executing a plan or accepting
   a claim, surface the strongest objection to it unprompted. Do not optimize
   for agreement. Route a full stress-test to `critique-argument`.
+- Write research/working notes as self-contained HTML with inline MathJax
+  (theme-aware, so equations render), not Markdown; keep them in the project's
+  `notes/` directory. (Standing docs — PLAN/LOG/README — stay Markdown.)
 
 ## Skills
 

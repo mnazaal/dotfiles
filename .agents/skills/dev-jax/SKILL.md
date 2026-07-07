@@ -65,6 +65,7 @@ arr = arr.at[i].set(val)
 - `jnp.where(mask, f(x), fallback)` still evaluates `f(x)` on the masked-out branch and adds its gradient — if `f` is singular there (`log`, `logcdf`, `sqrt`, `1/x` at `0` or `±inf`) the backward pass is NaN even though the forward value is correct. Substitute a safe finite input first (`x_safe = jnp.where(mask, x, 1.0)`), apply `f` to `x_safe`, then `where` to select. Verify with `jax.grad`, not just a forward eval — the value looks fine either way.
 - Piping a long/background job through `| tail` (buffers until EOF — output lost). Redirect to a file and read it; add `python -u` when you will grep or Monitor the log incrementally (block-buffered stdout never fires a match).
 - Module-level experiment drivers with no `if __name__ == "__main__":` guard — they re-run the whole experiment on import. Guard them so probes stay importable by other scripts.
+- Wrapping `jax.jit` around a function the caller already compiles — a NumPyro/BlackJAX model the sampler traces wholesale, or a helper called once — adds compile overhead with nothing to amortize. Jit stable, repeatedly-called heavy paths; leave already-traced and single-call code bare.
 
 ## Related Skills
 

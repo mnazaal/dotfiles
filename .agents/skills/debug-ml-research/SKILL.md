@@ -36,12 +36,14 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Eval: preprocessing, mode, metrics, checkpoint reload, sampler parameterization, no leakage.
 - Seed sweep: for a stochastic method never conclude from one seed — run several; a fix that rescues one seed can fail others (complementary failure modes), and one green seed is not recovery.
 - Passing by side-effect: a change that makes the metric pass but that you cannot derive is unverified — it may pass via an unrelated side-effect (e.g. accidentally breaking a symmetry) and mask the real bug.
+- Self-satisfying metric: include a tripwire baseline that *must* fail (e.g. a zero-width predictor scored for coverage); if it also "passes", the eval is self-consistent — truth sits at the center of its own prediction, or is averaged over items sharing one ground truth — and proves nothing. Coverage/calibration is a property over (parameter, data) draws (SBC), not over items within one fixed truth.
 
 ## Specialized Probes
 
 - Probabilistic models: prior/posterior predictive, support constraints, Jacobians, event vs batch log-prob sums, calibration; pick the estimator from the derivation (e.g. log E[p] vs E[log p]), not from what makes a metric move — a mean-of-logs with a heavy tail is dominated by rare catastrophic draws.
 - Optimization vs objective: when recovery fails, initialize the fit at the known/true answer. Stays there (stable, higher objective) ⇒ objective/estimator is right and the failure is optimization — fix init, add restarts selected by the objective, or break symmetry. Drifts away ⇒ the objective/estimator itself is wrong.
 - Invariance sweep: for any sampler with a parameter that theoretically shouldn't shift the stationary target (e.g. a mixing/proposal rate, a temperature meant to only affect speed), sweep it and check the output distribution doesn't move. A shift usually means a state-pairing/off-by-one bug (e.g. weighting by the wrong event's holding time), not sampler noise.
+- Latent-component identifiability: in mixture / latent-cell models the likelihood is invariant to permuting component labels, so a single MCMC chain can lodge in one labeling and silently mis-split mass between components — a per-component recovery metric then fails on *some* seeds only. Break the symmetry with a component-distinguishing prior (probe its strength: too weak still switches), run multiple chains, or align labels post-hoc. To prove a recovery test can even *detect* non-identifiability, sweep a knob from the identifiable regime to a known non-identifiable one and assert the posterior reverts to the prior rather than "recovering" mass from nothing.
 - Diffusion: overfit one image, visualize noising, reconstruct `x0`, loss by timestep, epsilon/x0/v convention, sampler matches training objective.
 - Conditioning: shuffle/zero/permute conditions; behavior should degrade or change meaningfully.
 
