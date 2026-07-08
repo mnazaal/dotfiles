@@ -1,5 +1,5 @@
 {
-  "_comment": "Command-name sets for the bash guard. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, pi, and opencode via their adapters. Data only — the logic lives in core.ts. See README.md. Add a dangerous command here once; all three agents pick it up.",
+  "_comment": "Command-name sets for the bash guard. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, Codex, pi, and opencode via their adapters. Data only — the logic lives in core.ts. See README.md. Add a dangerous command here once; all agents pick it up.",
 
   "escalators": ["sudo", "doas", "pkexec", "su", "run0", "machinectl"],
 
@@ -20,5 +20,5 @@
   "git_global_value_opts": ["-C", "--git-dir", "--work-tree", "--namespace"],
 
   "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
-  "find_policy": { "claude": "exec", "pi": "exec", "opencode": "exec" }
+  "find_policy": { "claude": "exec", "codex": "exec", "pi": "exec", "opencode": "exec" }
 }

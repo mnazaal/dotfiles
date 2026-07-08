@@ -9,5 +9,7 @@ skills-lock.json
 Makefile
 .claude/settings.local.json
 .claude/projects
+^/\.config/codex/config\.toml$
+^/\.config/codex/tmp$
 
 ^/org$

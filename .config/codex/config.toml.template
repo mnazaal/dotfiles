@@ -1,0 +1,66 @@
+# Codex CLI user config template.
+#
+# Codex may write machine-local trust/project state back into config.toml,
+# including absolute paths. Do not stow this template as config.toml. Copy it to
+# $CODEX_HOME/config.toml locally so Codex can mutate the copy without leaking
+# host paths into dotfiles.
+
+model = "gpt-5.5"
+model_instructions_file = "~/.agents/AGENTS.md"
+
+# Coarse safe default only. Detailed command/path policy lives in the shared
+# ~/.agents/guardrails core and is enforced by hooks below to avoid drift.
+approval_policy = "on-request"
+default_permissions = ":read-only"
+
+hide_agent_reasoning = true
+web_search = "cached"
+
+[features]
+hooks = true
+multi_agent = true
+shell_tool = true
+skill_mcp_dependency_install = false
+
+[history]
+persistence = "save-all"
+max_bytes = 10485760
+
+[mcp_servers.deepwiki]
+url = "https://mcp.deepwiki.com/mcp"
+enabled = true
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.grepika]
+command = "bunx"
+args = ["-y", "@agentika/grepika", "--mcp"]
+enabled = true
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.playwright]
+command = "bunx"
+args = ["-y", "@playwright/mcp@latest"]
+enabled = false
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.asta-mcp]
+url = "https://asta-tools.allen.ai/mcp/v1"
+env_http_headers = { "x-api-key" = "ASTA_MCP_API_KEY" }
+enabled = true
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.headroom]
+command = "headroom"
+args = ["mcp", "serve"]
+enabled = false
+required = false
+startup_timeout_sec = 10
+tool_timeout_sec = 60

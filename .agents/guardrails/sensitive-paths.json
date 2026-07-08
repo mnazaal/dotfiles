@@ -1,5 +1,5 @@
 {
-  "_comment": "Path guardrails. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, pi, and opencode via their adapters. Paths only, no logic. See README.md. `machinery_enabled` is per-agent so the persistence-escape protection can be toggled independently (e.g. set an agent false while bootstrapping, to avoid the PreToolUse self-lockout).",
+  "_comment": "Path guardrails. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, Codex, pi, and opencode via their adapters. Paths only, no logic. See README.md. Credentials are blocked for read/write/bash. Machinery is blocked for write/bash but allowed for normal read tools, so agents can inspect their own guardrails without gaining persistence-edit access. `machinery_enabled` is per-agent and should only be disabled while bootstrapping.",
 
   "credentials": [
     "~/.aws", "~/.gnupg", "~/.gpg", "~/.ssh",
@@ -14,7 +14,7 @@
 
   "sensitive_segments": [".ssh", ".gnupg", ".gpg", ".aws", ".password-store"],
 
-  "machinery_enabled": { "claude": true, "pi": true, "opencode": true },
+  "machinery_enabled": { "claude": true, "codex": true, "pi": true, "opencode": true },
 
   "machinery": [
     "~/.config/sandbox", "~/dotfiles/.config/sandbox",

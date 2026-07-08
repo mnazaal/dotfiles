@@ -1,17 +1,18 @@
 /**
  * Guardrail core — the single implementation of the agent bash/path guards.
  *
- * Consumed at runtime by all three harnesses via dynamic import:
+ * Consumed at runtime by all agent harnesses:
  *   - Claude  : .claude/hooks/guardrails.ts          (bun CLI PreToolUse hook)
+ *   - Codex   : .config/codex/hooks/guardrails.ts    (bun CLI hooks)
  *   - pi      : .config/pi/agent/extensions/guardrails.ts
  *   - opencode: .config/opencode/plugins/guardrails.ts
  *
  * Data lives in sibling JSON files (sensitive-paths.json, dangerous-commands.json);
  * this file owns the LOGIC. No third-party deps — only node/bun builtins — so it
- * loads identically in every harness runtime. No regex; plain string parsing,
- * quote/segment/wrapper aware, recurses into `sh -c`.
+ * loads identically in every harness runtime. Command parsing is plain string
+ * parsing: quote/segment/wrapper aware, recurses into `sh -c`.
  *
- * Entry point: createGuard(agent).evaluate({ command?, path?, cwd }) -> Decision.
+ * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -20,6 +21,18 @@ import { homedir } from "node:os";
 const HOME = homedir();
 
 export type Decision = { decision: "deny" | "ask" | "allow"; reason?: string };
+export type Operation = "read" | "write" | "bash" | "fetch" | "unknown";
+export type ToolEvent = {
+  command?: string;
+  path?: string;
+  paths?: string[];
+  url?: string;
+  urls?: string[];
+  tool?: string;
+  cwd?: string;
+  operation?: Operation;
+};
+export type GuardrailDecision = Decision & { skill?: string };
 
 // --- shared JSON loading ----------------------------------------------------
 // Try the deployed copy first, then the ~/dotfiles stow source (works pre-deploy
@@ -149,16 +162,63 @@ function gitConfigKey(token: string): string {
   return token.split("=", 1)[0].trim().toLowerCase();
 }
 
-/** Leading command + args of one segment, skipping assignments and wrappers. */
+function skipEnvArgs(toks: string[], i: number): number {
+  while (i < toks.length) {
+    const a = toks[i];
+    if (a === "--") return i + 1;
+    if (a === "-u" || a === "--unset") { i += 2; continue; }
+    if (a === "-C" || a === "--chdir" || a === "-S" || a === "--split-string") { i += 2; continue; }
+    if (a === "-i" || a === "-0" || a === "--ignore-environment" || a === "--null") { i++; continue; }
+    if (a.startsWith("--unset=") || a.startsWith("--chdir=") || a.startsWith("--split-string=")) { i++; continue; }
+    if (isAssignment(a)) { i++; continue; }
+    return i;
+  }
+  return i;
+}
+
+function skipTimeoutArgs(toks: string[], i: number): number {
+  while (i < toks.length) {
+    const a = toks[i];
+    if (a === "--") { i++; break; }
+    if (["-k", "--kill-after", "-s", "--signal"].includes(a)) { i += 2; continue; }
+    if (a.startsWith("--kill-after=") || a.startsWith("--signal=")) { i++; continue; }
+    if (a.startsWith("-")) { i++; continue; }
+    i++; break; // duration
+  }
+  return i;
+}
+
+function skipNiceArgs(toks: string[], i: number): number {
+  while (i < toks.length) {
+    const a = toks[i];
+    if (a === "--") return i + 1;
+    if (a === "-n" || a === "--adjustment") { i += 2; continue; }
+    if (a.startsWith("--adjustment=")) { i++; continue; }
+    if (a.startsWith("-n") && a.length > 2) { i++; continue; }
+    if (a.startsWith("-")) { i++; continue; }
+    return i;
+  }
+  return i;
+}
+
+function skipWrapperArgs(wrapper: string, toks: string[], i: number): number {
+  if (wrapper === "env") return skipEnvArgs(toks, i);
+  if (wrapper === "timeout") return skipTimeoutArgs(toks, i);
+  if (wrapper === "nice") return skipNiceArgs(toks, i);
+  while (i < toks.length && toks[i].startsWith("-") && toks[i] !== "--") i++;
+  if (toks[i] === "--") i++;
+  while (i < toks.length && isAssignment(toks[i])) i++;
+  return i;
+}
+
+/** Leading command + args of one segment, skipping assignments and known wrappers. */
 function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; args: string[] } | undefined {
   const toks = tokenize(seg);
   let i = 0;
   while (i < toks.length && isAssignment(toks[i])) i++;
   while (i < toks.length && wrappers.has(basename(toks[i]))) {
-    i++;
-    while (i < toks.length && toks[i].startsWith("-") && toks[i] !== "--") i++;
-    if (toks[i] === "--") i++;
-    while (i < toks.length && isAssignment(toks[i])) i++;
+    const wrapper = basename(toks[i]);
+    i = skipWrapperArgs(wrapper, toks, i + 1);
   }
   if (i >= toks.length) return undefined;
   return { command: basename(toks[i]), args: toks.slice(i + 1) };
@@ -184,10 +244,10 @@ function resolveAny(input: string, cwd: string): string {
   return resolve(cwd, input);
 }
 
-function hasProtectedSegment(path: string): boolean {
+function hasProtectedSegment(path: string, operation: Operation = "unknown"): boolean {
   for (const comp of path.replace(/\\/g, "/").split("/")) {
     if (comp === ".env" || comp.startsWith(".env.")) return true;
-    if (comp === ".git" || comp === "node_modules") return true;
+    if (operation !== "read" && (comp === ".git" || comp === "node_modules")) return true;
   }
   return false;
 }
@@ -198,8 +258,8 @@ export function createGuard(agent: string) {
   const sp = loadJson("sensitive-paths.json");
   const dc = loadJson("dangerous-commands.json");
 
-  const sensitive: string[] = [...(sp.credentials ?? [])];
-  if (machineryOn(sp.machinery_enabled, agent)) sensitive.push(...(sp.machinery ?? []));
+  const credentials: string[] = [...(sp.credentials ?? [])];
+  const machinery: string[] = machineryOn(sp.machinery_enabled, agent) ? [...(sp.machinery ?? [])] : [];
   const segments = new Set<string>(sp.sensitive_segments ?? []);
 
   const ESCALATORS = new Set<string>(dc.escalators ?? []);
@@ -212,24 +272,30 @@ export function createGuard(agent: string) {
   const findPolicy: string = (dc.find_policy ?? {})[agent] ?? "exec";
 
   // path guard ---------------------------------------------------------------
-  function blocked(path: string): string | undefined {
-    for (const s of sensitive) {
+  function blocked(path: string, operation: Operation = "unknown"): string | undefined {
+    for (const s of credentials) {
       const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
       if (path === r || path.startsWith(r + "/")) return s;
     }
-    if (hasProtectedSegment(path)) return "protected";
+    if (hasProtectedSegment(path, operation)) return "protected";
+    if (operation !== "read") {
+      for (const s of machinery) {
+        const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
+        if (path === r || path.startsWith(r + "/")) return s;
+      }
+    }
   }
 
   function blockedCommand(command: string, cwd: string): string | undefined {
     const norm = command.replaceAll("${HOME}", HOME).replaceAll("$HOME", HOME).replaceAll("~/", `${HOME}/`);
-    for (const s of sensitive) {
+    for (const s of [...credentials, ...machinery]) {
       const abs = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
       if (norm.includes(s) || norm.includes(abs)) return s;
     }
     for (const tok of pathTokenize(norm)) {
       if (tok.startsWith("-") || tok.includes("=")) continue;
       for (const comp of tok.replace(/\\/g, "/").split("/")) if (segments.has(comp)) return comp;
-      const r = blocked(resolveAny(tok, cwd));
+      const r = blocked(resolveAny(tok, cwd), "bash");
       if (r) return r;
     }
   }
@@ -301,10 +367,11 @@ export function createGuard(agent: string) {
   }
 
   // unified entry point ------------------------------------------------------
-  function evaluate(input: { command?: string; path?: string; cwd: string }): Decision {
+  function evaluate(input: { command?: string; path?: string; paths?: string[]; cwd: string; operation?: Operation }): Decision {
     const cwd = input.cwd || HOME;
-    if (input.path) {
-      const r = blocked(resolveAny(input.path, cwd));
+    const operation = input.operation ?? (input.command ? "bash" : "unknown");
+    for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) {
+      const r = blocked(resolveAny(path, cwd), operation);
       if (r) return { decision: "deny", reason: `sensitive path (${r})` };
     }
     if (input.command) {
@@ -422,11 +489,12 @@ export function createSkillGate() {
    * fetch gates. `tool` is the host's tool name (case-insensitive), so the
    * read-vs-write distinction is portable without hardcoding per-host names.
    */
-  function requiredSkill(input: { command?: string; tool?: string; path?: string; url?: string; cwd?: string }): SkillGateHit | undefined {
+  function requiredSkill(input: { command?: string; tool?: string; path?: string; url?: string; cwd?: string; operation?: Operation }): SkillGateHit | undefined {
     const cwd = input.cwd || HOME;
     if (input.command) { const h = bashHit(input.command); if (h) return h; }
     const tool = (input.tool ?? "").toLowerCase();
-    if (input.path && (tool.includes("write") || tool.includes("edit"))) {
+    const writes = input.operation === "write" || tool.includes("write") || tool.includes("edit") || tool.includes("apply_patch");
+    if (input.path && writes) {
       const h = writeHit(input.path, cwd); if (h) return h;
     }
     if (input.url && (tool === "" || tool.includes("fetch"))) {
@@ -436,6 +504,91 @@ export function createSkillGate() {
   }
 
   return { requiredSkill };
+}
+
+export function extractPatchPaths(patch: string): string[] {
+  const paths: string[] = [];
+  const re = /^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm;
+  for (const match of patch.matchAll(re)) paths.push(match[1].trim());
+  return [...new Set(paths)];
+}
+
+function stringValues(input: Record<string, unknown> | undefined, keys: string[]): string[] {
+  if (!input) return [];
+  const out: string[] = [];
+  for (const key of keys) if (typeof input[key] === "string") out.push(input[key] as string);
+  return out;
+}
+
+export function pathsFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string[] {
+  const paths = stringValues(input, ["path", "filePath", "file_path", "file", "directory", "notebook_path"]);
+  const command = typeof input?.command === "string" ? input.command : undefined;
+  if ((tool ?? "").toLowerCase().includes("apply_patch") && command) paths.push(...extractPatchPaths(command));
+  return [...new Set(paths)];
+}
+
+export function urlsFromToolInput(input: Record<string, unknown> | undefined): string[] {
+  return stringValues(input, ["url"]).filter((s) => /^https?:/i.test(s));
+}
+
+export function inferOperation(tool: string | undefined, event: Pick<ToolEvent, "command" | "url" | "urls"> = {}): Operation {
+  if (event.command) return "bash";
+  const t = (tool ?? "").toLowerCase();
+  if (event.url || event.urls?.length || t.includes("fetch")) return "fetch";
+  if (t.includes("apply_patch") || t.includes("write") || t.includes("edit")) return "write";
+  if (["read", "list", "get", "context", "toc", "outline", "search", "refs", "diff", "glob", "grep"].some((s) => t.includes(s))) return "read";
+  return "unknown";
+}
+
+export function commandFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string | undefined {
+  if ((tool ?? "").toLowerCase().includes("apply_patch")) return undefined;
+  return typeof input?.command === "string" ? input.command : undefined;
+}
+
+export function toolEventFromInput(tool: string | undefined, input: Record<string, unknown> | undefined, cwd?: string): ToolEvent {
+  const command = commandFromToolInput(tool, input);
+  const urls = urlsFromToolInput(input);
+  const event: ToolEvent = {
+    tool,
+    cwd,
+    command,
+    paths: pathsFromToolInput(tool, input),
+    urls,
+  };
+  event.operation = inferOperation(tool, event);
+  return event;
+}
+
+function loadedSet(loadedSkills?: Set<string> | string[]): Set<string> {
+  return loadedSkills instanceof Set ? loadedSkills : new Set(loadedSkills ?? []);
+}
+
+export function createGuardrails(agent: string) {
+  const guard = createGuard(agent);
+  const skillGate = createSkillGate();
+
+  function evaluate(event: ToolEvent, loadedSkills?: Set<string> | string[]): GuardrailDecision {
+    const cwd = event.cwd ?? HOME;
+    const paths = [...(event.path ? [event.path] : []), ...(event.paths ?? [])];
+    const urls = [...(event.url ? [event.url] : []), ...(event.urls ?? [])];
+    const operation = event.operation ?? inferOperation(event.tool, event);
+
+    const r = guard.evaluate({ command: event.command, paths, cwd, operation });
+    if (r.decision !== "allow") return r;
+
+    const loaded = loadedSet(loadedSkills);
+    for (const path of paths.length ? paths : [undefined]) {
+      for (const url of urls.length ? urls : [undefined]) {
+        const hit = skillGate.requiredSkill({ command: event.command, tool: event.tool, path, url, cwd, operation });
+        if (hit && !loaded.has(hit.skill)) {
+          return { decision: "deny", reason: `skill gate: ${hit.message}. Read ~/.agents/skills/${hit.skill}/SKILL.md, then retry.`, skill: hit.skill };
+        }
+      }
+    }
+    return { decision: "allow" };
+  }
+
+  return { evaluate, guard, skillGate };
 }
 
 /**

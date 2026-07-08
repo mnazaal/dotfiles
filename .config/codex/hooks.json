@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$CODEX_HOME/hooks/guardrails.ts\"",
+            "timeout": 30,
+            "statusMessage": "Checking shared guardrails"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$CODEX_HOME/hooks/guardrails.ts\"",
+            "timeout": 30,
+            "statusMessage": "Checking shared guardrails"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$CODEX_HOME/hooks/guardrails.ts\"",
+            "timeout": 30,
+            "statusMessage": "Checking shared guardrails"
+          }
+        ]
+      }
+    ]
+  }
+}

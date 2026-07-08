@@ -53,6 +53,7 @@ export JULIAP_DEPOT_PATH="$XDG_DATA_HOME/juliap"
 export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
 export PI_OFFLINE=1
 export PI_SKIP_VERSION_CHECK=1
+export CODEX_HOME="$XDG_CONFIG_HOME/codex"
 
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$CARGO_HOME/bin:$PATH"
