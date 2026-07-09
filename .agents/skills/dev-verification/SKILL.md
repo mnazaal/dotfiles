@@ -8,6 +8,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 ## Rules
 
 - Do not pipe a backgrounded command through `tail`/`head`; output buffers until exit, looks stuck, tempts a redundant watcher, and the reported exit code is the pipe's last stage (e.g. `tail`), not the real command — treat it as untrustworthy. Send full output to a file and read that.
+- For long/background jobs, redirect full output to a file and inspect the recorded exit status; add unbuffered output only when the command supports it and you need live log checks.
 - Evidence before claims.
 - No completion, fixed, passing, ready, reviewed, or verified claim without fresh verification evidence.
 - Run the verification that proves the claim or state why blocked.
@@ -17,6 +18,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Do not extrapolate from partial checks.
 - Do not trust delegated-agent reports without checking produced artifacts/diffs.
 - A failure trace ending in worker/plugin teardown (e.g. xdist `OSError: cannot send`, `PluggyTeardownRaisedWarning`) with no `FAILED` line is harness/infra flake, not a regression — rerun once plain before treating it as real.
+- Resource-shaped parallel-test failures (worker death, process/thread creation failures, near-zero worker CPU growth while memory is exhausted) are infrastructure evidence first, not code evidence; rerun with lower/no parallelism before debugging application code.
 
 ## Gate
 

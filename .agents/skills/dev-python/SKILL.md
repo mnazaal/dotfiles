@@ -18,6 +18,7 @@ description: Use for Python code/projects: pyproject.toml, virtual environments,
 - Type public surfaces fully: complete signatures on public functions/methods. `Any`, untyped `dict` payloads, and bare `# type: ignore` are code smells — reach for a precise type, `TypedDict`/dataclass, or protocol first; if `Any` is truly unavoidable, say why at the use site.
 - Annotate array code with `jaxtyping` shape/dtype types (`Float[Array, "batch dim"]`); shapes in types beat shapes in comments or docstrings.
 - Research code is a library others benchmark against and extend: every method *and baseline* implements the same small, deep interface; a method coupled to the harness is a structural smell. The entry-point/extension contract lives in `dev-ml-infra`.
+- For greenfield ML research repo layout, follow `dev-ml-infra`'s Research Project Layout.
 - When promoting/moving code that already has many existing importers (e.g. test-helper logic being promoted to a real package location), turn the origin module into a thin re-export shim (`from new.location import (names)` + matching `__all__`) rather than updating every call site. Same correctness, far smaller diff, zero risk of missing an importer.
 
 ## Workflow
@@ -54,7 +55,7 @@ ty check                 # greenfield default; fall back to pyright/mypy where t
 - Mixing notebooks/scripts with core library behavior.
 - Inventing a new tracker/config system when project already has one.
 - `-p no:xdist` when `addopts` hardcodes `-n <workers>` — conflicts and errors; use `-n0` to override instead.
-- Waiting out a slow xdist run (`-n>1`) without checking cost: on memory-constrained machines it can swap-thrash instead of progressing — if a run is taking much longer than expected, check `free -h`/worker CPU-time growth, and rerun with `-n1` rather than waiting.
+- Treat slow or worker-crashing parallel test runs as verification/resource questions first (`dev-verification`); rerun with lower/no parallelism before debugging code.
 
 ## Related Skills
 

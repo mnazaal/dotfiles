@@ -9,7 +9,7 @@ description: Use when a plan, design, implementation approach, research directio
 
 Clarify ambiguous work before execution by interviewing the user one decision at a time.
 
-Use when scope, assumptions, dependencies, risks, acceptance criteria, or sequencing are unclear enough that acting immediately would likely waste effort.
+Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, or sequencing would make immediate action wasteful. If the workspace can answer the question, inspect instead of interviewing. If the options are already known and only ranking remains, route to `decide-priority`.
 
 ## Rules
 

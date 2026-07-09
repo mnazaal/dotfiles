@@ -29,6 +29,8 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - If a skill routes to another skill, follow that routing.
 - Use subagents for broad, independent, or parallel exploration; otherwise keep
   work in the current context.
+- For multi-agent delegation or evaluating delegated work, load
+  `agent-orchestration`.
 
 ## Mandatory Routing
 
@@ -45,6 +47,8 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Before creating any standing project document (PLAN.md, README, notes,
   logs, any new top-level .md), load `context-project-docs` and stay within
   its canonical set.
+- For security-sensitive work (secrets, credentials, auth, permissions, token
+  handling, or suspected leakage), load `dev-security`.
 
 ## Maintenance
 

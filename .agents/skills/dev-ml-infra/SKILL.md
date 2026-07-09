@@ -5,6 +5,76 @@ description: Use for ML experiment infrastructure: hydra-zen configs, config man
 
 # Skill: Dev ML Infra
 
+## Research Project Layout
+
+For greenfield ML research repos, default to one inspectable, reproducible
+layout:
+
+```text
+project-name/
+  pyproject.toml
+  uv.lock
+  README.md
+  PLAN.md
+  LOG.md
+
+  src/
+    project_name/
+      __init__.py
+      data/
+      methods/
+      models/
+      experiments/
+      eval/
+      tracking/
+      config/
+      run.py
+
+  tests/
+    test_smoke.py
+
+  scripts/
+    reproduce_main.sh
+
+  data/
+    raw/
+    processed/
+    README.md
+
+  results/
+    README.md
+    runs/
+    mlruns/
+    outputs/
+    multirun/
+    artifacts/
+
+  notes/
+```
+
+- `README.md`, `PLAN.md`, `LOG.md`, and `notes/` are part of the standard
+  research layout; follow `context-project-docs` for their roles and write
+  policy.
+- `src/project_name/` holds importable library code. Experiment harness code
+  depends on methods; methods do not depend on the harness.
+- `results/` is the only generated-output root. Put MLflow state, Hydra
+  outputs, sweeps, checkpoints, figures, tables, logs, and artifacts under it.
+- `results/runs/<run_id>/` is the canonical human-readable per-run record:
+  resolved config, git commit, seed, metrics, logs, and artifacts.
+- Track only layout/provenance docs inside generated-data/output directories
+  (`data/README.md`, `results/README.md`); gitignore generated contents.
+- One command path should run every method/baseline through the same interface:
+  `python -m project_name.run method=X data=Y seed=0`.
+
+Minimum run surface:
+
+```bash
+uv sync
+pytest
+python -m project_name.run method=my_method data=synthetic seed=0
+./scripts/reproduce_main.sh
+```
+
 ## Config (hydra-zen)
 
 - Configs are code: `builds()`/`just()`/`make_config()` live next to the components they configure; no YAML config trees — except a launcher/cluster-resource config, the sanctioned exception (`dev-hpc`).

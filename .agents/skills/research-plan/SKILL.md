@@ -10,12 +10,12 @@ description: Use when writing or revising a research-project plan document (PLAN
 Write a research-project plan that records decisions, pins dependencies, and
 gates novelty claims — so a later session can start cold from the document.
 
+Use only after the direction is chosen. If pursue/park/kill is still open, route
+to `research-session`; if decisions are unresolved, route to `plan-interview`.
+
 ## Rules
 
-- If pursue/park/kill is still open, run `research-session` Idea Triage
-  first; a plan presumes the project is worth planning.
-- Interview unresolved decisions first (`plan-interview`); the plan records
-  decisions and rationale, not open options.
+- The plan records decisions and rationale, not open options.
 - Section shape: setting/framing → decisions with rationale → core
   model/derivation → pinned dependency API surface → baselines + experiments
   → repo shape → execution order → early tests → open risks.

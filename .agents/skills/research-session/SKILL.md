@@ -7,7 +7,7 @@ description: Use for research session orientation, idea triage, and project fram
 
 ## Session Start
 
-Use when orienting at the start of research work ("catch me up", "what should I work on", "research session").
+Use when choosing or framing research work, not for writing the durable plan. If the user asks to persist decisions in `PLAN.md`, route to `research-plan`; if ambiguity blocks even framing the question, route to `plan-interview`.
 
 1. Capture focus, if user gave one.
 2. Inspect available research state: active projects, recent notes, open tasks, recent papers, run artifacts, saved ideas.

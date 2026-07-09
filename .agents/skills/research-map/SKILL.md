@@ -36,7 +36,7 @@ Stamp the block with `git rev-parse --short HEAD` and today's date.
 
 ## Rules
 
-- Two sinks only: chat, or README's `research-map:begin/end` block. Never create a new standing doc (`OVERVIEW.md`/`MAP.md`) and never hand-write an overview elsewhere — the persisted form is the stamped README block or nothing.
+- Two sinks only: chat, or README's `research-map:begin/end` block after loading/following `context-project-docs`. Never create a new standing doc (`OVERVIEW.md`/`MAP.md`) and never hand-write an overview elsewhere — the persisted form is the stamped README block or nothing.
 - Read-only on code: the only file this skill writes is README, and only between its markers. Never edit code, and never touch README outside the block.
 - Stamp every README write with the source commit + date; if HEAD has moved past the stamp, treat the block as stale and regenerate rather than trusting it.
 - Diagrams stay small (≤ ~12 nodes); split rather than cram.
