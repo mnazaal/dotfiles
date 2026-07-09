@@ -567,6 +567,13 @@ export function createGuardrails(agent: string) {
   const guard = createGuard(agent);
   const skillGate = createSkillGate();
 
+  function missingSkillReason(hit: SkillGateHit): string {
+    if (agent === "codex") {
+      return `skill gate: ${hit.message}. Inspect ~/.agents/skills/${hit.skill}/SKILL.md with a non-shell read/file tool, then retry.`;
+    }
+    return `skill gate: ${hit.message}. Load skill ${hit.skill}, then retry.`;
+  }
+
   function evaluate(event: ToolEvent, loadedSkills?: Set<string> | string[]): GuardrailDecision {
     const cwd = event.cwd ?? HOME;
     const paths = [...(event.path ? [event.path] : []), ...(event.paths ?? [])];
@@ -581,7 +588,7 @@ export function createGuardrails(agent: string) {
       for (const url of urls.length ? urls : [undefined]) {
         const hit = skillGate.requiredSkill({ command: event.command, tool: event.tool, path, url, cwd, operation });
         if (hit && !loaded.has(hit.skill)) {
-          return { decision: "deny", reason: `skill gate: ${hit.message}. Read ~/.agents/skills/${hit.skill}/SKILL.md, then retry.`, skill: hit.skill };
+          return { decision: "deny", reason: missingSkillReason(hit), skill: hit.skill };
         }
       }
     }

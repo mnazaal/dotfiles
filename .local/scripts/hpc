@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# hpc: push the current branch (to `origin`, e.g. GitHub), sync it onto a
+# cluster working copy over SSH, and run a command there fully detached from
+# the SSH connection (survives SSH/laptop disconnect -- needed because a
+# blocking `--multirun` Slurm-launcher process polls job.result() until every
+# submitted task finishes).
+#
+# Usage:
+#   hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--name <name>] <command...>
+#
+# Assumes `<remote>` (default: origin) is a normal git remote this laptop
+# pushes to and the cluster independently fetches/checks out from -- either a
+# hosted remote like GitHub, or a bare repo living on the cluster itself (e.g.
+# `--remote triton` for a project set up like bed-d-sep). Either way, the
+# cluster-side working copy fetches from ITS OWN "origin" remote (whatever it
+# was cloned with) -- that's independent of what this laptop calls its remote,
+# so it's not configurable here. The cluster side just needs a one-time
+# `git clone <remote-url>` already done at the path this script targets (see
+# --dir / HPC_DIR below).
+#
+# No cluster hostname is hardcoded here (this file is meant to be safe to
+# publish, e.g. in a public dotfiles repo) -- pass --host, or set HPC_HOST in
+# your own (private) shell rc, once per cluster you use.
+#
+# <command> runs backgrounded on the remote (nohup + setsid, stdin/stdout/
+# stderr detached from the ssh channel), NOT in tmux -- there's nothing here
+# that ever needs interactive re-attach, and per-run files are a plainer unit
+# of compartmentalization than tmux sessions/windows once you're running many
+# experiments across many projects at once. Per run, under
+# ~/.cache/hpc-runs/<name>.{log,pid,exit} on the remote:
+#   .log   combined stdout+stderr of <command>
+#   .pid   pid of the backgrounded process
+#   .exit  written once `timeout` returns (exit code) -- absence means still
+#          running (or never started); this is the full completion signal,
+#          there's no pane to peek at instead.
+# <command> itself runs under `timeout $HPC_TIMEOUT` so .exit is guaranteed to
+# eventually be written even for a hung command.
+#
+# If a `.env` file exists at the root of the target directory, its
+# KEY=VALUE lines are exported into <command>'s environment before it runs
+# (`set -a; . .env; set +a`) -- this is the mechanism for project-scoped
+# secrets (API keys, DB creds, etc.) that shouldn't live in a committed
+# launcher config. Deliberately plain-file, not direnv: ssh command execution
+# is a non-interactive, non-login shell, so direnv's shell-prompt hook never
+# fires, and `direnv exec`/`direnv allow` have their own sharp edges when the
+# target dir is reached through a symlink (e.g. a small-quota $HOME symlinked
+# into bulk scratch storage, common on HPC clusters) -- sourcing a plain file
+# sidesteps both problems. `.env` is expected to be gitignored; this script
+# does not create, template, or manage its contents.
+#
+# Why nohup+setsid+redirect, not just "cmd &": setsid detaches the job into a
+# brand-new session with no controlling terminal, so when the ssh connection
+# drops there's no session for sshd to deliver SIGHUP to -- that's what makes
+# the job survive closing your laptop or killing the local ssh client, not the
+# redirect. The redirect (< /dev/null > log 2>&1) is what makes the *local*
+# `ssh` invocation return promptly instead of hanging: a backgrounded child
+# keeps its own copy of the parent shell's stdout/stderr fd (fork() duplicates
+# fds), so that pipe never reaches EOF -- and ssh waits for EOF, not just for
+# the top-level remote command to exit -- until every process holding a copy
+# closes it. nohup (ignore SIGHUP if somehow delivered anyway) and disown
+# (stop the remote shell itself from signaling the job on exit) are belt-and-
+# suspenders on top of setsid, not the primary mechanism.
+#
+# CLI / env config (CLI wins if both given):
+#   --host <alias> / HPC_HOST   ssh alias/host to run on. Use a *pinned* login
+#                node from your ~/.ssh/config, not a round-robin hostname: a
+#                background job's files live under whatever $HOME that node
+#                resolves to, so a fixed alias is what makes "check on it
+#                later" actually work.
+#   --remote <name> / HPC_REMOTE   git remote this laptop pushes to (default: origin)
+#   --dir <path> / HPC_DIR   remote path to the project's working copy,
+#                relative to the remote $HOME unless it starts with "/"
+#                (default: projects/<local-repo-dirname>) -- override this
+#                whenever the local dir, remote dir, and git host repo name
+#                don't all match, since nothing here can infer that for you.
+#   --name <name> / HPC_NAME   run name, used for the log/pid/exit filenames
+#                (default: <reponame>-<timestamp>, unique per invocation so
+#                concurrent runs of the same repo never collide -- reuse a
+#                fixed name deliberately if you want the "already running"
+#                guard to refuse a second concurrent launch under it).
+#   HPC_TIMEOUT  hard ceiling on <command> itself, passed to `timeout` on the
+#                remote (default: 7d) -- bump this per-invocation for jobs you
+#                know will run longer than a week; a Slurm --time limit on the
+#                job itself should still be the primary bound, this is just
+#                the backstop that guarantees .exit always eventually gets
+#                written.
+set -euo pipefail
+
+allow_dirty=false
+host_override=""
+remote_override=""
+dir_override=""
+name_override=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dirty) allow_dirty=true; shift ;;
+    --host) host_override="$2"; shift 2 ;;
+    --host=*) host_override="${1#--host=}"; shift ;;
+    --remote) remote_override="$2"; shift 2 ;;
+    --remote=*) remote_override="${1#--remote=}"; shift ;;
+    --dir) dir_override="$2"; shift 2 ;;
+    --dir=*) dir_override="${1#--dir=}"; shift ;;
+    --name) name_override="$2"; shift 2 ;;
+    --name=*) name_override="${1#--name=}"; shift ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+if [[ $# -eq 0 ]]; then
+  echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--name <name>] <command...>" >&2
+  exit 1
+fi
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "hpc: not inside a git repo" >&2
+  exit 1
+}
+reponame=$(basename "$repo_root")
+branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
+
+if [[ "$allow_dirty" == false ]] && [[ -n $(git -C "$repo_root" status --porcelain --untracked-files=no) ]]; then
+  echo "hpc: working tree has uncommitted changes to tracked files -- commit them first, or pass --dirty to push only what's already committed (the remote will still refuse to run anything not pushed)." >&2
+  exit 1
+fi
+
+remote="${remote_override:-${HPC_REMOTE:-origin}}"
+git -C "$repo_root" remote get-url "$remote" >/dev/null 2>&1 || {
+  echo "hpc: no '$remote' remote in $repo_root -- set one up first (e.g. GitHub, or a bare repo on the cluster)." >&2
+  exit 1
+}
+
+host="${host_override:-${HPC_HOST:-}}"
+if [[ -z "$host" ]]; then
+  echo "hpc: no host specified -- pass --host <alias> or set HPC_HOST (e.g. a ~/.ssh/config entry for a pinned login node)." >&2
+  exit 1
+fi
+dir="${dir_override:-${HPC_DIR:-projects/$reponame}}"
+name="${name_override:-${HPC_NAME:-$reponame-$(date +%Y%m%d-%H%M%S)}}"
+timeout_dur="${HPC_TIMEOUT:-7d}"
+cmd=$(printf '%q ' "$@")
+
+echo "hpc: pushing $branch -> $remote" >&2
+git -C "$repo_root" push -u "$remote" "$branch"
+
+disp_dir="$dir"; [[ "$dir" == /* ]] || disp_dir="~/$dir"
+echo "hpc: syncing $reponame@$branch into $disp_dir on $host, launching '$name' (timeout $timeout_dur)" >&2
+
+# ssh does NOT preserve argv boundaries for a remote command: it joins every
+# argument after the hostname with a single space and hands that one string
+# to the remote shell to reparse. Passing dir/branch/name/cmd/timeout as
+# separate argv elements (even individually double-quoted *locally*) would
+# therefore get re-split on whitespace remotely -- silently truncating
+# anything in $cmd after its first word. Fix: pre-quote each piece with %q
+# ourselves and hand ssh a single already-remote-shell-safe string.
+remote_argv=$(printf '%q %q %q %q %q' "$dir" "$branch" "$name" "$cmd" "$timeout_dur")
+ssh "$host" "bash -s -- $remote_argv" <<'REMOTE'
+set -euo pipefail
+dir=$1; branch=$2; name=$3; cmd=$4; timeout_dur=$5
+case "$dir" in
+  /*) target="$dir" ;;
+  *) target="$HOME/$dir" ;;
+esac
+
+runs="$HOME/.cache/hpc-runs"
+mkdir -p "$runs"
+pidfile="$runs/$name.pid"; logfile="$runs/$name.log"; exitfile="$runs/$name.exit"
+
+if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+  echo "hpc: run '$name' already in progress (pid $(cat "$pidfile")) -- tail $logfile, or pick a different --name." >&2
+  exit 1
+fi
+
+cd "$target" 2>/dev/null || {
+  echo "hpc: $target does not exist on $(hostname) -- clone the repo there first (git clone <origin-url> $target)." >&2
+  exit 1
+}
+
+git fetch origin
+
+if [[ -n $(git status --porcelain --untracked-files=no) ]]; then
+  echo "hpc: working copy at $target has uncommitted changes to tracked files -- refusing to reset. Inspect manually." >&2
+  exit 1
+fi
+
+git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
+git reset --hard "origin/$branch"
+
+rm -f "$exitfile"
+runcmd="$cmd"
+if [[ -f "$target/.env" ]]; then
+  runcmd="set -a && . $(printf %q "$target/.env") && set +a && $runcmd"
+fi
+nohup setsid bash -c "timeout $timeout_dur $runcmd; echo \$? > '$exitfile'" \
+  < /dev/null > "$logfile" 2>&1 &
+echo $! > "$pidfile"
+disown
+echo "hpc: launched (pid $(cat "$pidfile"))."
+REMOTE
+
+echo "hpc: log    : ssh $host tail -f ~/.cache/hpc-runs/$name.log"
+echo "hpc: status : ssh $host \"kill -0 \\\$(cat ~/.cache/hpc-runs/$name.pid) 2>/dev/null && echo running || echo done\""
+echo "hpc: squeue : ssh $host squeue -u \$USER"

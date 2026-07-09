@@ -1,12 +1,33 @@
-.PHONY: link clean check
+.PHONY: link clean check _link-codex-skills _clean-codex-skills
 
 link:
-	stow --target="$(HOME)" --no-folding .
+	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
+	$(MAKE) _link-codex-skills
+
+_link-codex-skills:
+	@mkdir -p "$(HOME)/.config/codex/skills"
+	@for d in "$(CURDIR)"/.agents/skills/*; do \
+		name="$$(basename "$$d")"; \
+		target="$(HOME)/.config/codex/skills/$$name"; \
+		rm -rf "$$target"; \
+		ln -s "../../../dotfiles/.agents/skills/$$name" "$$target"; \
+	done
 
 clean:
+	@$(MAKE) _clean-codex-skills
 	@DOTFILES="$(CURDIR)" find "$(HOME)" \
 		-path "$(HOME)/.local/share/containers" -prune -o \
 		-xtype l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) printf "%s\n" "$$link"; rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +
+
+_clean-codex-skills:
+	@for d in "$(CURDIR)"/.agents/skills/*; do \
+		name="$$(basename "$$d")"; \
+		target="$(HOME)/.config/codex/skills/$$name"; \
+		if [ -L "$$target" ]; then \
+			printf "%s\n" "$$target"; \
+			rm "$$target"; \
+		fi; \
+	done
 
 check:
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"

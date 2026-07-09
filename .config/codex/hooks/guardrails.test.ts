@@ -42,6 +42,13 @@ test("git commit requires dev-git skill", () => {
   expect(rails.evaluate(event, ["dev-git"]).decision).toBe("allow");
 });
 
+test("codex missing-skill message points to non-shell read", () => {
+  const rails = createGuardrails("codex");
+  const r = rails.evaluate({ tool: "bash", command: "git commit -m ok", cwd });
+  expect(r.skill).toBe("dev-git");
+  expect(r.reason).toContain("non-shell read/file tool");
+});
+
 test("root markdown write requires project-docs skill", () => {
   const rails = createGuardrails("opencode");
   const r = rails.evaluate({ tool: "write", paths: ["PLAN.md"], cwd });
