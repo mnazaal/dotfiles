@@ -45,6 +45,60 @@ Agents must not:
 If the user explicitly asks to edit `.tex`, remind them of the guardrail and
 offer a patch-like proposal in prose or a non-`.tex` planning file instead.
 
+To create a `.tex` skeleton without authoring it, ship a scaffold SCRIPT
+(`scaffold.sh`) the human runs — it writes structural stubs only (documentclass,
+section headings, commented `\input` hooks; no prose/claims). The agent never
+writes `.tex`, even generated ones; the human's execution does. (Some harnesses
+enforce this at the permission layer.)
+
+## Core Rule: a synced/portable manuscript directory IS the artifact
+
+When `manuscript/` is git-synced to an external host (Overleaf) or must be
+portable (arXiv, coauthor handoff), its contents *become* a standalone project
+elsewhere — the directory boundary is an interface, not just a folder. Then:
+
+- **Compile-standalone, zero reachout.** Everything needed to compile the PDF
+  lives inside and imports nothing from the parent repo. A file that cannot run
+  in the target context — a generator that reads `results/` or imports the
+  project package, a Makefile pointing at experiment data — does not belong
+  inside the synced boundary.
+- **Depend on outputs, not producers.** The generated figures/tables are the
+  interface between the reproducibility pipeline and the paper. Keep the
+  *producers* (scripts that read results / import the package) in the code layer
+  (`scripts/`, `src/`) OUTSIDE the boundary; they write INTO
+  `manuscript/figures/generated` and `tables/generated`. Only committed
+  artifacts cross the line.
+- **Commit the generated artifacts.** They are part of the deliverable and the
+  host cannot regenerate them — commit `figures/generated/*` and
+  `tables/generated/*`; never gitignore-then-`git add -f`.
+- **Planning stays outside.** The claims/evidence ledger and scaffold/bootstrap
+  scripts are not publishable artifacts — keep them in the project's planning
+  area (`notes/`) and tooling (`scripts/`), referenced from the manuscript, not
+  inside the synced boundary.
+
+The test: could a coauthor download this directory, or arXiv unpack it, and have
+it just work?
+
+## Syncing to a hosted git bridge (Overleaf)
+
+When the synced directory is a monorepo subdir pushed to a hosted LaTeX git
+bridge (Overleaf is the common case), the bridge is locked down — plan for it:
+
+- Its default branch is usually `main` (not `master`); it typically FORBIDS
+  `--force` and pushing new branches, and requires a linear history built on its
+  initial commit.
+- `git subtree push` from a PRE-EXISTING subdir never fast-forwards (its split
+  doesn't share the host's first commit) and force is rejected. Fix: a one-time
+  `subtree add` re-seed — drop the prefix (`git rm -r <dir> && commit`, THEN
+  `rm -rf <dir>`: `git rm` leaves untracked/ignored files like `build/`, so the
+  dir survives on disk and `subtree add` refuses with "prefix already exists"),
+  `git subtree add --prefix=<dir> <remote> main`, restore your content, then push.
+- Recurring: `git subtree pull` / `push` (wrap as `make <host>-pull` / `-push`).
+  Two rules: **pull before push**, and **commit before push** (subtree only sends
+  committed state). Sync from the integration branch.
+- The committed generated artifacts (Core Rule) ride along automatically — no
+  force-add.
+
 ## Project Layout Convention
 
 For research projects with code, experiments, notes, and results, prefer a
@@ -71,10 +125,10 @@ project/
       07_limitations.tex
       08_conclusion.tex
     figures/
-      source/
-      generated/
+      source/         # generators live here ONLY if the manuscript is not externally synced
+      generated/      # committed artifacts (the interface)
     tables/
-      generated/
+      generated/      # committed artifacts
     macros.tex
     notation.tex
     latexmkrc
@@ -82,7 +136,11 @@ project/
 ```
 
 `manuscript/` is the publication-facing layer. It should consume outputs from
-code, experiments, notes, and bibliography tooling, not replace them.
+code, experiments, notes, and bibliography tooling, not replace them. When it is
+externally synced or must be portable, apply the Core Rule above: generators move
+to the code layer (`scripts/`), generated artifacts are committed, and the claims
+ledger lives in the planning area (`notes/`) — so `manuscript/` holds only the
+compile-standalone artifact.
 
 Do not put the full paper under `docs/` unless the project already uses `docs/`
 as its publication area. `docs/` should usually remain for technical/internal
@@ -101,16 +159,22 @@ Recommended components:
 - `sections/`: human-authored paper sections
 - `macros.tex`: commands/macros
 - `notation.tex`: notation table or shared symbols
-- `figures/source/`: figure-generation scripts or figure source assets
-- `figures/generated/`: deterministic generated figure outputs
-- `tables/generated/`: deterministic generated table outputs
-- `claims.md`: claim/evidence/reviewer-objection ledger
+- `figures/source/`: figure source assets (generators move to the code layer when the manuscript is synced — see Core Rule)
+- `figures/generated/`: deterministic generated figure outputs (committed when synced)
+- `tables/generated/`: deterministic generated table outputs (committed when synced)
 - `latexmkrc`: build settings
-- `Makefile`: paper build commands
+- `Makefile`: paper build commands (pure `latexmk` when synced — no pipeline reachout)
 
-Keep generated files clearly separated from human-authored files.
+The claims/evidence ledger is NOT listed here: it is planning, not publishable
+source, so it lives in the project planning area (`notes/`), not a synced
+`manuscript/` — see the Claims and Evidence Ledger section. Keep generated files
+clearly separated from human-authored files.
 
 ## Claims and Evidence Ledger
+
+Keep this ledger in the project's planning area (e.g. `notes/`), not inside a
+synced `manuscript/` — it is planning, not publishable source (Core Rule).
+Reference it from the manuscript.
 
 ```markdown
 # Core claim
@@ -138,9 +202,16 @@ Rules:
 - Do not hand-edit generated figures/tables.
 - Generated tables may be included via `\input{tables/generated/name.tex}`.
 - Generated plots should normally be PDF, or SVG converted to PDF.
+- Make generated artifacts BYTE-deterministic (strip embedded timestamps, e.g.
+  matplotlib `savefig(..., metadata={"CreationDate": None})`) so unchanged inputs
+  produce identical bytes and committed artifacts do not churn VC. Format (PDF vs
+  SVG) matters less than determinism; use what the build ingests (PDF for pdflatex).
 - Scripts should be runnable from the project root.
 - Generated outputs should record or imply the experiment/result source.
 - If results are large, keep only compact paper artifacts in `manuscript/`.
+- When the manuscript is externally synced, the generators live in the code layer
+  OUTSIDE it and write into `manuscript/*/generated`; commit those generated
+  artifacts (the host cannot reproduce them) — see Core Rule.
 
 ## Build Commands
 
@@ -275,6 +346,9 @@ When setting up a project manuscript workflow:
 7. Create or recommend a claims/evidence ledger.
 8. Preserve the `.tex` no-edit boundary.
 9. Report the proposed layout and next actions before implementation.
+10. If the manuscript will be git-synced (Overleaf) or shipped (arXiv), enforce
+    the Core Rule: generators outside the synced boundary, generated artifacts
+    committed, claims ledger in the planning area.
 
 ## Portability Notes
 
