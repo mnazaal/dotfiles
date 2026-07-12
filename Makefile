@@ -1,4 +1,4 @@
-.PHONY: link clean check _link-codex-skills _clean-codex-skills
+.PHONY: link clean check check-agent-role-sync _link-codex-skills _clean-codex-skills
 
 link:
 	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
@@ -29,7 +29,7 @@ _clean-codex-skills:
 		fi; \
 	done
 
-check:
+check: check-agent-role-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -57,3 +57,28 @@ check:
 	else \
 		echo "warn: shfmt not installed; skipping shfmt"; \
 	fi
+
+check-agent-role-sync:
+	@set -eu; \
+	ref_body=$$(mktemp); target_body=$$(mktemp); \
+	trap 'rm -f "$$ref_body" "$$target_body"' EXIT; \
+	body() { awk '/^---$$/ { delimiters++; next } delimiters >= 2 { print }' "$$1"; }; \
+	status=0; \
+	for role in brainstormer build docs-verify eval-review idea-critic plan research-strategist second-brain writer-critic; do \
+		reference="$(CURDIR)/.claude/agents/$$role.md"; \
+		body "$$reference" > "$$ref_body"; \
+		for target in "$(CURDIR)/.config/opencode/agents/$$role.md"; do \
+			body "$$target" > "$$target_body"; \
+			if ! cmp -s "$$ref_body" "$$target_body"; then \
+				printf 'agent role body drift: %s (%s)\n' "$$role" "$${target#$(CURDIR)/}" >&2; status=1; \
+			fi; \
+		done; \
+		if [ "$$role" != build ] && [ "$$role" != plan ]; then \
+			target="$(CURDIR)/.config/pi/agent/agents/$$role.md"; \
+			body "$$target" > "$$target_body"; \
+			if ! cmp -s "$$ref_body" "$$target_body"; then \
+				printf 'agent role body drift: %s (%s)\n' "$$role" "$${target#$(CURDIR)/}" >&2; status=1; \
+			fi; \
+		fi; \
+	done; \
+	exit "$$status"
