@@ -29,6 +29,9 @@ Every delegated task states:
 3. Whether the subagent may edit files. Default: read-only.
 4. Required output shape: findings, file:line evidence, risks, and next action.
 5. Verification expected, if any.
+6. Naming constraint: use descriptive task names; no opaque shorthand such as
+   `P0/P1`, `T1/T2`, or `H1/H2` unless defined by the parent prompt. Subagent
+   findings must remain understandable when copied without prior chat context.
 
 ## Coordination Rules
 

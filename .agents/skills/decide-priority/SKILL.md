@@ -10,6 +10,9 @@ description: Use to choose next action under uncertainty: prioritize tasks, purs
 - Use explicit criteria: payoff, risk, cost, reversibility, evidence, fit.
 - Prefer cheapest evidence-gathering step when uncertain.
 - State revisit condition for parked work.
+- Do not rename options to opaque labels. Keep the user's names or use short
+  descriptive names. If scoring a table, row labels must be meaningful on their
+  own.
 
 ## Workflow
 

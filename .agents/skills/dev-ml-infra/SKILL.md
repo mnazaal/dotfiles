@@ -77,7 +77,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 
 ## Config (hydra-zen)
 
-- Configs are code: `builds()`/`just()`/`make_config()` live next to the components they configure; no YAML config trees — except a launcher/cluster-resource config, the sanctioned exception (`dev-hpc`).
+- Configs are code: `builds()`/`just()`/`make_config()` live next to the components they configure; no YAML config trees at all — launchers included. YAML isn't IDE-navigable (no jump-to-definition or type-checking on config params), which is the point of config-as-code.
 - `instantiate` at the entry point only; library code never imports hydra-zen.
 - Every config field is typed and has a default a smoke run can use.
 - CLI entry: expose a script's `main(**params)` (defaults = the run defaults) via `zen(main).hydra_main(...)` over `builds(main, populate_full_signature=True)`; params become `key=value` overrides, lists as `xs=[a,b,c]`. Wrap this in one shared helper so each script's `__main__` stays a one-liner.

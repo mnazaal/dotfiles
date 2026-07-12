@@ -22,7 +22,9 @@ session whose state lives only in chat/scratchpad.
    inline the key numbers so it survives even if the artifacts are lost.
 4. Update cross-session memory (state, env quirks, what is now superseded).
 5. Commit the durable changes (`dev-git`).
-6. Name the single **entry-point**: which doc to read first next session.
+6. Name the single **entry-point** and next action in words: which doc to read
+   first next session, and what concrete action follows. Do not use chat-local
+   shorthand.
 
 ## Resume (reverse direction)
 
@@ -42,6 +44,8 @@ No handoff artifact / generic "catch me up" → `research-session` Session Start
 
 - Load-bearing results left only in session-temporary storage (scratchpad, chat).
 - A handoff that lists what was done but not what is next or what is a dead end.
+- Handoff entries that rely on invented labels from the chat, e.g. “continue
+  with P1/T2”, instead of restating the concrete next action.
 - Re-narrating the same content across LOG + PLAN + memory — each has one role
   (past / next / cross-session state); point between them, do not duplicate.
 

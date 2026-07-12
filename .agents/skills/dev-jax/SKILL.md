@@ -64,6 +64,8 @@ arr = arr.at[i].set(val)
 - Long/background command evidence belongs in `dev-verification`; for Python/JAX scripts that must be monitored live, use unbuffered output so redirected logs advance incrementally.
 - Module-level experiment drivers with no `if __name__ == "__main__":` guard — they re-run the whole experiment on import. Guard them so probes stay importable by other scripts.
 - Wrapping `jax.jit` around a function the caller already compiles — a NumPyro/BlackJAX model the sampler traces wholesale, or a helper called once — adds compile overhead with nothing to amortize. Jit stable, repeatedly-called heavy paths; leave already-traced and single-call code bare.
+- Swapping in a cheaper *algorithm* (coarser grid, mean-field / approximate inference) to speed a hot path before profiling it — the cost is usually loop-invariant **recomputation** (constant arrays rebuilt each step, `jnp` re-dispatched on tiny arrays inside a Python loop, an exact marginal recomputed when its inputs barely moved), not the algorithm. `cProfile` one representative step and hoist the invariants exactly first; that often recovers the speedup with no accuracy loss and shows whether the approximation is needed at all.
+- Assuming `vmap`/`jit` over a batch beats an eager per-item loop without timing it. Batching cuts dispatch count, but if the batched dimension's shape varies call-to-call (e.g. a deduplicated particle set of changing size) the program recompiles per shape — compile cost can exceed the dispatch it saved, and eager wins. Time both on the real, shape-varying workload before committing.
 
 ## Related Skills
 

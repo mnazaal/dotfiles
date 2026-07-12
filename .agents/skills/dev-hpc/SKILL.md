@@ -14,6 +14,7 @@ Get a project's experiments onto a SLURM cluster and results back, reproducibly,
 - Sync code to the cluster over git (push to a remote/bare repo the cluster pulls). rsync is for *results only*, one-way.
 - Pin cross-machine deps as git deps at an explicit commit (`tool.uv.sources.<pkg> = { git = "ssh://git@github.com/owner/repo.git", rev = "<sha>" }`), never an editable local path — a path dep can't resolve identically on the cluster. Use the `ssh://git@host/owner/repo.git` scheme; uv rejects the `git@host:owner/repo` shorthand ("relative URL without a base").
 - `.venv` is per-machine: `uv sync` on the cluster, never rsync it. Cluster-only extras (GPU wheels) install there.
+- Install on the cluster with `uv sync --frozen --extra <X>` (or `--locked`), not a bare `uv sync`: `--frozen` uses the committed lockfile verbatim instead of re-resolving. A bare `uv sync` against a stale/differently-resolved lock rewrites `uv.lock` on the cluster — diverging from the laptop, and (with a git-reset sync tool that refuses a dirty tree) blocking the next code sync until you `git checkout uv.lock`.
 - Extras installed via `uv sync --extra X` stick in `.venv`, but a later bare `uv run ...` (without repeating `--extra X`) auto-resyncs the env to the base dependency set first, silently pruning the extra back out. Either pass `--extra` on every `uv run`, or activate the venv and call `python` directly — that skips the resync.
 
 ## GPU Wheels
@@ -25,13 +26,14 @@ Get a project's experiments onto a SLURM cluster and results back, reproducibly,
 
 ## Submission (hydra + submitit)
 
-- Launch via `hydra-submitit-launcher`; each cluster/partition is a launcher config (`conf/hydra/launcher/<name>.yaml`) holding partition/gres/mem/timeout. This is the one place a small config file beats builds()-in-Python (`dev-ml-infra`).
+- Launch via `hydra-submitit-launcher`; each cluster/partition is a launcher config (partition/gres/mem/timeout) registered as hydra-zen code — a `SlurmQueueConf` in the config store, not YAML, to keep config IDE-navigable (`dev-ml-infra`). Guard the plugin import: `from hydra_plugins.hydra_submitit_launcher.config import SlurmQueueConf` fails at module load without the launcher installed, so wrap it `try/except ImportError` and register the launcher only when present — the config layer and local `--multirun` then load plugin-free; only `hydra/launcher=<name>` needs the extra.
 - `--multirun` is REQUIRED for the launcher to engage — even for a single job. Without it Hydra runs in-process locally.
 - submitit shells out to `sbatch` itself, so submission runs *from* the cluster; it can't launch from the laptop.
 - Pin each run's output dir under the rsync'd results dir, keyed on a known config name — `${hydra.job.name}` resolves to hydra-zen's wrapper module, not your script.
 - Any code the task function references must be reachable from the installed package, not a sibling script — `from other_script import fn` between two `experiments/*.py` files works locally (the script's own dir lands on `sys.path`) but submitit's remote worker unpickles the job in a different process/cwd, so it can't find `other_script` and dies with `ModuleNotFoundError`. Move shared logic into the package proper.
 - The local driver process blocks the shell until the submitted job(s) finish (it polls submitit for results) — background it (`&` + `disown`, `nohup ... &`, or tmux) rather than tying up the terminal. Once it's printed the submitted job ID(s), Ctrl-C only kills the local polling loop, not the Slurm job — submission already reached the scheduler.
 - That driver process also imports the task function's full module (jax included) on the *login node* before submitting, even for a GPU-launcher override — expect a harmless CUDA-init warning there (no GPU on the login node). Don't force `JAX_PLATFORMS=cpu` to silence it on a GPU job: `sbatch` inherits the submitting shell's environment by default, so that would also force the actual compute-node job onto CPU.
+- A precision/config flag set by a *runtime call* in your entry module (`jax.config.update("jax_enable_x64", True)`) can silently revert on the compute node: submitit's worker unpickles the job callable and may not re-run the entry module's top-level code (cloudpickle can serialize the callable by value), so the flag is never applied and the job runs float32 — invisible unless you assert dtype. Set it as an env var in the launcher `setup` (`setup: ["export JAX_ENABLE_X64=1"]`) so JAX reads it at import, independent of how the callable was serialized.
 
 ## Results
 

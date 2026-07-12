@@ -15,6 +15,7 @@ description: Use for test-first development: features, bug fixes, regression tes
 - Golden/snapshot first run is red because it writes the baseline — re-run to confirm, don't debug it as a failure.
 - Regenerate a snapshot deliberately when an input changes; review the diff, never blind-accept `--force-regen`.
 - Time a new test before assigning its speed marker — a property/fuzz-style check can look fast by design but run slow in practice (e.g. per-call retracing in a loop); don't guess.
+- Deselect the slow tier by default so the routine command is the fast gate: set `addopts = "-m 'not slow'"` in pyproject and run slow tests explicitly (`pytest -m slow`) or in CI. A default `pytest` that takes 20+ minutes gets skipped or killed mid-run — losing its evidence.
 - Write minimal code to pass; refactor only while green.
 - Keep I/O and external dependencies behind seams.
 - Do not batch tests ahead of implementation.

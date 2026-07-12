@@ -20,6 +20,7 @@ description: Use for Python code/projects: pyproject.toml, virtual environments,
 - Research code is a library others benchmark against and extend: every method *and baseline* implements the same small, deep interface; a method coupled to the harness is a structural smell. The entry-point/extension contract lives in `dev-ml-infra`.
 - For greenfield ML research repo layout, follow `dev-ml-infra`'s Research Project Layout.
 - When promoting/moving code that already has many existing importers (e.g. test-helper logic being promoted to a real package location), turn the origin module into a thin re-export shim (`from new.location import (names)` + matching `__all__`) rather than updating every call site. Same correctness, far smaller diff, zero risk of missing an importer.
+- Hand-editing `pyproject.toml` dependencies does NOT update the lockfile (only `uv add`/`uv remove` do) — run `uv lock` and commit the refreshed lock in the *same* change. A stale committed lock isn't merely out of date: the next `uv sync` on any other machine (CI, a teammate, the cluster) re-resolves it into a *different* lock, so environments silently diverge.
 
 ## Workflow
 
@@ -35,6 +36,7 @@ description: Use for Python code/projects: pyproject.toml, virtual environments,
 # Environment and deps (uv)
 uv venv && uv pip install -e ".[dev]"
 uv add <package>        # adds to pyproject.toml + lockfile
+uv lock                 # re-resolve after a MANUAL pyproject edit (uv add/remove do this for you)
 uv sync                 # restore from lockfile
 
 # Tests — pytest only; never python -m pytest or uv run pytest

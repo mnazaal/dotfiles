@@ -7,7 +7,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 
 ## Rules
 
-- Do not pipe a backgrounded command through `tail`/`head`; output buffers until exit, looks stuck, tempts a redundant watcher, and the reported exit code is the pipe's last stage (e.g. `tail`), not the real command — treat it as untrustworthy. Send full output to a file and read that.
+- Follow AGENTS.md “Shell Output Capture”: long/background verification writes full output and exit status to files; never rely on `cmd | tail`/`head` evidence.
 - For long/background jobs, redirect full output to a file and inspect the recorded exit status; add unbuffered output only when the command supports it and you need live log checks.
 - Evidence before claims.
 - No completion, fixed, passing, ready, reviewed, or verified claim without fresh verification evidence.
@@ -19,6 +19,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Do not trust delegated-agent reports without checking produced artifacts/diffs.
 - A failure trace ending in worker/plugin teardown (e.g. xdist `OSError: cannot send`, `PluggyTeardownRaisedWarning`) with no `FAILED` line is harness/infra flake, not a regression — rerun once plain before treating it as real.
 - Resource-shaped parallel-test failures (worker death, process/thread creation failures, near-zero worker CPU growth while memory is exhausted) are infrastructure evidence first, not code evidence; rerun with lower/no parallelism before debugging application code.
+- To certify a numerical result is *correct* (not merely stable), check it against an independently-derived reference that shares no code path with the implementation (textbook formula in numpy/scipy, autodiff vs. analytic, a second library, brute-force enumeration) — and write that reference before reading the code's own tests, so their assertions don't anchor it. A test that asserts the code's own output proves stability, not correctness.
 
 ## Gate
 
@@ -38,6 +39,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 | build works | configured build command exits zero |
 | bug fixed | original symptom or regression test now passes |
 | requirement met | checklist against requirement text, not only tests |
+| computation/port numerically correct | independent from-scratch reference (no shared code path) agrees to expected precision — not a golden snapshot of the code's own output |
 | experiment pipeline works | e2e smoke run through the real entry point on tiny synthetic data — loss drops, metrics/artifacts logged (`dev-ml-infra`); unit-green alone is insufficient |
 | agent completed | inspect changed files/artifacts, then verify independently |
 
@@ -49,6 +51,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Linter passing used as build/test evidence.
 - Code changed used as bug-fixed evidence.
 - Partial checks presented as full proof.
+- Golden-snapshot or self-referential test (reuses the code's own helpers/output) treated as correctness evidence — it guards regressions, it does not prove correctness.
 - Background watcher loops left running after the watched command exits (`pgrep -f "x"` self-matches its own argv and never terminates).
 
 ## Related Skills

@@ -16,6 +16,8 @@ Use when choosing or framing research work, not for writing the durable plan. If
 5. Route based on user choice or strongest evidence.
 
 Keep briefing under 20 lines. Skip missing state silently; do not invent continuity. Do not write notes unless user or host policy allows it.
+Do not assign persistent codes to threads or suggestions. If numbering a list,
+refer back by descriptive name, not by number alone.
 
 ```text
 Research Briefing — <date/focus>
@@ -23,8 +25,8 @@ Research Briefing — <date/focus>
 - Recent: <last useful artifact or none found>
 - Blocked/Stale: <items needing decision or none found>
 - Suggested:
-  1. <action> → <skill>
-  2. <action> → <skill>
+  1. <descriptive action> → <skill>
+  2. <descriptive action> → <skill>
   3. Open: what is on your mind?
 ```
 

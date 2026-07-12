@@ -259,6 +259,7 @@ export function createGuard(agent: string) {
   const dc = loadJson("dangerous-commands.json");
 
   const credentials: string[] = [...(sp.credentials ?? [])];
+  const protectedWriteGlobs: string[] = [...(sp.protected_write_globs ?? [])];
   const machinery: string[] = machineryOn(sp.machinery_enabled, agent) ? [...(sp.machinery ?? [])] : [];
   const segments = new Set<string>(sp.sensitive_segments ?? []);
 
@@ -279,6 +280,10 @@ export function createGuard(agent: string) {
     }
     if (hasProtectedSegment(path, operation)) return "protected";
     if (operation !== "read") {
+      const normalized = path.replace(/\\/g, "/");
+      for (const g of protectedWriteGlobs) {
+        if (globMatch(g, normalized)) return `protected write glob (${g})`;
+      }
       for (const s of machinery) {
         const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
         if (path === r || path.startsWith(r + "/")) return s;

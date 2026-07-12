@@ -24,6 +24,7 @@ CHECKS:
   - Zsh bootstrap and target files exist after linking
   - zsh startup syntax/smoke test
   - Kitty terminfo availability when TERM=xterm-kitty
+  - SSH multiplex socket parent exists
   - Git hooks path and delta pager availability
   - Neovim vim.pack availability when nvim is installed
   - Claude agent guard hooks are present and parse (they fail open if broken)
@@ -86,6 +87,29 @@ if [[ "${TERM:-}" == xterm-kitty ]]; then
 	else
 		warn "TERM=xterm-kitty but infocmp not installed"
 	fi
+fi
+
+if command -v ssh >/dev/null 2>&1; then
+	control_path=$(ssh -G git@github.com 2>/dev/null | awk 'tolower($1) == "controlpath" { print $2; exit }')
+	if [[ -n "$control_path" && "$control_path" != none ]]; then
+		case "$control_path" in
+			~/*) control_path="$HOME/${control_path#~/}" ;;
+			/*) ;;
+			*) control_path="$HOME/$control_path" ;;
+		esac
+		control_parent="${control_path%/*}"
+		if [[ "$control_parent" == "$control_path" ]]; then
+			ok "ssh ControlPath has no parent directory"
+		elif [[ -d "$control_parent" ]]; then
+			ok "ssh ControlPath parent exists: ${control_parent#$HOME/}"
+		else
+			fail "ssh ControlPath parent missing: $control_parent"
+		fi
+	else
+		warn "ssh ControlPath not configured"
+	fi
+else
+	warn "ssh not installed"
 fi
 
 if command -v zsh >/dev/null 2>&1; then

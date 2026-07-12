@@ -14,6 +14,8 @@
 
   "sensitive_segments": [".ssh", ".gnupg", ".gpg", ".aws", ".password-store"],
 
+  "protected_write_globs": ["**/*.tex"],
+
   "machinery_enabled": { "claude": true, "codex": true, "pi": true, "opencode": true },
 
   "machinery": [

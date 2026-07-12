@@ -6,7 +6,7 @@
 # submitted task finishes).
 #
 # Usage:
-#   hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--name <name>] <command...>
+#   hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] <command...>
 #
 # Assumes `<remote>` (default: origin) is a normal git remote this laptop
 # pushes to and the cluster independently fetches/checks out from -- either a
@@ -27,7 +27,7 @@
 # that ever needs interactive re-attach, and per-run files are a plainer unit
 # of compartmentalization than tmux sessions/windows once you're running many
 # experiments across many projects at once. Per run, under
-# ~/.cache/hpc-runs/<name>.{log,pid,exit} on the remote:
+# <project>/results/hpc/<name>.{log,pid,exit} on the remote by default:
 #   .log   combined stdout+stderr of <command>
 #   .pid   pid of the backgrounded process
 #   .exit  written once `timeout` returns (exit code) -- absence means still
@@ -73,6 +73,11 @@
 #                (default: projects/<local-repo-dirname>) -- override this
 #                whenever the local dir, remote dir, and git host repo name
 #                don't all match, since nothing here can infer that for you.
+#   --runs-dir <path> / HPC_RUNS_DIR   remote directory for this wrapper's
+#                .log/.pid/.exit files. Relative paths are resolved under the
+#                project working copy (default: results/hpc, so normal
+#                project-results rsync pulls these logs too); absolute paths
+#                and ~/ paths are resolved as remote user paths.
 #   --name <name> / HPC_NAME   run name, used for the log/pid/exit filenames
 #                (default: <reponame>-<timestamp>, unique per invocation so
 #                concurrent runs of the same repo never collide -- reuse a
@@ -90,6 +95,7 @@ allow_dirty=false
 host_override=""
 remote_override=""
 dir_override=""
+runs_dir_override=""
 name_override=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -100,6 +106,8 @@ while [[ $# -gt 0 ]]; do
     --remote=*) remote_override="${1#--remote=}"; shift ;;
     --dir) dir_override="$2"; shift 2 ;;
     --dir=*) dir_override="${1#--dir=}"; shift ;;
+    --runs-dir) runs_dir_override="$2"; shift 2 ;;
+    --runs-dir=*) runs_dir_override="${1#--runs-dir=}"; shift ;;
     --name) name_override="$2"; shift 2 ;;
     --name=*) name_override="${1#--name=}"; shift ;;
     --) shift; break ;;
@@ -107,7 +115,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 if [[ $# -eq 0 ]]; then
-  echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--name <name>] <command...>" >&2
+  echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] <command...>" >&2
   exit 1
 fi
 
@@ -135,6 +143,7 @@ if [[ -z "$host" ]]; then
   exit 1
 fi
 dir="${dir_override:-${HPC_DIR:-projects/$reponame}}"
+runs_dir="${runs_dir_override:-${HPC_RUNS_DIR:-results/hpc}}"
 name="${name_override:-${HPC_NAME:-$reponame-$(date +%Y%m%d-%H%M%S)}}"
 timeout_dur="${HPC_TIMEOUT:-7d}"
 cmd=$(printf '%q ' "$@")
@@ -152,16 +161,20 @@ echo "hpc: syncing $reponame@$branch into $disp_dir on $host, launching '$name' 
 # therefore get re-split on whitespace remotely -- silently truncating
 # anything in $cmd after its first word. Fix: pre-quote each piece with %q
 # ourselves and hand ssh a single already-remote-shell-safe string.
-remote_argv=$(printf '%q %q %q %q %q' "$dir" "$branch" "$name" "$cmd" "$timeout_dur")
+remote_argv=$(printf '%q %q %q %q %q %q' "$dir" "$branch" "$runs_dir" "$name" "$cmd" "$timeout_dur")
 ssh "$host" "bash -s -- $remote_argv" <<'REMOTE'
 set -euo pipefail
-dir=$1; branch=$2; name=$3; cmd=$4; timeout_dur=$5
+dir=$1; branch=$2; runs_dir=$3; name=$4; cmd=$5; timeout_dur=$6
 case "$dir" in
   /*) target="$dir" ;;
   *) target="$HOME/$dir" ;;
 esac
 
-runs="$HOME/.cache/hpc-runs"
+case "$runs_dir" in
+  /*) runs="$runs_dir" ;;
+  ~/*) runs="$HOME/${runs_dir#~/}" ;;
+  *) runs="$target/$runs_dir" ;;
+esac
 mkdir -p "$runs"
 pidfile="$runs/$name.pid"; logfile="$runs/$name.log"; exitfile="$runs/$name.exit"
 
@@ -197,6 +210,11 @@ disown
 echo "hpc: launched (pid $(cat "$pidfile"))."
 REMOTE
 
-echo "hpc: log    : ssh $host tail -f ~/.cache/hpc-runs/$name.log"
-echo "hpc: status : ssh $host \"kill -0 \\\$(cat ~/.cache/hpc-runs/$name.pid) 2>/dev/null && echo running || echo done\""
+case "$runs_dir" in
+  /*) display_runs="$runs_dir" ;;
+  ~/*) display_runs="$runs_dir" ;;
+  *) display_runs="$disp_dir/$runs_dir" ;;
+esac
+echo "hpc: log    : ssh $host tail -f $display_runs/$name.log"
+echo "hpc: status : ssh $host \"kill -0 \\\$(cat $display_runs/$name.pid) 2>/dev/null && echo running || echo done\""
 echo "hpc: squeue : ssh $host squeue -u \$USER"
