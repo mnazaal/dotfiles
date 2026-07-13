@@ -11,7 +11,7 @@ description: Use when committing work or choosing integration path: stage correc
 - Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included.
 - AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides Claude Code's built-in commit-heredoc template, which defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
 - `Human-audited: yes` trailer: add only when the user explicitly confirms they reviewed every staged hunk (e.g. after a `review-loop` pass — staged = audited); never self-certify. A commit mixing audited and unaudited hunks gets no trailer — split it. Line-level audit coverage is computed from blame by `git-audit-coverage`.
-- Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial.
+- Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial. Evidence must reflect the *committed* state: a test passing on a dirty tree can be masking an uncommitted fix the commit omits — confirm `git status` is clean when a test is your commit gate.
 - Do not amend a pushed commit without explicit user confirmation.
 - Verify status before integration decisions.
 - Inspect diff/scope and recent commits before recommending merge/PR.
@@ -49,7 +49,7 @@ also avoids the rejected-commit round-trip.
    EOF
    )"
    ```
-6. `git show --stat HEAD` — confirm the commit looks right.
+6. `git show --stat HEAD` — confirm the commit contains *every* file you intended, not just that it looks plausible. A failed pathspec in a multi-path `git add` (e.g. a path already `git rm`'d) aborts the whole add, silently leaving the rest unstaged — a mixed `rm`+`add` refactor can commit a half-migration (broken imports) this way.
 
 ## Phase 2: Integration
 

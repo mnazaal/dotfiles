@@ -36,7 +36,7 @@ ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
 
 # Claude Code can eagerly load large tool definitions when a custom base URL is
 # used unless tool search/deferral is explicitly enabled.
-ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-true}"
+ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
 
 export AGENT_BRANCH_PREFIX
 export ASTA_MCP_API_KEY

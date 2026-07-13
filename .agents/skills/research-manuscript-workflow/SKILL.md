@@ -70,7 +70,9 @@ elsewhere — the directory boundary is an interface, not just a folder. Then:
   artifacts cross the line.
 - **Commit the generated artifacts.** They are part of the deliverable and the
   host cannot regenerate them — commit `figures/generated/*` and
-  `tables/generated/*`; never gitignore-then-`git add -f`.
+  `tables/generated/*`; never gitignore-then-`git add -f`. Confirm no unanchored
+  parent rule already ignores them (`git check-ignore <artifact>`) — a repo-wide
+  `figures/`/`build/` rule catches `manuscript/figures/` too.
 - **Planning stays outside.** The claims/evidence ledger and scaffold/bootstrap
   scripts are not publishable artifacts — keep them in the project's planning
   area (`notes/`) and tooling (`scripts/`), referenced from the manuscript, not

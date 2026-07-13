@@ -46,6 +46,7 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Latent-component identifiability: in mixture / latent-cell models the likelihood is invariant to permuting component labels, so a single MCMC chain can lodge in one labeling and silently mis-split mass between components — a per-component recovery metric then fails on *some* seeds only. Break the symmetry with a component-distinguishing prior (probe its strength: too weak still switches), run multiple chains, or align labels post-hoc. To prove a recovery test can even *detect* non-identifiability, sweep a knob from the identifiable regime to a known non-identifiable one and assert the posterior reverts to the prior rather than "recovering" mass from nothing.
 - Diffusion: overfit one image, visualize noising, reconstruct `x0`, loss by timestep, epsilon/x0/v convention, sampler matches training objective.
 - Conditioning: shuffle/zero/permute conditions; behavior should degrade or change meaningfully.
+- Metric worsens with MORE budget/data/optimization: a monotone *degradation* as you add the resource that should help is rarely noise — suspect a scale/units mismatch in the decision rule (an arbitrary latent/utility scale combined with a fixed real-unit term; the fixed term goes negligible as the latent amplitude grows with data) or an acquisition pathology. Confirm with a natural experiment: a condition where the bug MUST vanish (e.g. an interior vs boundary optimum) and check it does.
 
 ## Related Skills
 

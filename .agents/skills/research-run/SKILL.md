@@ -28,6 +28,7 @@ Decide what a run result means and what to do next.
 - Is effect bigger than noise?
 - Is there a simpler baseline/control?
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
+- Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
 
 ## Verdicts
 
@@ -60,6 +61,7 @@ If the project keeps a `LOG.md` (`context-project-docs`), append the filled bloc
 - Reporting metric movement without variance/noise context.
 - Training longer instead of checking broken assumptions.
 - Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.
+- Reading a verdict off a sweep point where both arms are saturated (floored/ceilinged) — the comparison is uninformative; pick a regime where the axis still moves the metric before comparing.
 
 ## Related Skills
 
