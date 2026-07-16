@@ -11,7 +11,7 @@ adapter that wires its hook API to this core.
 - `skill-gates.json`        - tool events that require a skill loaded this session,
                               by `trigger` type: bash command+subcommands, a Write/Edit
                               path glob, WebFetch domain, or provider-neutral capability
-                              (e.g. `git commit` → `dev-git` + `dev-verification`)
+                              (e.g. `git commit` → `dev-git`)
 - `core.ts`                 - the one implementation of the guard logic; no deps,
                               loads the JSONs, exports `createGuardrails(agent).evaluate()`,
                               tool-event helpers, and `skillReceipts()`

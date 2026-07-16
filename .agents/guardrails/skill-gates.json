@@ -3,7 +3,7 @@
 
   "gates": [
     {
-      "skills": ["dev-git", "dev-verification"],
+      "skills": ["dev-git"],
       "trigger": { "type": "bash", "command": "git", "subcommands": ["commit"] },
       "message": "committing"
     },

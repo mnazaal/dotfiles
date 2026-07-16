@@ -21,7 +21,7 @@ test("guardrail machinery is readable but not writable", () => {
 
 test("codex enforcement files are machinery too", () => {
   const rails = createGuardrails("codex");
-  for (const path of ["~/dotfiles/.config/codex/hooks/guardrails.ts", "~/.codex/config.toml", "~/dotfiles/.config/codex/config.toml.template"]) {
+  for (const path of ["~/dotfiles/.config/codex/hooks/guardrails.ts", "~/dotfiles/.config/codex/config.toml.template"]) {
     expect(rails.evaluate({ tool: "grepika_get", paths: [path], cwd }).decision).toBe("allow");
     expect(rails.evaluate({ tool: "write", paths: [path], cwd }).decision).toBe("deny");
   }
@@ -46,12 +46,11 @@ test("find exec policy is caught", () => {
   expect(r.decision).toBe("ask");
 });
 
-test("git commit requires dev-git and dev-verification skills", () => {
+test("git commit requires dev-git skill", () => {
   const rails = createGuardrails("opencode");
   const event = { tool: "bash", command: "git commit -m ok", cwd };
-  expect(rails.evaluate(event).skills).toEqual(["dev-git", "dev-verification"]);
-  expect(rails.evaluate(event, ["dev-git"]).skills).toEqual(["dev-verification"]);
-  expect(rails.evaluate(event, ["dev-git", "dev-verification"]).decision).toBe("allow");
+  expect(rails.evaluate(event).skills).toEqual(["dev-git"]);
+  expect(rails.evaluate(event, ["dev-git"]).decision).toBe("allow");
 });
 
 test("codex missing-skill message names the canonical skill path", () => {

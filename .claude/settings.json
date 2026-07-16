@@ -5,9 +5,7 @@
       "Glob",
       "Grep",
       "Edit(~/projects/**)",
-      "Write(~/projects/**)",
       "Edit(/tmp/**)",
-      "Write(/tmp/**)",
       "WebSearch",
       "WebFetch",
       "mcp__asta-mcp",
@@ -44,14 +42,28 @@
       "Read(~/.password-store/**)",
       "Read(./.env)",
       "Read(./.env.*)",
+      "Read(~/.bashrc)",
+      "Read(~/.bash_profile)",
+      "Read(~/.profile)",
+      "Read(~/.zshrc)",
+      "Read(~/.zprofile)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.config/pi/agent/auth.json)",
+      "Read(~/.pi/agent/auth.json)",
+      "Read(~/.local/share/opencode/auth.json)",
       "Edit(~/.ssh/**)",
       "Edit(~/.aws/**)",
       "Edit(~/.gnupg/**)",
       "Edit(./.env)",
-      "Write(~/.ssh/**)",
-      "Write(~/.aws/**)",
-      "Write(~/.gnupg/**)",
-      "Write(./.env)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.profile)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.zprofile)",
+      "Edit(~/.claude/.credentials.json)",
+      "Edit(~/.config/pi/agent/auth.json)",
+      "Edit(~/.pi/agent/auth.json)",
+      "Edit(~/.local/share/opencode/auth.json)",
       "Bash(sudo:*)",
       "Bash(doas:*)",
       "Bash(pkexec:*)"
@@ -72,11 +84,11 @@
       "Bash(find:*)"
     ]
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch",
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Skill",
         "hooks": [
           {
             "type": "command",
