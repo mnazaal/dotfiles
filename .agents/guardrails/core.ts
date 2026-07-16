@@ -14,7 +14,7 @@
  *
  * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { homedir } from "node:os";
 
@@ -31,8 +31,9 @@ export type ToolEvent = {
   tool?: string;
   cwd?: string;
   operation?: Operation;
+  capabilities?: string[];
 };
-export type GuardrailDecision = Decision & { skill?: string };
+export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
 
 // --- shared JSON loading ----------------------------------------------------
 // Try the deployed copy first, then the ~/dotfiles stow source (works pre-deploy
@@ -393,13 +394,14 @@ export function createGuard(agent: string) {
 
 // --- skill gate ---------------------------------------------------------------
 
-export type SkillGateHit = { skill: string; message: string };
+export type SkillGateHit = { skills: string[]; message: string };
 
 // Gate triggers — one of three, discriminated by `trigger.type`.
 type BashTrigger = { type: "bash"; command: string; subcommands?: string[] };
 type WriteTrigger = { type: "write"; path_glob: string; at_root?: boolean; except?: string[] };
 type FetchTrigger = { type: "fetch"; domains: string[] };
-type Gate = { skill: string; message: string; trigger: BashTrigger | WriteTrigger | FetchTrigger };
+type CapabilityTrigger = { type: "capability"; all_of: string[] };
+type Gate = { skills: string[]; message: string; trigger: BashTrigger | WriteTrigger | FetchTrigger | CapabilityTrigger };
 
 /** Minimal glob → RegExp: `**` spans path separators, `*` does not. Anchored. */
 function globMatch(glob: string, s: string): boolean {
@@ -417,11 +419,13 @@ function globMatch(glob: string, s: string): boolean {
 
 /**
  * Skill gates (skill-gates.json): observable events that require an agent skill
- * to have been loaded this session. Three trigger types — `bash` (command +
- * optional subcommands), `write` (a Write/Edit path), `fetch` (a WebFetch URL).
+ * to have been loaded this session. Four trigger types — `bash` (command +
+ * optional subcommands), `write` (a Write/Edit path), `fetch` (a WebFetch URL),
+ * and `capability` (a provider-neutral event classification).
  * The core only matches events to gates; the ADAPTER supplies the session
- * evidence ("was the skill loaded?"), since that is host-specific — Claude scans
- * the transcript, pi/opencode watch tool payloads in-process via skillMentions().
+ * evidence ("was the skill loaded?"), since that is host-specific. Adapters
+ * record only concrete native Skill calls, canonical skill-file reads, or
+ * shell commands referencing a canonical skill path.
  *
  * Every partial/legacy input fails OPEN (returns no hit): a gate missing its
  * `trigger` is dropped from all buckets; a write/fetch event with no matching
@@ -438,8 +442,14 @@ export function createSkillGate() {
   const bashGates = gates.filter((g) => g.trigger?.type === "bash") as (Gate & { trigger: BashTrigger })[];
   const writeGates = gates.filter((g) => g.trigger?.type === "write") as (Gate & { trigger: WriteTrigger })[];
   const fetchGates = gates.filter((g) => g.trigger?.type === "fetch") as (Gate & { trigger: FetchTrigger })[];
+  const capabilityGates = gates.filter((g) => g.trigger?.type === "capability") as (Gate & { trigger: CapabilityTrigger })[];
 
-  function bashHit(command: string): SkillGateHit | undefined {
+  function hit(gate: Gate): SkillGateHit {
+    return { skills: [...new Set(gate.skills)], message: gate.message };
+  }
+
+  function bashHits(command: string): SkillGateHit[] {
+    const hits: SkillGateHit[] = [];
     for (const seg of splitSegments(command)) {
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
@@ -450,19 +460,20 @@ export function createSkillGate() {
           const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : NO_OPTS);
           if (!t.subcommands.includes(sub)) continue;
         }
-        return { skill: g.skill, message: g.message };
+        hits.push(hit(g));
       }
       if (SHELL_RUNNERS.has(parsed.command)) {
         const inner = dashCArg(parsed.args);
-        if (inner) { const hit = bashHit(inner); if (hit) return hit; }
+        if (inner) hits.push(...bashHits(inner));
       }
     }
-    return undefined;
+    return hits;
   }
 
-  function writeHit(path: string, cwd: string): SkillGateHit | undefined {
+  function writeHits(path: string, cwd: string): SkillGateHit[] {
     const abs = resolveAny(path, cwd);
     const base = basename(abs);
+    const hits: SkillGateHit[] = [];
     for (const g of writeGates) {
       const t = g.trigger;
       if (t.except?.includes(base)) continue;
@@ -470,21 +481,60 @@ export function createSkillGate() {
         if (dirname(abs) !== resolve(cwd)) continue;
         if (!globMatch(t.path_glob, base)) continue;
       } else if (!globMatch(t.path_glob, abs)) continue;
-      return { skill: g.skill, message: g.message };
+      hits.push(hit(g));
     }
-    return undefined;
+    return hits;
   }
 
-  function fetchHit(url: string): SkillGateHit | undefined {
+  function fetchHits(url: string): SkillGateHit[] {
     let host: string;
-    try { host = new URL(url).hostname.toLowerCase(); } catch { return undefined; }
+    try { host = new URL(url).hostname.toLowerCase(); } catch { return []; }
+    const hits: SkillGateHit[] = [];
     for (const g of fetchGates) {
       for (const d of g.trigger.domains) {
         const dd = d.toLowerCase();
-        if (host === dd || host.endsWith("." + dd)) return { skill: g.skill, message: g.message };
+        if (host === dd || host.endsWith("." + dd)) hits.push(hit(g));
       }
     }
-    return undefined;
+    return hits;
+  }
+
+  function isGitWorktree(cwd: string): boolean {
+    let current = resolve(cwd);
+    while (true) {
+      const dotGit = resolve(current, ".git");
+      try {
+        if (statSync(dotGit).isFile()) {
+          const target = readFileSync(dotGit, "utf8").trim();
+          if (/^gitdir:\s+.*[\\/]worktrees[\\/]/i.test(target)) return true;
+        }
+      } catch {}
+      const parent = dirname(current);
+      if (parent === current) return false;
+      current = parent;
+    }
+  }
+
+  function capabilitiesOf(input: ToolEvent): Set<string> {
+    const capabilities = new Set(input.capabilities ?? []);
+    const toolTokens = (input.tool ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    if (toolTokens.some((token) => ["paper", "papers", "citation", "citations", "author", "authors", "bibliography", "bibliographic"].includes(token))) {
+      capabilities.add("academic-source");
+    }
+    if (input.command) {
+      const commandTokens = pathTokenize(input.command).map((token) => basename(token).toLowerCase());
+      if (commandTokens.some((token) => ["pytest", "unittest", "vitest", "jest", "mocha", "rspec"].includes(token))) {
+        capabilities.add("test-command");
+      }
+    }
+    if (isGitWorktree(input.cwd ?? HOME)) capabilities.add("git-worktree");
+    return capabilities;
+  }
+
+  function capabilityHits(capabilities: Set<string>): SkillGateHit[] {
+    return capabilityGates
+      .filter((g) => g.trigger.all_of.every((capability) => capabilities.has(capability)))
+      .map(hit);
   }
 
   /**
@@ -494,21 +544,25 @@ export function createSkillGate() {
    * fetch gates. `tool` is the host's tool name (case-insensitive), so the
    * read-vs-write distinction is portable without hardcoding per-host names.
    */
-  function requiredSkill(input: { command?: string; tool?: string; path?: string; url?: string; cwd?: string; operation?: Operation }): SkillGateHit | undefined {
+  function requiredSkills(input: ToolEvent): SkillGateHit[] {
     const cwd = input.cwd || HOME;
-    if (input.command) { const h = bashHit(input.command); if (h) return h; }
+    const hits: SkillGateHit[] = [];
+    if (input.command) hits.push(...bashHits(input.command));
     const tool = (input.tool ?? "").toLowerCase();
     const writes = input.operation === "write" || tool.includes("write") || tool.includes("edit") || tool.includes("apply_patch");
-    if (input.path && writes) {
-      const h = writeHit(input.path, cwd); if (h) return h;
-    }
-    if (input.url && (tool === "" || tool.includes("fetch"))) {
-      const h = fetchHit(input.url); if (h) return h;
-    }
-    return undefined;
+    if (writes) for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) hits.push(...writeHits(path, cwd));
+    if (tool === "" || tool.includes("fetch")) for (const url of [...(input.url ? [input.url] : []), ...(input.urls ?? [])]) hits.push(...fetchHits(url));
+    hits.push(...capabilityHits(capabilitiesOf({ ...input, cwd })));
+    const seen = new Set<string>();
+    return hits.filter((candidate) => {
+      const key = `${candidate.skills.join("\u0000")}\u0000${candidate.message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
-  return { requiredSkill };
+  return { requiredSkills };
 }
 
 export function extractPatchPaths(patch: string): string[] {
@@ -572,11 +626,13 @@ export function createGuardrails(agent: string) {
   const guard = createGuard(agent);
   const skillGate = createSkillGate();
 
-  function missingSkillReason(hit: SkillGateHit): string {
+  function missingSkillReason(skills: string[], messages: string[]): string {
+    const listed = skills.join(", ");
+    const event = [...new Set(messages)].join("; ");
     if (agent === "codex") {
-      return `skill gate: ${hit.message}. Inspect ~/.agents/skills/${hit.skill}/SKILL.md with a non-shell read/file tool, then retry.`;
+      return `skill gate: ${event}. Read ~/.agents/skills/<name>/SKILL.md for the required skill(s): ${listed}, then retry.`;
     }
-    return `skill gate: ${hit.message}. Load skill ${hit.skill}, then retry.`;
+    return `skill gate: ${event}. Load required skill(s): ${listed}, then retry.`;
   }
 
   function evaluate(event: ToolEvent, loadedSkills?: Set<string> | string[]): GuardrailDecision {
@@ -589,13 +645,16 @@ export function createGuardrails(agent: string) {
     if (r.decision !== "allow") return r;
 
     const loaded = loadedSet(loadedSkills);
-    for (const path of paths.length ? paths : [undefined]) {
-      for (const url of urls.length ? urls : [undefined]) {
-        const hit = skillGate.requiredSkill({ command: event.command, tool: event.tool, path, url, cwd, operation });
-        if (hit && !loaded.has(hit.skill)) {
-          return { decision: "deny", reason: missingSkillReason(hit), skill: hit.skill };
-        }
-      }
+    const hits = skillGate.requiredSkills({ ...event, paths, urls, cwd, operation });
+    const missing = [...new Set(hits.flatMap((hit) => hit.skills).filter((skill) => !loaded.has(skill)))];
+    if (missing.length) {
+      const relevantMessages = hits.filter((hit) => hit.skills.some((skill) => missing.includes(skill))).map((hit) => hit.message);
+      return {
+        decision: "deny",
+        reason: missingSkillReason(missing, relevantMessages),
+        skill: missing[0],
+        skills: missing,
+      };
     }
     return { decision: "allow" };
   }
@@ -603,15 +662,38 @@ export function createGuardrails(agent: string) {
   return { evaluate, guard, skillGate };
 }
 
+/** Canonical skill-file path — the only pattern that yields a load receipt. */
+const SKILL_FILE_RE = /(?:^|\/)(?:\.agents|\.claude|\.opencode|\.config\/(?:codex|opencode))\/skills\/([a-z0-9][a-z0-9-]*)\/SKILL\.md$/i;
+
 /**
- * Scan free text (a stringified tool payload, or a session transcript) for
- * evidence that a skill was loaded: a SKILL.md path, or a `"skill": "<name>"`
- * tool-input pair. This scans prose/JSON, not commands, so the file's
- * no-regex rule (which is about quote-aware command parsing) doesn't apply.
+ * Return skill-load receipts from a concrete native Skill call, a read of a
+ * canonical configured skill path, or a shell command that references one
+ * (bash-only harnesses such as Codex load skills via shell reads; mirroring
+ * blockedCommand, a mention of the canonical path is the evidence — gates are
+ * workflow nudges, not a security boundary). It deliberately ignores arbitrary
+ * prose/payload strings that merely name a skill.
  */
-export function skillMentions(text: string): Set<string> {
-  const found = new Set<string>();
-  for (const m of text.matchAll(/skills\/([A-Za-z0-9_-]+)\/SKILL\.md/g)) found.add(m[1]);
-  for (const m of text.matchAll(/"skill"\s*:\s*"([A-Za-z0-9_-]+)"/g)) found.add(m[1]);
-  return found;
+export function skillReceipts(tool: string | undefined, input: Record<string, unknown> | undefined): Set<string> {
+  const receipts = new Set<string>();
+  const normalizedTool = (tool ?? "").toLowerCase();
+  const nativeSkillTool = normalizedTool === "skill" || normalizedTool.endsWith(".skill") || normalizedTool.endsWith("_skill");
+  if (nativeSkillTool) {
+    for (const key of ["name", "skill", "skillName"]) {
+      const value = input?.[key];
+      if (typeof value === "string" && /^[a-z0-9][a-z0-9-]*$/.test(value)) receipts.add(value);
+    }
+  }
+  const command = commandFromToolInput(tool, input);
+  if (command) {
+    for (const token of pathTokenize(command)) {
+      const match = token.replace(/\\/g, "/").match(SKILL_FILE_RE);
+      if (match) receipts.add(match[1]);
+    }
+  }
+  if (inferOperation(tool, {}) !== "read") return receipts;
+  for (const path of pathsFromToolInput(tool, input)) {
+    const match = path.replace(/\\/g, "/").match(SKILL_FILE_RE);
+    if (match) receipts.add(match[1]);
+  }
+  return receipts;
 }

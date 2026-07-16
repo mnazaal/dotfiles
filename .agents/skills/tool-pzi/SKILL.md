@@ -13,7 +13,9 @@ pzi is a local BibTeX library manager. Papers are added from DOIs, URLs, or PDFs
 - Do not assume config or library path. If unclear, run `pzi doctor` first.
 - `pzi add` is idempotent — re-adding an existing DOI will not duplicate it.
 - Use the CLI for one-off tasks. HTTP API (`pzi server`, port 8765) is for the browser extension; only use it if the server is already running.
-- All commands accept `--config PATH` and `--target NAME` to select a non-default library.
+- Confirm command support from the installed help when using non-default options such as `--config PATH` or `--target NAME`.
+- Before mutating a library (`add`, `update`, `tag`, `fix`, `delete`, promote), confirm the target library/config and summarize the intended mutation; proceed only with user authorization.
+- Boundary: use pzi for bibliographic metadata, citekeys, tags, and BibTeX export. Use `tool-cementic` for full-text semantic retrieval; combine them only when both are requested.
 
 ## Workflow
 
@@ -43,7 +45,7 @@ pzi export                         # BibTeX to stdout
 pzi export --format json | jq .
 ```
 
-**Validate citations (read-only, never writes):**
+**Validate citations (does not modify the library; writes the requested report file):**
 ```bash
 pzi check --strict --report audit.json
 ```
@@ -67,4 +69,5 @@ pzi delete smith2024graph
 
 - `research-protocol` before citing library entries in academic work.
 - `research-lit-search` for discovering new papers to capture.
+- `tool-cementic` for full-text semantic search over local papers.
 - `context-org` when saving exports as Org notes.

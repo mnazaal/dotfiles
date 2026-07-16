@@ -13,15 +13,20 @@ session whose state lives only in chat/scratchpad.
 
 ## Workflow
 
-1. LOG.md — append a session-summary entry: what was done, the verdicts, and an
+1. If the project uses the canonical `context-project-docs` layout, update
+   `LOG.md` by prepending a session-summary entry in canonical LOG order: what was done, the verdicts, and an
    explicit **what NOT to re-pursue** (dead ends, pre-empted directions). Shape
-   per `context-project-docs` / `research-run`.
-2. PLAN.md — update status + the next-session decisions/actions.
+   per `context-project-docs` / `research-run`. Otherwise ask for the approved
+   durable handoff location.
+2. If present and governed by the project-doc policy, update `PLAN.md` status +
+   the next-session decisions/actions.
 3. Persist ephemeral state: move scratchpad scripts/results the next session
    needs into the repo (or durable store). Make the handoff **self-contained** —
    inline the key numbers so it survives even if the artifacts are lost.
-4. Update cross-session memory (state, env quirks, what is now superseded).
-5. Commit the durable changes (`dev-git`).
+4. Record state, env quirks, and what is now superseded in the handoff block;
+   do not rely on an undefined external memory surface.
+5. Offer to commit the durable changes (`dev-git`); commit only with explicit
+   user authorization.
 6. Name the single **entry-point** and next action in words: which doc to read
    first next session, and what concrete action follows. Do not use chat-local
    shorthand.
@@ -31,9 +36,9 @@ session whose state lives only in chat/scratchpad.
 Trigger: "continue from where we left off", "resume this project", "pick up".
 Read what this skill writes BEFORE acting:
 
-1. LOG.md newest entry — a SESSION HANDOFF block is the entry point (arc,
+1. `LOG.md` first entry — a SESSION HANDOFF block is the entry point (arc,
    what-NOT-to-re-pursue, next actions); else read the newest `research-run` blocks.
-2. PLAN.md status + next actions; cross-session memory (env quirks, superseded).
+2. PLAN.md status + next actions; handoff-recorded env quirks and superseded state.
 3. Verify live state first: `git branch --show-current` + uncommitted/unmerged
    work, and any experiments still running (cluster jobs, background tasks).
 4. Confirm the next action with the user, then route.

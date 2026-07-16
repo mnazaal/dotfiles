@@ -9,25 +9,28 @@ cementic watches directories, extracts/chunks/embeds documents (PDF/Markdown/tex
 
 ## Rules
 
-- `cementic` may only be on `PATH` inside the project's dev checkout (e.g. an editable install activated via direnv/venv when `cd`'d into the source tree) — if `command -v cementic` fails, try `cd`-ing into the cementic project directory before concluding it isn't installed.
-- On a genuinely fresh Postgres (no schema yet), `status`/`search` fail with `relation "..." does not exist` — this is expected, not a bug. Table creation (`create_tables()`) only happens inside `cementic start`'s worker paths (`pipeline_worker.py`/`source_watcher.py`), never in read-only commands. Run `cementic start <any-directory>` once first to bootstrap the schema.
-- Postgres must be reachable before most commands work. If you have working host container-engine access, start it directly — `podman start cementic-postgres` (or `docker start`) — rather than `compose up`, which can stall if the port's already bound and it mistakes an auth failure for "still starting."
+- If `command -v cementic` fails, use the configured checkout/activation path if one is known; otherwise ask the user for the cementic checkout instead of searching arbitrary directories.
+- On a genuinely fresh Postgres (no schema yet), `status`/`search` fail with `relation "..." does not exist` — this is expected, not a bug. Table creation (`create_tables()`) only happens inside `cementic start`'s worker paths (`pipeline_worker.py`/`source_watcher.py`), never in read-only commands. Use `cementic start` for bootstrap only after the user chooses the directory and collection to watch/index.
+- Postgres must be reachable before most commands work. If the named container already exists and you have host container-engine access, start it directly — `podman start cementic-postgres` (or `docker start`). Use `docker/podman compose up` only to create the service when the container/service is absent.
 - If you can't reach Postgres *and* can't start it yourself — e.g. you're running in a container/sandbox that doesn't have access to the host's podman/systemd — do not try to work around it (nested container tooling inside a sandbox is often broken in ways that are hard to diagnose from inside). Instead, ask the user to check whether it's already running as a persistent service (`systemctl --user status cementic-postgres`) or to start it themselves from a normal host shell. Network access to an already-running Postgres typically works fine even when the container engine itself doesn't (e.g. a sandbox that shares the host network namespace but not `/run/user`) — so DB-dependent commands (`search`, `start`, `collection *`) work once Postgres is up; only the container/service lifecycle step may be blocked. No-DB commands (`chunk`, `embedding status`, `config show/init/path`) are unaffected either way.
-- Postgres credentials are fixed into the container at creation time, not read fresh from config — an existing container's actual password can differ from the `cementic`/`cementic` compose defaults (e.g. if it was created manually or predates a config change). If commands fail with "password authentication failed," check what the container was actually created with (`podman inspect cementic-postgres --format '{{.Config.Env}}'`) rather than assuming the default, and point `CEMENTIC_DB_URL`/`CEMENTIC_DB_PASSWORD` at that.
+- Postgres credentials are fixed into the container at creation time, not read fresh from config — an existing container's actual password can differ from the `cementic`/`cementic` compose defaults (e.g. if it was created manually or predates a config change). If commands fail with "password authentication failed," route credential handling through `dev-security`; inspect only redacted environment/config output and do not print passwords into chat or logs.
 - Config precedence: defaults < config file < `CEMENTIC_*` env vars < CLI flags. File resolution: `$CEMENTIC_CONFIG` > `./cementic.toml` > `~/.config/cementic/config.toml`.
 - `search` only queries a collection's **active** revision — a brand-new collection has none until `collection promote`.
 - `collection promote` blocks if the ready revision has any failed docs/chunks; `-f/--force` overrides.
 - `stop` only stops the source-watcher/pipeline-worker/embedding server — it does not manage Postgres.
 - Use `--json` on `status` / `config show` for parseable output.
 - `extract | chunk | embed` piped together is the no-database debug path for inspecting what would be stored.
+- Boundary: use cementic for full-text semantic retrieval/indexing. Use `tool-pzi` for BibTeX metadata, citekeys, and library maintenance; combine them only when both full text and citation metadata are requested.
 
 ## Workflow
 
 **First-time setup:**
 ```bash
 systemctl --user status cementic-postgres   # check if it's already running as a service
-# if not, and you have host container-engine access:
-podman start cementic-postgres     # or: docker/podman compose up -d
+# if the named container exists and you have host container-engine access:
+podman start cementic-postgres
+# if no service/container exists yet, create it from the cementic checkout:
+docker/podman compose up -d
 cementic config init               # writes ~/.config/cementic/config.toml
 cementic config show               # verify effective config (merged, redacted)
 ```
@@ -75,3 +78,5 @@ cementic stop --force
 ## Related Skills
 
 - `dev-python` for working on cementic's own source, tests, and packaging (as distinct from using the CLI).
+- `tool-pzi` for bibliographic metadata/citekeys rather than full-text search.
+- `dev-security` for database credentials or sensitive indexed content.

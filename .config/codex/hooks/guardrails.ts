@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { createGuardrails, skillMentions, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
+import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
 
 type HookInput = {
   session_id?: string;
@@ -82,7 +82,7 @@ async function main() {
   const input = readStdin();
   const sessionId = input.session_id ?? "unknown";
   const loadedSkills = loadSkillState(sessionId);
-  for (const s of skillMentions(JSON.stringify(input))) loadedSkills.add(s);
+  for (const s of skillReceipts(input.tool_name, input.tool_input)) loadedSkills.add(s);
   saveSkillState(sessionId, loadedSkills);
 
   const rails = createGuardrails("codex");

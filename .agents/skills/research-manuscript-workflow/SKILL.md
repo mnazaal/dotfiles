@@ -7,9 +7,8 @@ description: Use for ML/scientific paper writing workflows: LaTeX manuscript dir
 
 ## Purpose
 
-Use for ML/scientific paper writing workflows: LaTeX manuscript directories,
-paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready
-preparation, and agent-safe manuscript collaboration.
+Set the safety and portability boundaries for ML/scientific manuscript work.
+For citation or related-work content, load `research-protocol` first.
 
 ## When to Use
 
@@ -44,6 +43,8 @@ Agents must not:
 
 If the user explicitly asks to edit `.tex`, remind them of the guardrail and
 offer a patch-like proposal in prose or a non-`.tex` planning file instead.
+Only a project-specific policy set by the user may override this, and it must
+name the permitted `.tex` paths and review/verification process.
 
 To create a `.tex` skeleton without authoring it, ship a scaffold SCRIPT
 (`scaffold.sh`) the human runs — it writes structural stubs only (documentclass,
@@ -83,6 +84,9 @@ it just work?
 
 ## Syncing to a hosted git bridge (Overleaf)
 
+This is optional, provider-specific troubleshooting. Verify the current provider
+behavior and repository state before any destructive recovery path.
+
 When the synced directory is a monorepo subdir pushed to a hosted LaTeX git
 bridge (Overleaf is the common case), the bridge is locked down — plan for it:
 
@@ -97,9 +101,18 @@ bridge (Overleaf is the common case), the bridge is locked down — plan for it:
   `git subtree add --prefix=<dir> <remote> main`, restore your content, then push.
 - Recurring: `git subtree pull` / `push` (wrap as `make <host>-pull` / `-push`).
   Two rules: **pull before push**, and **commit before push** (subtree only sends
-  committed state). Sync from the integration branch.
+  committed state). Sync from the integration branch (usually `main`) — the sync
+  boundary is the `--prefix` **subdir**, NOT a branch, so keep no dedicated
+  manuscript/host branch; any seed / re-seed branch is one-time throwaway
+  scaffolding, deleted once the re-seed lands (a long-lived one is pure bookkeeping).
 - The committed generated artifacts (Core Rule) ride along automatically — no
   force-add.
+- **Scope check (external-sync safety).** Only the `--prefix`'d subdir crosses to
+  the host. After a push, inspect the actual remote tree (`git ls-tree <host>/main`)
+  and confirm ZERO parent-repo paths (`src/`, tests, lockfiles) — `--prefix=<dir>`
+  on every push/pull is the boundary; the sole leak vector is a bare `git push
+  <host>` of the whole repo (which the bridge shape rejects anyway). Verify the
+  tree, don't assume it.
 
 ## Project Layout Convention
 
@@ -174,22 +187,22 @@ clearly separated from human-authored files.
 
 ## Claims and Evidence Ledger
 
-Keep this ledger in the project's planning area (e.g. `notes/`), not inside a
-synced `manuscript/` — it is planning, not publishable source (Core Rule).
-Reference it from the manuscript.
+Keep this ledger in the project's planning area (e.g. an HTML working note in
+`notes/` per global policy), not inside a synced `manuscript/` — it is planning,
+not publishable source (Core Rule). Reference it from the manuscript.
 
-```markdown
-# Core claim
+```html
+<h1>Core claim</h1>
 
-## Exact wording
-## Evidence
-## Required experiments
-## Figure/table support
-## Known weaknesses
-## Reviewer objections
-## Status
+<h2>Exact wording</h2>
+<h2>Evidence</h2>
+<h2>Required experiments</h2>
+<h2>Figure/table support</h2>
+<h2>Known weaknesses</h2>
+<h2>Reviewer objections</h2>
+<h2>Status</h2>
 
-# Secondary claim
+<h1>Secondary claim</h1>
 ```
 
 Use this ledger to keep the paper anchored to actual evidence rather than
@@ -295,11 +308,11 @@ as direct manuscript editors.
 Good requests:
 
 - “Read `manuscript/main.tex` and produce a section-by-section revision plan.”
-- “Compare `claims.md` against the current experiments and flag unsupported claims.”
+- “Compare `notes/claims.html` against the current experiments and flag unsupported claims.”
 - “Inspect the LaTeX build log and summarize errors/warnings.”
 - “Suggest better related-work positioning, with verified citations.”
 - “Check whether figures and tables support the abstract claims.”
-- “Draft proposed edits in `manuscript/revision-plan.md`, not in `.tex`.”
+- “Draft proposed edits in a project `notes/` HTML working note, not in `.tex`.”
 
 Bad requests:
 
@@ -315,14 +328,10 @@ If asked for direct `.tex` edits, provide a human-applyable proposal instead.
 For rebuttals/revisions, keep reviewer-response work separate from final source
 until decisions are made:
 
-```text
-manuscript/
-  reviews/
-    reviewer_1.md
-    reviewer_2.md
-    response_plan.md
-    camera_ready_checklist.md
-```
+Keep rebuttal/revision plans outside the portable `manuscript/` boundary, e.g.
+as project `notes/` HTML working notes. The manuscript directory should contain
+only the final compile-standalone artifact unless the user establishes a project
+policy that explicitly exempts review files from sync/publish packaging.
 
 Agents may help classify comments:
 
@@ -333,7 +342,7 @@ Agents may help classify comments:
 - out of scope
 
 But final text changes remain human-owned unless the user explicitly changes
-the project policy.
+the project policy as described in the `.tex` guardrail.
 
 ## Checklist for Setting Up a Manuscript
 

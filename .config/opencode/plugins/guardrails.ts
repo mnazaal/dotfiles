@@ -9,18 +9,17 @@
  * permission.read / permission.bash blocks in opencode.jsonc become redundant
  * once this is confirmed loading.
  */
-import { createGuardrails, skillMentions, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
+import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
 
 export const Guardrails = async () => {
   const rails = createGuardrails("opencode");
-  // Session evidence for the skill gate: skills load through tool calls (a
-  // read of .../skills/<name>/SKILL.md or a skill-tool input), so watching
-  // every tool payload in-process is the ledger of loaded skills.
+  // Session evidence records only native Skill calls or reads of canonical
+  // configured skill paths; prose mentioning a skill is not a receipt.
   const loadedSkills = new Set<string>();
   return {
     "tool.execute.before": async (input: any, output: any) => {
       const args = output?.args ?? {};
-      for (const s of skillMentions(JSON.stringify({ tool: input?.tool, args })))
+      for (const s of skillReceipts(input?.tool, args))
         loadedSkills.add(s);
       const r = rails.evaluate(toolEventFromInput(input?.tool, args, process.cwd()), loadedSkills);
       if (r.decision !== "allow") {

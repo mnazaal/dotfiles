@@ -27,6 +27,7 @@ Decide what a run result means and what to do next.
 - What config/commit/log path?
 - Is effect bigger than noise?
 - Is there a simpler baseline/control?
+- Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
 - Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
 
@@ -51,7 +52,7 @@ Decide what a run result means and what to do next.
 - Caveats:
 - Next check:
 
-If the project keeps a `LOG.md` (`context-project-docs`), append the filled block there — append-only, one entry per run.
+If the project keeps a `LOG.md` (`context-project-docs`), offer to prepend the filled block there using the canonical LOG ordering — newest entry at top, one entry per run.
 
 ## Anti-Patterns
 
@@ -62,6 +63,7 @@ If the project keeps a `LOG.md` (`context-project-docs`), append the filled bloc
 - Training longer instead of checking broken assumptions.
 - Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.
 - Reading a verdict off a sweep point where both arms are saturated (floored/ceilinged) — the comparison is uninformative; pick a regime where the axis still moves the metric before comparing.
+- Comparing against a baseline we reimplemented when the authors'/established implementation exists and could be run via an adapter — a hand-rolled comparator that underperforms flatters the method.
 
 ## Related Skills
 

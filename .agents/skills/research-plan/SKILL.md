@@ -39,6 +39,13 @@ to `research-session`; if decisions are unresolved, route to `plan-interview`.
 - Unpublished-idea privacy: the plan lives in the project repo, never in a
   to-be-published library's docs/ or git history.
 
+## Workflow
+
+1. Confirm the direction is settled and identify the target `PLAN.md` governed by `context-project-docs`.
+2. Run or schedule the step-0 novelty gate before treating novelty as verified.
+3. Draft decisions, rationale, execution order, and risks; keep unresolved choices out of the plan or mark them explicitly as risks.
+4. Persist only with user/policy authorization, then report unresolved risks and the next action.
+
 ## Related Skills
 
 - `context-project-docs` for the standing-document set PLAN.md belongs to.

@@ -14,8 +14,8 @@ Turn a learning goal into a durable, revisitable workspace instead of a one-shot
 Treat the current directory as the workspace for this topic. Create files lazily, on first use.
 
 - `MISSION.md` — why the user wants to learn this. Grounds every lesson.
-- `CONTEXT.md` — one growing glossary/cheat-sheet, sectioned by term or concept. Compressed reference distilled from lessons, revisited far more than lessons are. Same convention `plan-interview` uses for glossaries — append a section, don't fork a new file.
-- `LOG.md` — one running, append-only log of non-obvious insights or corrected misconceptions, dated. Drives the next lesson's difficulty; revise an entry later if it turns out wrong.
+- `CONTEXT.md` — one growing learning reference/cheat-sheet, sectioned by term or concept. This is scoped to the learning workspace; repo-root project terminology remains owned by `plan-interview`.
+- `LOG.md` — one running, prepend-only log of non-obvious insights or corrected misconceptions, dated newest first. Drives the next lesson's difficulty; add a correction entry later if an old entry turns out wrong.
 - `lessons/NNNN-<slug>.html` — one self-contained, single-sitting lesson, numbered from `0001`. The primary deliverable.
 - `assets/` — shared stylesheet/components reused across lessons.
 
@@ -28,7 +28,7 @@ Treat the current directory as the workspace for this topic. Create files lazily
 - Reuse `assets/` components before writing new ones; promote a new one to `assets/` the moment a second lesson would duplicate it.
 - Keep `CONTEXT.md` pure compressed reference — no narrative, five-second lookup, devoid of implementation/lesson-plan detail.
 - When the user needs real-world calibration a lesson can't give (practice, critique, current field norms), point them at a high-reputation community rather than guessing — drop it if they don't want one.
-- Open the lesson file for the user after writing it.
+- Provide the lesson file path after writing it; open it only when the environment supports opening files.
 
 ## Workflow
 

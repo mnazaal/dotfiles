@@ -41,7 +41,7 @@ Use when evaluating a research idea, direction, or hunch ("should we try X", "is
 
 1. Restate idea and target contribution.
 2. Generate plausible framings and alternatives.
-3. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, spawn the host's idea-critic agent.
+3. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, use `agent-orchestration` to spawn a constrained critique subagent.
 4. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
 5. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above.
 
@@ -71,9 +71,10 @@ flattering one:
 - Parameterization: the one conduit by which structure/information enters the
   model, and where that factorization breaks.
 
-Persist the result where it belongs (PLAN.md framing or a `notes/` working note),
-not only in chat. Route a deep adversarial pass on any single claim to
-`critique-argument`; persist framing + decisions to the plan via `research-plan`.
+Offer to persist the result where it belongs (PLAN.md framing or a `notes/`
+working note) when user/policy allows; otherwise keep it in chat. Route a deep
+adversarial pass on any single claim to `critique-argument`; persist settled
+framing + decisions to the plan via `research-plan`.
 
 ## Related Skills
 

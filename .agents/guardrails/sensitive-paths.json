@@ -2,13 +2,24 @@
   "_comment": "Path guardrails. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, Codex, pi, and opencode via their adapters. Paths only, no logic. See README.md. Credentials are blocked for read/write/bash. Machinery is blocked for write/bash but allowed for normal read tools, so agents can inspect their own guardrails without gaining persistence-edit access. `machinery_enabled` is per-agent and should only be disabled while bootstrapping.",
 
   "credentials": [
-    "~/.aws", "~/.gnupg", "~/.gpg", "~/.ssh",
-    "~/.bashrc", "~/.bash_profile", "~/.profile", "~/.zshrc", "~/.zprofile",
-    "~/.config/git/credentials", "~/.netrc", "~/.npmrc",
-    "~/.docker/config.json", "~/.kube/config",
+    "~/.aws",
+    "~/.gnupg",
+    "~/.gpg",
+    "~/.ssh",
+    "~/.bashrc",
+    "~/.bash_profile",
+    "~/.profile",
+    "~/.zshrc",
+    "~/.zprofile",
+    "~/.config/git/credentials",
+    "~/.netrc",
+    "~/.npmrc",
+    "~/.docker/config.json",
+    "~/.kube/config",
     "~/.password-store",
     "~/.claude/.credentials.json",
-    "~/.config/pi/agent/auth.json", "~/.pi/agent/auth.json",
+    "~/.config/pi/agent/auth.json",
+    "~/.pi/agent/auth.json",
     "~/.local/share/opencode/auth.json"
   ],
 
@@ -16,18 +27,39 @@
 
   "protected_write_globs": ["**/*.tex"],
 
-  "machinery_enabled": { "claude": true, "codex": true, "pi": true, "opencode": true },
+  "machinery_enabled": {
+    "claude": true,
+    "codex": true,
+    "pi": true,
+    "opencode": true
+  },
 
   "machinery": [
-    "~/.config/sandbox", "~/dotfiles/.config/sandbox",
-    "~/.config/renv", "~/dotfiles/.config/renv",
-    "~/.config/git/hooks", "~/dotfiles/.config/git/hooks",
-    "~/.local/scripts", "~/dotfiles/.local/scripts",
-    "~/.claude/hooks", "~/dotfiles/.claude/hooks",
-    "~/.claude/settings.json", "~/dotfiles/.claude/settings.json",
-    "~/.config/pi/agent/extensions", "~/dotfiles/.config/pi/agent/extensions",
-    "~/.config/pi/agent/settings.json", "~/dotfiles/.config/pi/agent/settings.json",
-    "~/.config/opencode/opencode.jsonc", "~/dotfiles/.config/opencode/opencode.jsonc",
-    "~/.agents/guardrails", "~/dotfiles/.agents/guardrails"
+    "~/.config/sandbox",
+    "~/dotfiles/.config/sandbox",
+    "~/.config/renv",
+    "~/dotfiles/.config/renv",
+    "~/.config/git/hooks",
+    "~/dotfiles/.config/git/hooks",
+    "~/.local/scripts",
+    "~/dotfiles/.local/scripts",
+    "~/.claude/hooks",
+    "~/dotfiles/.claude/hooks",
+    "~/.claude/settings.json",
+    "~/dotfiles/.claude/settings.json",
+    "~/.config/pi/agent/extensions",
+    "~/dotfiles/.config/pi/agent/extensions",
+    "~/.config/pi/agent/settings.json",
+    "~/dotfiles/.config/pi/agent/settings.json",
+    "~/.config/opencode/opencode.jsonc",
+    "~/dotfiles/.config/opencode/opencode.jsonc",
+    "~/.config/opencode/plugins",
+    "~/dotfiles/.config/opencode/plugins",
+    "~/.config/codex/hooks",
+    "~/dotfiles/.config/codex/hooks",
+    "~/.config/codex/config.toml.template",
+    "~/dotfiles/.config/codex/config.toml.template",
+    "~/.agents/guardrails",
+    "~/dotfiles/.agents/guardrails"
   ]
 }

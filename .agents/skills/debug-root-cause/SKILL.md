@@ -12,7 +12,7 @@ No fixes without root-cause investigation or a stated blocker.
 ## Workflow
 
 1. Capture exact symptom: command, output, expected vs observed, environment, recent changes.
-2. If the failure surfaced right after your own edit/refactor, `git stash` (or check out the pre-edit tree) and rerun the same check before hypothesizing about the edit — cheap, conclusive, and rules out (or confirms) your change as the cause before you spend probes on it.
+2. If the failure surfaced right after your own edit/refactor, isolate your diff and rerun the same check before hypothesizing about the edit — cheap, conclusive, and rules out (or confirms) your change as the cause before you spend probes on it. Do not automatically `git stash`, reset, or check out another tree when staged hunks or unrelated user changes exist; get confirmation or use an isolated worktree/copy.
 3. Build a red-capable repro loop: command/check/artifact, exact symptom, expected vs observed, determinism or reproduction rate.
 4. Minimize until remaining elements are load-bearing.
 5. Generate ranked falsifiable hypotheses.

@@ -32,6 +32,8 @@ Every delegated task states:
 6. Naming constraint: use descriptive task names; no opaque shorthand such as
    `P0/P1`, `T1/T2`, or `H1/H2` unless defined by the parent prompt. Subagent
    findings must remain understandable when copied without prior chat context.
+7. Required skills for the delegated scope. Name each required skill explicitly;
+   do not assume a subagent inherits the parent session's loaded skills.
 
 ## Coordination Rules
 

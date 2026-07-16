@@ -5,13 +5,82 @@
 # $CODEX_HOME/config.toml locally so Codex can mutate the copy without leaking
 # host paths into dotfiles.
 
-model = "gpt-5.5"
+model = "gpt-5.6-terra"
 model_instructions_file = "~/.agents/AGENTS.md"
 
-# Coarse safe default only. Detailed command/path policy lives in the shared
-# ~/.agents/guardrails core and is enforced by hooks below to avoid drift.
+# approval_policy governs escalation prompts for anything outside the active
+# permissions profile's grants. Detailed command-level policy (dangerous
+# commands, skill gates, machinery-write blocks with nuanced bash parsing)
+# still lives in the shared ~/.agents/guardrails core and is enforced by
+# hooks below - this stays the primary, most-capable enforcement layer.
+#
+# default_permissions below is a SECOND, OS-level (Landlock/seccomp on
+# Linux) layer that duplicates only the credentials/machinery path lists
+# from ~/.agents/guardrails/sensitive-paths.json, so a shell command that
+# slips past the hook's text-based path matching still can't actually touch
+# a denied path at the kernel level. See
+# ~/.agents/guardrails/README.md "Native permission layers".
 approval_policy = "on-request"
-default_permissions = ":read-only"
+default_permissions = ":read-only"  # STEP B: flip to "guarded-workspace" only after verification in guardrails/README.md passes
+
+# Custom filesystem permission profile. Best-effort hand-maintained duplicate of
+# ~/.agents/guardrails/sensitive-paths.json (credentials -> deny, machinery ->
+# read). NOT drift-checked (unlike Claude's settings.json deny): it is dormant on
+# hosts whose sandbox can't initialize — see guardrails/README.md "Native
+# permission layers". Kept for portability to sandbox-capable hosts; sync by hand
+# if you edit sensitive-paths.json.
+[permissions.guarded-workspace]
+extends = ":workspace"
+
+[permissions.guarded-workspace.filesystem]
+# --- credentials (deny: read+write blocked) ---
+"~/.aws" = "deny"
+"~/.gnupg" = "deny"
+"~/.gpg" = "deny"
+"~/.ssh" = "deny"
+"~/.bashrc" = "deny"
+"~/.bash_profile" = "deny"
+"~/.profile" = "deny"
+"~/.zshrc" = "deny"
+"~/.zprofile" = "deny"
+"~/.config/git/credentials" = "deny"
+"~/.netrc" = "deny"
+"~/.npmrc" = "deny"
+"~/.docker/config.json" = "deny"
+"~/.kube/config" = "deny"
+"~/.password-store" = "deny"
+"~/.claude/.credentials.json" = "deny"
+"~/.config/pi/agent/auth.json" = "deny"
+"~/.pi/agent/auth.json" = "deny"
+"~/.local/share/opencode/auth.json" = "deny"
+
+# --- machinery (read: write blocked, read allowed) ---
+"~/.config/sandbox" = "read"
+"~/dotfiles/.config/sandbox" = "read"
+"~/.config/renv" = "read"
+"~/dotfiles/.config/renv" = "read"
+"~/.config/git/hooks" = "read"
+"~/dotfiles/.config/git/hooks" = "read"
+"~/.local/scripts" = "read"
+"~/dotfiles/.local/scripts" = "read"
+"~/.claude/hooks" = "read"
+"~/dotfiles/.claude/hooks" = "read"
+"~/.claude/settings.json" = "read"
+"~/dotfiles/.claude/settings.json" = "read"
+"~/.config/pi/agent/extensions" = "read"
+"~/dotfiles/.config/pi/agent/extensions" = "read"
+"~/.config/pi/agent/settings.json" = "read"
+"~/dotfiles/.config/pi/agent/settings.json" = "read"
+"~/.config/opencode/opencode.jsonc" = "read"
+"~/dotfiles/.config/opencode/opencode.jsonc" = "read"
+"~/.config/opencode/plugins" = "read"
+"~/dotfiles/.config/opencode/plugins" = "read"
+"~/.config/codex/hooks" = "read"
+"~/dotfiles/.config/codex/hooks" = "read"
+"~/.config/codex/config.toml.template" = "read"
+"~/dotfiles/.config/codex/config.toml.template" = "read"
+"~/.agents/guardrails" = "read"
+"~/dotfiles/.agents/guardrails" = "read"
 
 hide_agent_reasoning = true
 web_search = "cached"

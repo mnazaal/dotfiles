@@ -1,6 +1,6 @@
 ---
 name: plan-interview
-description: Use when a plan, design, implementation approach, research direction, or workflow change needs structured questioning before execution; also when the user asks to be interviewed, challenged, stress-tested, or asked one question at a time.
+description: Use when a plan, design, implementation approach, research direction, or workflow change needs structured questioning before execution; also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
 ---
 
 # Skill: Plan Interview

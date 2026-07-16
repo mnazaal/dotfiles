@@ -1,31 +1,51 @@
 {
-  "_comment": "Skill gates: observable tool events that require an agent skill to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude, Codex, pi, and opencode; matching lives in core.ts, the host adapter supplies session evidence of skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains}. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate — never what the skill contains; the skill name comes from `skill` and its purpose lives solely in its own description (avoids cross-source drift).",
+  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude, Codex, pi, and opencode; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate — never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
 
   "gates": [
     {
-      "skill": "dev-git",
-      "trigger": { "type": "bash", "command": "git", "subcommands": ["commit", "push"] },
-      "message": "committing or pushing"
+      "skills": ["dev-git", "dev-verification"],
+      "trigger": { "type": "bash", "command": "git", "subcommands": ["commit"] },
+      "message": "committing"
     },
     {
-      "skill": "dev-git-rescue",
+      "skills": ["dev-git"],
+      "trigger": { "type": "bash", "command": "git", "subcommands": ["push"] },
+      "message": "pushing"
+    },
+    {
+      "skills": ["dev-git-rescue"],
       "trigger": { "type": "bash", "command": "git", "subcommands": ["rebase", "reflog", "bisect", "commit-tree", "update-ref", "filter-branch"] },
       "message": "rewriting or recovering git history"
     },
     {
-      "skill": "context-project-docs",
-      "trigger": { "type": "write", "path_glob": "*.md", "at_root": true, "except": ["README.md", "CHANGELOG.md"] },
-      "message": "creating a root-level standing document"
+      "skills": ["context-project-docs"],
+      "trigger": { "type": "write", "path_glob": "*.md", "at_root": true, "except": ["CHANGELOG.md"] },
+      "message": "editing a root-level project document"
     },
     {
-      "skill": "meta-skills-improve",
+      "skills": ["context-project-docs"],
+      "trigger": { "type": "write", "path_glob": "**/notes/**" },
+      "message": "editing a project working note"
+    },
+    {
+      "skills": ["meta-skills-improve"],
       "trigger": { "type": "write", "path_glob": "**/.agents/skills/**/SKILL.md" },
       "message": "editing a skill definition (SKILL.md)"
     },
     {
-      "skill": "research-protocol",
+      "skills": ["research-protocol"],
       "trigger": { "type": "fetch", "domains": ["arxiv.org", "semanticscholar.org", "doi.org", "openreview.net", "aclanthology.org"] },
       "message": "fetching from a paper source"
+    },
+    {
+      "skills": ["research-protocol"],
+      "trigger": { "type": "capability", "all_of": ["academic-source"] },
+      "message": "using an academic-paper verification tool"
+    },
+    {
+      "skills": ["dev-worktree"],
+      "trigger": { "type": "capability", "all_of": ["test-command", "git-worktree"] },
+      "message": "running tests inside a git worktree"
     }
   ]
 }

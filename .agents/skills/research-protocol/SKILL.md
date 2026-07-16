@@ -1,6 +1,6 @@
 ---
 name: research-protocol
-description: Mandatory for academic papers, literature, citations, related work, author lookup, field surveys, bibliographies; verify papers/citations, no fabricated citations, load before research content.
+description: Mandatory for academic papers, literature, citations, related work, author lookup, field surveys, bibliographies; verify papers/citations, no fabricated citations, load before external academic/literature claims.
 ---
 
 # Skill: Research Protocol
@@ -11,7 +11,7 @@ description: Mandatory for academic papers, literature, citations, related work,
 - Verify papers/citations/authors with configured paper-search tools before citing.
 - For broad literature or field surveys, use the configured literature-search workflow.
 - If verification tools are unavailable, say so before giving unverified memory-based context.
-- Load this protocol before producing research, citation, related-work, author, or field-survey content.
+- Load this protocol before producing externally sourced academic, citation, related-work, author, metadata, bibliography, or field-survey claims. Purely local experiment interpretation or project orientation may route directly to `research-run`/`research-session` until it makes literature claims.
 - Verification can be partial: a paper/method's qualitative spec (e.g. "SCM prior samples a shared per-dataset activation from {Tanh, LeakyReLU, ELU, Identity}") may be confirmed via search while exact numeric hyperparameters (a specific table's ranges/constants) are not retrievable through available tools. In that case, implement the verified distribution *family*/structure faithfully, and explicitly label every unretrieved number as an illustrative default in the code/doc — not invented-but-uncited, not a blocker. Don't silently fill gaps with memory-based numbers and don't refuse the whole task over one unretrievable table.
 
 ## Routing

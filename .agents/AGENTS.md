@@ -32,6 +32,14 @@ This file is global routing and behavior policy. Keep it small.
 
 ## Shell Output Capture
 
+- State an expected duration before launching anything that may take more than a
+  few seconds (builds, test suites, experiment sweeps, data/model jobs, any
+  enumeration whose cost grows with a parameter). Say the estimate and how you
+  derived it *before* running; if you cannot estimate confidently, say so, start
+  at the smallest scale to calibrate, and monitor CPU-vs-elapsed rather than
+  guess. A wrong estimate that silently burns minutes/hours (heavy local compute,
+  exponential enumeration) is the failure this prevents — kill and rescope the
+  moment reality diverges from the estimate.
 - Do not pipe backgrounded or long-running commands through `tail`, `head`,
   `grep`, or similar output truncators/watchers.
 - For long-running commands, write full stdout/stderr directly to a log file
@@ -42,6 +50,14 @@ This file is global routing and behavior policy. Keep it small.
   inspect the resulting artifact.
 - If output may be buffered, use the command's unbuffered mode or write
   structured periodic logs from the program itself.
+- Never hand-detach a job (`nohup cmd & disown`) to work around a foreground
+  timeout; pass the real command straight to the harness's background-run
+  parameter — reaping and completion notification are already handled for you.
+- If you still hand-roll a completion-poll loop, poll the actual worker PID,
+  not a launcher/wrapper PID: an unreaped launcher becomes a zombie that stays
+  visible to `ps -p` forever, so `until ! ps -p <launcher>` never exits. Once a
+  wait task is armed, consume its notification instead of abandoning it for
+  manual polling.
 
 ## Skills
 
@@ -50,7 +66,9 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Load a skill when the task matches its description.
 - Do not load irrelevant skills.
 - Do not duplicate skill-specific procedures here.
-- If a skill routes to another skill, follow that routing.
+- If a skill explicitly says to load/use/route to another skill, follow that
+  routing. `Related Skills` sections are navigational only, not transitive
+  requirements.
 - Use subagents for broad, independent, or parallel exploration; otherwise keep
   work in the current context.
 - For multi-agent delegation or evaluating delegated work, load
@@ -61,13 +79,16 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Before producing academic-paper, literature, citation, related-work,
   bibliography, author-lookup, or field-survey content, load
   `research-protocol` and follow it.
-- For Org or note-writing tasks, load `context-org` and follow the active
-  storage policy.
+- For Org or personal note-store tasks, load `context-org` and follow the
+  active storage policy. Project standing docs and project `notes/` are governed
+  by `context-project-docs`.
 - When environment context shows a git worktree (e.g. a path under
   `.claude/worktrees/*` or an explicit "this is a git worktree" note), load
   `dev-worktree` before running tests/tools.
 - Before committing or choosing an integration path (merge/PR/park), load
   `dev-git` and follow it (overrides any built-in commit-trailer default).
+- Before claiming work is complete, fixed, passing, ready, reviewed, or
+  verified, load `dev-verification` and report fresh evidence.
 - Before creating any standing project document (PLAN.md, README, notes,
   logs, any new top-level .md), load `context-project-docs` and stay within
   its canonical set.

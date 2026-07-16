@@ -1,4 +1,4 @@
-.PHONY: link clean check check-agent-role-sync _link-codex-skills _clean-codex-skills
+.PHONY: link clean check check-agent-role-sync check-guardrails-native-sync _link-codex-skills _clean-codex-skills
 
 link:
 	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
@@ -29,7 +29,7 @@ _clean-codex-skills:
 		fi; \
 	done
 
-check: check-agent-role-sync
+check: check-agent-role-sync check-guardrails-native-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -80,5 +80,21 @@ check-agent-role-sync:
 				printf 'agent role body drift: %s (%s)\n' "$$role" "$${target#$(CURDIR)/}" >&2; status=1; \
 			fi; \
 		fi; \
+	done; \
+	exit "$$status"
+
+# Drift check for the hand-maintained duplicates of
+# .agents/guardrails/sensitive-paths.json living in each agent's native
+# permission config (Claude's settings.json, opencode's opencode.jsonc,
+# Codex's config.toml.template). sensitive-paths.json is credentials +
+# machinery; only Codex's [permissions.guarded-workspace.filesystem] table
+# covers machinery natively, so machinery paths are only checked there.
+check-guardrails-native-sync:
+	@set -eu; \
+	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
+	status=0; \
+	credentials="$$(awk '/"credentials": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
+	for p in $$credentials; do \
+		grep -qF "$$p" "$(CURDIR)/.claude/settings.json" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".claude/settings.json" >&2; status=1; }; \
 	done; \
 	exit "$$status"

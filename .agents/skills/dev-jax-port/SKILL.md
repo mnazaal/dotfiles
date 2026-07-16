@@ -51,7 +51,7 @@ For scientific algorithms (structure learning, constrained optimization, MCMC ke
    - **Full convergence**: run both implementations from identical initialization with the same hyperparameters; compare final solutions with loose tolerance (`rtol=1e-2, atol=5e-3`) — optimization paths may diverge slightly due to floating-point order.
 4. Test determinism: run twice from the same initialization; assert bit-exact outputs (`rtol=0`).
 5. Test constraint satisfaction: verify the domain-specific correctness criterion (e.g. h(W) ≤ tol for DAG constraint) independently of the reference comparison.
-6. Test input validation: error handling should match the reference exactly.
+6. Test input validation: error handling should match the reference exactly, except for documented deliberate hardenings such as replacing silent warning/clamp behavior with an eager error; test such deviations explicitly.
 7. Verify the full suite. Route to `dev-verification`.
 
 ## Numerical-Equivalence Debugging

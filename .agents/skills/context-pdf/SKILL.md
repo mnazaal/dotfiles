@@ -10,7 +10,9 @@ description: Use for PDF files: read, extract text/tables/images, merge, split, 
 - Preserve the original PDF unless user asks for in-place mutation.
 - For extraction, record source file, page range, method, and limitations.
 - For scanned PDFs, use OCR path when text extraction is empty or low quality.
-- For forms/encryption, avoid exposing sensitive fields in logs.
+- For forms, encryption/decryption, passwords, signatures, or sensitive
+  extracted content, avoid exposing values in logs and route credential handling
+  through `dev-security`.
 
 ## Workflow
 
@@ -24,3 +26,4 @@ description: Use for PDF files: read, extract text/tables/images, merge, split, 
 
 - `context-org` to save extracted notes.
 - `research-paper` for reading academic PDFs.
+- `dev-security` for PDF passwords, secrets, signatures, or sensitive content.

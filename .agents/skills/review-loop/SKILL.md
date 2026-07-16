@@ -17,10 +17,10 @@ user's, not yours.
 
 - Never run `git add`, `git stage`, `git commit`, or `git reset` here. Leave all
   edits in the working tree, unstaged.
-- Before editing, note the staged files: `git diff --cached --name-only`. If a
-  marker asks you to change content that is already staged, do **not** silently
-  rewrite it — resolving it would un-audit an approved hunk. Flag it and let the
-  user unstage first.
+- Before editing, inspect the staged diff, not just staged filenames. If a
+  marker's exact surrounding lines are already in a staged hunk, do **not**
+  silently rewrite them — resolving it would un-audit an approved hunk. Flag it
+  and let the user unstage first.
 - Staged hunks are frozen. Your edits touch unstaged regions only.
 
 ## Marker Convention
@@ -41,7 +41,7 @@ A marker is a single comment line in the file's native comment syntax:
 ## Phase 1: Collect
 
 1. Find markers: `Grep` for `>>> agent:` across the working tree.
-2. Note staged files (`git diff --cached --name-only`) to protect the ledger.
+2. Inspect staged hunks (`git diff --cached`) to protect the ledger.
 3. If no markers exist, say so and stop — nothing to do.
 
 ## Phase 2: Resolve
@@ -51,7 +51,8 @@ Handle each marker in file order:
 1. Read the surrounding hunk for context.
 2. Change request → make the minimal edit that satisfies it, delete the marker.
 3. Question → answer concisely in chat, cite `file:line`, leave the marker.
-4. Ledger conflict (marker inside a staged hunk) → report it, skip the edit.
+4. Ledger conflict (marker or its exact surrounding lines inside a staged hunk)
+   → report it, skip the edit.
 
 Keep every change unstaged.
 

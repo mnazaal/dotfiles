@@ -1,6 +1,6 @@
 /** pi tool_call adapter for the shared guardrails core. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createGuardrails, skillMentions, toolEventFromInput } from "../../../../.agents/guardrails/core.ts";
+import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../../.agents/guardrails/core.ts";
 
 const rails = createGuardrails("pi");
 
@@ -8,7 +8,7 @@ export default function (pi: ExtensionAPI) {
   const loadedSkills = new Set<string>();
 
   pi.on("tool_call", async (event, ctx) => {
-    for (const s of skillMentions(JSON.stringify({ tool: event.toolName, input: event.input ?? {} })))
+    for (const s of skillReceipts(event.toolName, event.input ?? {}))
       loadedSkills.add(s);
 
     const guardEvent = toolEventFromInput(event.toolName, event.input, ctx.cwd ?? process.cwd());

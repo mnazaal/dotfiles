@@ -7,7 +7,7 @@ description: Use for git history rewriting and recovery: interactive rebase, squ
 
 ## History Rewriting
 
-1. `git stash push -u` — stash all pending work before touching history.
+1. Preserve pending work before touching history. Do not automatically stash/reset/checkout across staged hunks or unrelated user changes; inspect `git status`, get confirmation, or work from an isolated branch/worktree.
 2. Work on a separate branch, not `main`/`master` directly.
 3. Avoid `filter-branch` (deprecated, fragile with stash refs) regardless of approach.
 4. For reword/squash/reorder/fixup of existing commits, use `git rebase -i` with

@@ -16,11 +16,13 @@ sequences a multi-unit campaign over standing code.
 - A — subtly-wrong-is-silently-critical: losses, log-probs, samplers,
   transforms + Jacobians, custom gradients, normalizations, numerical
   kernels, public API; plus data/eval paths that could leak or misalign
-  labels. Strong audit, 100% target, two-person.
+  labels. Public CLI/serialization/generated artifacts belong here when they
+  define an external contract or can silently corrupt data. Strong audit, 100%
+  target, two-person.
 - B — real behavior, shallow to verify or loud on failure. Read + contract test.
-- C — no numerical semantics (plotting, logging, repr, serialization, CLI,
-  generated). Reviewed + listed in the tier manifest; not touched, and
-  excluded from the coverage denominator.
+- C — no meaningful behavior or external contract (cosmetic plotting, logging,
+  repr-only, throwaway generated artifacts). Reviewed + listed in the tier
+  manifest; not touched, and excluded from the coverage denominator.
 
 ## Rules
 
@@ -42,8 +44,10 @@ sequences a multi-unit campaign over standing code.
    math) → adversarial pass → characterization/property test (red) →
    improve/document/type (green) → commit with `Human-audited: yes`.
 3. Tier C: review, list as low-risk in the tier manifest, leave untouched.
-4. Track with `git audit-coverage <A/B paths>`; hold Tier A at target;
-   edits to audited code auto-reopen review via blame reassignment.
+4. Track with `git audit-coverage <A/B paths>` when available; otherwise make
+   the campaign blocked until the user provides an equivalent tracking surface.
+   Hold Tier A at target; edits to audited code auto-reopen review via blame
+   reassignment.
 
 ## Routing
 

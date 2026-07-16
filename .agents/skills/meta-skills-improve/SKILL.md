@@ -56,7 +56,7 @@ Create a new skill only if:
 - It does not mostly duplicate an existing skill.
 - It would be used often enough to matter.
 - It can route cleanly to related skills.
-- Keep every skill model-invoked (never set `disable-model-invocation`) so it stays both auto-triggered and callable by name.
+- Keep every skill callable and auto-routable in the active platform; put platform-specific invocation flags in the platform configuration skill rather than general skill prose.
 
 ## Anti-Patterns
 

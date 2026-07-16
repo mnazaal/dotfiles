@@ -87,36 +87,16 @@
 
     // Permission rules control which operations require confirmation.
     "permission": {
-        // Deny reads of secrets/credentials even with the sandbox off. TRANSITIONAL
-        // FALLBACK: plugins/guardrails.ts now enforces the same paths from the shared
-        // core (~/.agents/guardrails/, used by claude + pi too) and also covers bash,
-        // which this list does not. Remove this block once the plugin is confirmed
-        // loading. Last matching rule wins, so the "*" allow must come first.
+        // In-repo secrets + noise only. Host-level credentials (~/.ssh, ~/.aws,
+        // auth.json, shell rc files, ...) are NOT duplicated here: plugins/guardrails.ts
+        // enforces them from the shared core (verified loading + blocking) and also
+        // covers bash, which a static read-list cannot. "*" allow must come first.
         "read": {
             "*": "allow",
             "**/.env": "deny",
             "**/.env.*": "deny",
             "**/.git/**": "deny",
-            "**/node_modules/**": "deny",
-            "~/.aws/**": "deny",
-            "~/.gnupg/**": "deny",
-            "~/.gpg/**": "deny",
-            "~/.ssh/**": "deny",
-            "~/.bashrc": "deny",
-            "~/.bash_profile": "deny",
-            "~/.profile": "deny",
-            "~/.zshrc": "deny",
-            "~/.zprofile": "deny",
-            "~/.config/git/credentials": "deny",
-            "~/.netrc": "deny",
-            "~/.npmrc": "deny",
-            "~/.docker/config.json": "deny",
-            "~/.kube/config": "deny",
-            "~/.password-store/**": "deny",
-            "~/.claude/.credentials.json": "deny",
-            "~/.config/pi/agent/auth.json": "deny",
-            "~/.pi/agent/auth.json": "deny",
-            "~/.local/share/opencode/auth.json": "deny"
+            "**/node_modules/**": "deny"
         },
         "edit": "deny",
         "glob": "deny",
@@ -225,21 +205,10 @@
 
             "git stash clear": "ask",
 
-            // Branch-confinement guards: forms that escape the AGENT_BRANCH_PREFIX
-            // git hooks (~/.config/git/hooks). TRANSITIONAL FALLBACK: plugins/
-            // guardrails.ts now enforces these from the shared core, catching the
-            // cases globs can't — GIT_CONFIG_* env injection, `git -ccore.hooksPath`
-            // (no space), and mid-string flags. Remove this block once the plugin is
-            // confirmed loading. Last-match-wins, placed after the git allowlist.
-            "git -c *": "ask",
-            "git update-ref*": "deny",
-            "git symbolic-ref*": "deny",
-            "git fast-import*": "deny",
-            "git replace*": "deny",
-            "git config core.hooksPath*": "deny",
-            "git commit *--no-verify*": "deny",
-            "git branch -f*": "deny",
-            "git branch --force*": "deny",
+            // Branch-confinement + ref-write guards (GIT_CONFIG_* injection,
+            // `git -ccore.hooksPath`, `--no-verify`, forced branch moves) are enforced
+            // by plugins/guardrails.ts from the shared core, which catches cases these
+            // globs can't. Not duplicated here.
         },
         "task": { "*": "deny" },
         "question": "allow",

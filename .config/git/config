@@ -8,6 +8,14 @@
     date = iso-local
 [alias]
     sclone = clone --depth 1
+    gm = merge
+    gbl = branch --list
+    gbd = branch --delete
+    gsm = switch main
+    gcm = commit -m
+    gst = status --short --branch
+    gds = diff --staged
+    glo = log --oneline --decorate
 
     graph = log --graph --oneline --decorate --all --abbrev-commit --date=relative \
   --color --pretty=format:'%C(yellow)%h%C(reset)%C(cyan) (%ar)%C(reset) %s %C(green)%d%C(reset) %C(bold)<%an>%C(reset)'

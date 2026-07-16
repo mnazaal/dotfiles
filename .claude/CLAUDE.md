@@ -16,8 +16,8 @@ agents). Map their tool names onto Claude Code as follows:
 - **Docs** — `deepwiki` is not enabled for Claude Code (dropped to save
   per-session context); use `WebFetch`/`WebSearch` for library/API docs. The
   `deepwiki` rule in AGENTS.md applies to the opencode/pi agents, which keep it.
-- **Papers** — the `asta-mcp` mandatory-citation rule still applies: never cite a
-  paper you have not first verified through `asta-mcp`.
+- **Papers** — use the configured academic-paper verification tool before citing
+  a paper; never cite an unverified paper.
 - **Subagents** — delegate via the `Task` tool. The agents in `~/.claude/agents/`
   are the equivalent of the opencode/pi subagents.
 - **Python tests** — run `pytest` / `pytest <path>` only. Never `python -m
