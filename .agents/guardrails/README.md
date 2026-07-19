@@ -32,6 +32,8 @@ Adapters (thin, import `core.ts`):
 
 Adapters map:
 - Claude → PreToolUse `permissionDecision` (deny / ask)
+- Codex → deny for every non-allow result (its hook API has no confirmation
+  response, so `ask` is fail-closed)
 - pi → block (deny) / prompt then block-if-declined (ask)
 - opencode → throw on any non-allow (a plugin can't prompt, so `ask` becomes a hard block)
 
@@ -99,10 +101,9 @@ Codex's only real tool is a bash-like shell (plus `apply_patch`), so the shared
 hook must pattern-match paths out of raw command text there — the weakest
 matching in the fleet. `[permissions.guarded-workspace]` compensates at the
 kernel: credentials → `deny`, machinery → `read`, translated 1:1 from
-`sensitive-paths.json`. Only Claude's `settings.json` deny is a drift-checked duplicate
-(`make check-guardrails-native-sync`); opencode is plugin-enforced, and the Codex
-profile is kept for portability but not drift-checked (dormant where the sandbox
-cannot initialize). The hook stays
+`sensitive-paths.json`. Claude's credential denies and Codex's complete native
+profile are drift-checked by `make check-guardrails-native-sync`; opencode is
+plugin-enforced. The hook stays
 primary for everything the 3-level filesystem model cannot express: dangerous
 commands, skill gates, ref-rewrite protection, and the `ask` tier.
 

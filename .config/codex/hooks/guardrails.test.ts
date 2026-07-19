@@ -21,9 +21,24 @@ test("guardrail machinery is readable but not writable", () => {
 
 test("codex enforcement files are machinery too", () => {
   const rails = createGuardrails("codex");
-  for (const path of ["~/dotfiles/.config/codex/hooks/guardrails.ts", "~/dotfiles/.config/codex/config.toml.template"]) {
+  for (const path of [
+    "~/.config/codex/config.toml",
+    "~/.config/codex/hooks.json",
+    "~/dotfiles/.config/codex/hooks/guardrails.ts",
+    "~/dotfiles/.config/codex/config.toml.template",
+  ]) {
     expect(rails.evaluate({ tool: "grepika_get", paths: [path], cwd }).decision).toBe("allow");
     expect(rails.evaluate({ tool: "write", paths: [path], cwd }).decision).toBe("deny");
+  }
+});
+
+test("Codex auth is denied as a credential", () => {
+  const rails = createGuardrails("codex");
+  for (const event of [
+    { tool: "read", paths: ["~/.config/codex/auth.json"], cwd },
+    { tool: "bash", command: "cat ~/.config/codex/auth.json", cwd },
+  ]) {
+    expect(rails.evaluate(event).decision).toBe("deny");
   }
 });
 

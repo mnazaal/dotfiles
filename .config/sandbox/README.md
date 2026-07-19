@@ -39,8 +39,8 @@ Select with `--backend` or `$SANDBOX_BACKEND`.
 
 | Backend | Isolation | Needs | Notes |
 |---------|-----------|-------|-------|
-| **gvisor** (default) | host-kernel attack surface shrunk by a user-space kernel (runsc) | `runsc` on PATH (no root/KVM) | rootless container via `--runtime=runsc`; FS served through a gofer (a bit slower) |
-| **podman** | namespaces (shared kernel) | rootless podman | same container, default runtime; lighter than gvisor |
+| **gvisor** | host-kernel attack surface shrunk by a user-space kernel (runsc) | `runsc` on PATH (no root/KVM) | rootless container via `--runtime=runsc`; FS served through a gofer (a bit slower) |
+| **podman** (default) | namespaces (shared kernel) | rootless podman | same container, default runtime; lighter than gvisor |
 | **bwrap** | namespaces (shared kernel) | bubblewrap; on Ubuntu the one-time `sandbox --init ubuntu` | binds host rootfs directly; lightest start-up |
 
 The container backends reuse the host userspace through read-only mounts (`/usr`,
@@ -63,10 +63,11 @@ harnesses use the same profile namespace:
 | `dev` | `~/.config/sandbox/` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
 | `agent` | `~/.config/sandbox/` | `use dev` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
 | `agent-claude` / `agent-opencode` / `agent-pi` | `~/.config/sandbox/` | `use agent` + that harness's state |
+| `agent-codex` | `~/.config/sandbox/` | `use dev` + shared policy (ro), Codex home (ro), live `config.toml` and hook state (rw) |
 
 ## Coding agents (via renv)
 
-The harness env files (`~/.config/renv/{claude,opencode,pi}.sh`) own the sandbox
+The harness env files (`~/.config/renv/{claude,codex,opencode,pi}.sh`) own the sandbox
 decision — `renv` knows nothing about it. They set
 `RENV_WRAP=(sandbox -p agent-<cmd> --)`; `renv` then runs the harness under that
 wrapper (a generic feature — an env file may set `RENV_WRAP` to any prefix
@@ -75,7 +76,15 @@ the harness never launches unconfined.
 
 ```sh
 renv claude         # launches confined (default backend), no extra steps
+renv codex          # confined Codex; outer sandbox is authoritative
 ```
+
+`renv codex` keeps bare `codex` unchanged. It supplies Codex's existing ASTA
+MCP key, confines Git activity to `codex/*`, and invokes Codex with
+`--sandbox danger-full-access --ask-for-approval never`; the outer sandbox is
+therefore the filesystem boundary. Network and MCP access remain enabled.
+Copy `~/.config/codex/config.toml.template` to the ignored local
+`~/.config/codex/config.toml` before first use.
 
 ## One-time setup
 
@@ -93,6 +102,9 @@ renv claude         # launches confined (default backend), no extra steps
 - `--env-host`: the whole environment is passed in. `renv` only *sets* the
   specific keys the harness needs, but the transport is bulk — other exported
   vars ride along.
+- Codex must see its login state to authenticate. Its `auth.json` is mounted
+  read-only and blocked by the in-process guardrail, but is not a secret
+  boundary against the Codex process itself.
 - No resource caps by default (a too-tight `--memory`/`--pids-limit` would kill an
   interactive agent mid-task; add them only for unattended runs).
 - `~/.ssh` / `pass` are absent inside, so `git push` over SSH and `pass` reads

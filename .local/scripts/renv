@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # renv — run a command after loading an optional per-command environment file.
 # The env file may set RENV_WRAP=(prog args...) to run the command under a
-# wrapper (e.g. a sandbox). See `renv --help`.
+# wrapper (e.g. a sandbox), and RENV_PRE_ARGS=(args...) before user arguments.
+# See `renv --help`.
 set -euo pipefail
 
 die() {
@@ -23,6 +24,8 @@ DESCRIPTION
 
   The env file may set RENV_WRAP=(prog args...) to run the command under a
   wrapper (e.g. a sandbox): renv execs "${RENV_WRAP[@]}" <command> <args>.
+  It may also set RENV_PRE_ARGS=(args...) inserted after <command> and before
+  user-supplied <args>.
 EOF
 }
 
@@ -53,9 +56,14 @@ fi
 # Secrets sourced above are already in the environment, so a sandbox wrapper hides
 # the vault from the command while still passing the resolved keys through.
 # Fails closed: if a wrapper is requested but missing, error rather than run bare.
-if [ -n "${RENV_WRAP+x}" ] && [ "${#RENV_WRAP[@]}" -gt 0 ]; then
-	command -v -- "${RENV_WRAP[0]}" >/dev/null 2>&1 || die "RENV_WRAP set but '${RENV_WRAP[0]}' not found"
-	exec "${RENV_WRAP[@]}" "$cmd_path" "$@"
+pre_args=()
+if [ -n "${RENV_PRE_ARGS+x}" ]; then
+	pre_args=("${RENV_PRE_ARGS[@]}")
 fi
 
-exec "$cmd_path" "$@"
+if [ -n "${RENV_WRAP+x}" ] && [ "${#RENV_WRAP[@]}" -gt 0 ]; then
+	command -v -- "${RENV_WRAP[0]}" >/dev/null 2>&1 || die "RENV_WRAP set but '${RENV_WRAP[0]}' not found"
+	exec "${RENV_WRAP[@]}" "$cmd_path" "${pre_args[@]}" "$@"
+fi
+
+exec "$cmd_path" "${pre_args[@]}" "$@"

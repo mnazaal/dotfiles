@@ -15,7 +15,7 @@ show_help() {
 dotfiles-doctor - run lightweight dotfiles health checks
 
 USAGE:
-  dotfiles-doctor [repo]
+  dotfiles-doctor [--strict] [repo]
   dotfiles-doctor --help
 
 CHECKS:
@@ -28,19 +28,39 @@ CHECKS:
   - Git hooks path and delta pager availability
   - Neovim vim.pack availability when nvim is installed
   - Claude agent guard hooks are present and parse (they fail open if broken)
-  - ~/org/agenda exists and is writable
+  - ~/org/agenda exists and is writable (--strict only; warning otherwise)
   - srcup helpers are executable or readable
   - Optional shellcheck and shfmt availability
   - Waybar bluetooth module is listed when configured
 EOF
 }
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-	show_help
-	exit 0
-fi
-
-repo="${1:-$PWD}"
+strict=0
+repo=""
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-h | --help)
+		show_help
+		exit 0
+		;;
+	--strict)
+		strict=1
+		;;
+	-*)
+		printf 'dotfiles-doctor: unknown option: %s\n' "$1" >&2
+		exit 2
+		;;
+	*)
+		if [[ -n "$repo" ]]; then
+			printf 'dotfiles-doctor: expected at most one repository path\n' >&2
+			exit 2
+		fi
+		repo="$1"
+		;;
+	esac
+	shift
+done
+repo="${repo:-$PWD}"
 
 if [[ -f "$repo/Makefile" ]] && grep -q '^link:' "$repo/Makefile" && grep -q '^check:' "$repo/Makefile"; then
 	ok "Makefile link/check targets"
@@ -166,8 +186,10 @@ done
 
 if [[ -d "$HOME/org/agenda" && -w "$HOME/org/agenda" ]]; then
 	ok "$HOME/org/agenda exists and writable"
-else
+elif [[ "$strict" -eq 1 ]]; then
 	fail "$HOME/org/agenda missing or not writable"
+else
+	warn "$HOME/org/agenda missing or not writable"
 fi
 
 for cmd in grim slurp wl-copy; do

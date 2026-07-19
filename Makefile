@@ -3,9 +3,9 @@
 help:
 	@printf '%s\n' \
 		'link   - stow repository files and link Codex skills' \
-		'clean  - remove repository-owned links from HOME' \
+		'clean  - silently remove only repository-owned links from HOME' \
 		'test   - run isolated repository behavior tests' \
-		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt'
+		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)'
 
 link:
 	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
@@ -27,10 +27,11 @@ _link-codex-skills:
 	done
 
 clean:
-	@$(MAKE) _clean-codex-skills
+	@$(MAKE) --no-print-directory _clean-codex-skills
 	@DOTFILES="$(CURDIR)" find "$(HOME)" \
 		-path "$(HOME)/.local/share/containers" -prune -o \
-		-xtype l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) printf "%s\n" "$$link"; rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +
+		-path "$(CURDIR)" -prune -o \
+		-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +
 
 _clean-codex-skills:
 	@set -eu; \
@@ -39,7 +40,6 @@ _clean-codex-skills:
 		source="$$(readlink -f "$$d")"; \
 		target="$(HOME)/.config/codex/skills/$$name"; \
 		if [ -L "$$target" ] && [ "$$(readlink -f "$$target")" = "$$source" ]; then \
-			printf "%s\n" "$$target"; \
 			rm "$$target"; \
 		fi; \
 	done
@@ -76,22 +76,29 @@ check: test check-agent-role-sync check-guardrails-native-sync
 
 test:
 	@bash tests/codex-skills-link-test.sh
+	@bash tests/renv-codex-test.sh
+	@bash tests/sandbox-codex-profile-test.sh
+	@bash tests/deployment-lifecycle-test.sh
+	@bash tests/dotfiles-doctor-org-test.sh
+	@bun test ./.config/codex/hooks/guardrails.test.ts
 
 check-agent-role-sync:
 	@python3 .agents/render-agent-roles.py --check
 
-# Drift check for the hand-maintained duplicates of
-# .agents/guardrails/sensitive-paths.json living in each agent's native
-# permission config (Claude's settings.json, opencode's opencode.jsonc,
-# Codex's config.toml.template). sensitive-paths.json is credentials +
-# machinery; only Codex's [permissions.guarded-workspace.filesystem] table
-# covers machinery natively, so machinery paths are only checked there.
+# Drift check for the hand-maintained native permission duplicates of
+# .agents/guardrails/sensitive-paths.json. Claude mirrors credentials; Codex's
+# guarded-workspace profile mirrors both credentials and machinery.
 check-guardrails-native-sync:
 	@set -eu; \
 	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
 	status=0; \
 	credentials="$$(awk '/"credentials": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
+	machinery="$$(awk '/"machinery": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
 	for p in $$credentials; do \
 		grep -qF "$$p" "$(CURDIR)/.claude/settings.json" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".claude/settings.json" >&2; status=1; }; \
+		grep -qF "$$p" "$(CURDIR)/.config/codex/config.toml.template" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".config/codex/config.toml.template" >&2; status=1; }; \
+	done; \
+	for p in $$machinery; do \
+		grep -qF "$$p" "$(CURDIR)/.config/codex/config.toml.template" || { printf 'native permission drift: machinery path %s missing from %s\n' "$$p" ".config/codex/config.toml.template" >&2; status=1; }; \
 	done; \
 	exit "$$status"

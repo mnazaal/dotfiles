@@ -51,6 +51,7 @@
       "Read(~/.config/pi/agent/auth.json)",
       "Read(~/.pi/agent/auth.json)",
       "Read(~/.local/share/opencode/auth.json)",
+      "Read(~/.config/codex/auth.json)",
       "Edit(~/.ssh/**)",
       "Edit(~/.aws/**)",
       "Edit(~/.gnupg/**)",
@@ -64,6 +65,7 @@
       "Edit(~/.config/pi/agent/auth.json)",
       "Edit(~/.pi/agent/auth.json)",
       "Edit(~/.local/share/opencode/auth.json)",
+      "Edit(~/.config/codex/auth.json)",
       "Bash(sudo:*)",
       "Bash(doas:*)",
       "Bash(pkexec:*)"

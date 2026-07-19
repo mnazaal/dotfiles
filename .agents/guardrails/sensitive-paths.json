@@ -20,7 +20,8 @@
     "~/.claude/.credentials.json",
     "~/.config/pi/agent/auth.json",
     "~/.pi/agent/auth.json",
-    "~/.local/share/opencode/auth.json"
+    "~/.local/share/opencode/auth.json",
+    "~/.config/codex/auth.json"
   ],
 
   "sensitive_segments": [".ssh", ".gnupg", ".gpg", ".aws", ".password-store"],
@@ -57,6 +58,8 @@
     "~/dotfiles/.config/opencode/plugins",
     "~/.config/codex/hooks",
     "~/dotfiles/.config/codex/hooks",
+    "~/.config/codex/config.toml",
+    "~/.config/codex/hooks.json",
     "~/.config/codex/config.toml.template",
     "~/dotfiles/.config/codex/config.toml.template",
     "~/.agents/guardrails",

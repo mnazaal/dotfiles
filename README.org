@@ -12,6 +12,18 @@ Run repository checks with:
 make check
 #+end_src
 
+=make check= expects the managed links created by =make link=. It warns when
+the intentionally untracked =~/org/agenda= is absent; require it explicitly
+with =dotfiles-doctor --strict=.
+
+Remove only links owned by this repository with:
+#+begin_src bash
+make clean
+#+end_src
+
+A successful cleanup is silent. It does not remove unrelated symlinks or
+tracked source files.
+
 * Sharp bits
 
 If SSH from Kitty prints =missing or unsuitable terminal: xterm-kitty=, the remote host lacks Kitty terminfo.
@@ -37,6 +49,8 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
 
 - =.local/scripts/srcup= dispatches per-package source update scripts from =.config/srcup/=; from any directory containing a source checkout, run =srcup <package>= to update =./<package>/=, e.g. from =~/.local/src= run =srcup neovim=
 - =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=
+  (=renv codex= launches Codex in the dedicated filesystem sandbox; bare
+  =codex= retains its local conservative defaults)
 - =.local/scripts/notmuch-cron= and =.local/scripts/rss2email-cron= depend on =pass=
 - =.local/scripts/cal-sync-cron= depends on encrypted ICS URL files in password store
 - =.local/scripts/shell-share= depends on =ttyd=, =cloudflared=, and =tmux=
