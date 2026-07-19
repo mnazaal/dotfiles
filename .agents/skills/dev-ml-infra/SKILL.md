@@ -82,6 +82,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - Every config field is typed and has a default a smoke run can use.
 - CLI entry: expose a script's `main(**params)` (defaults = the run defaults) via `zen(main).hydra_main(...)` over `builds(main, populate_full_signature=True)`; params become `key=value` overrides, lists as `xs=[a,b,c]`. Wrap this in one shared helper so each script's `__main__` stays a one-liner.
 - Migrating argparse → hydra-zen: turn each `add_argument` into a typed kwarg on `main`; comma-string sweep args (`--gammas 0.5,0.9`) become native list params.
+- A `str` config field whose valid values look boolean (`mode: str = "true"`, allowing `{'true','false','both'}`) is a trap: Hydra parses the CLI literal `mode=true` as a bool, OmegaConf coerces it into the str field as `"True"` (capital T), and a raw `mode in {'true',…}` check then rejects the documented spelling — at runtime, on the cluster. Normalize (`str(x).strip().lower()`) before validating, rather than quote-escaping the CLI.
 
 ## Tracking
 

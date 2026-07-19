@@ -4,7 +4,6 @@ set -euo pipefail
 PREFIX="${PREFIX:-$HOME/.local}"
 JOBS="${JOBS:-$(nproc)}"
 
-
 ./autogen.sh
 ./configure \
 	--prefix="$PREFIX" \

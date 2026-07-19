@@ -1,16 +1,29 @@
-.PHONY: link clean check check-agent-role-sync check-guardrails-native-sync _link-codex-skills _clean-codex-skills
+.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync _link-codex-skills _clean-codex-skills
+
+help:
+	@printf '%s\n' \
+		'link   - stow repository files and link Codex skills' \
+		'clean  - remove repository-owned links from HOME' \
+		'test   - run isolated repository behavior tests' \
+		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt'
 
 link:
 	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
 	$(MAKE) _link-codex-skills
 
 _link-codex-skills:
-	@mkdir -p "$(HOME)/.config/codex/skills"
-	@for d in "$(CURDIR)"/.agents/skills/*; do \
+	@set -eu; \
+	mkdir -p "$(HOME)/.config/codex/skills"; \
+	for d in "$(CURDIR)"/.agents/skills/*; do \
 		name="$$(basename "$$d")"; \
+		source="$$(readlink -f "$$d")"; \
 		target="$(HOME)/.config/codex/skills/$$name"; \
-		rm -rf "$$target"; \
-		ln -s "../../../dotfiles/.agents/skills/$$name" "$$target"; \
+		if [ -e "$$target" ] && [ ! -L "$$target" ]; then \
+			printf 'refusing to replace non-symlink Codex skill target: %s\n' "$$target" >&2; \
+			exit 1; \
+		fi; \
+		if [ -L "$$target" ]; then rm "$$target"; fi; \
+		ln -s "$$source" "$$target"; \
 	done
 
 clean:
@@ -20,16 +33,18 @@ clean:
 		-xtype l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) printf "%s\n" "$$link"; rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +
 
 _clean-codex-skills:
-	@for d in "$(CURDIR)"/.agents/skills/*; do \
+	@set -eu; \
+	for d in "$(CURDIR)"/.agents/skills/*; do \
 		name="$$(basename "$$d")"; \
+		source="$$(readlink -f "$$d")"; \
 		target="$(HOME)/.config/codex/skills/$$name"; \
-		if [ -L "$$target" ]; then \
+		if [ -L "$$target" ] && [ "$$(readlink -f "$$target")" = "$$source" ]; then \
 			printf "%s\n" "$$target"; \
 			rm "$$target"; \
 		fi; \
 	done
 
-check: check-agent-role-sync check-guardrails-native-sync
+check: test check-agent-role-sync check-guardrails-native-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -37,7 +52,7 @@ check: check-agent-role-sync check-guardrails-native-sync
 	done | sort)"; \
 	if command -v shellcheck >/dev/null 2>&1; then \
 		if [ -n "$$SHELL_SCRIPTS" ]; then \
-			shellcheck --severity=warning $$SHELL_SCRIPTS || echo "warn: shellcheck reported issues"; \
+			shellcheck --severity=warning $$SHELL_SCRIPTS; \
 		else \
 			echo "warn: no shell scripts found for shellcheck"; \
 		fi; \
@@ -46,6 +61,7 @@ check: check-agent-role-sync check-guardrails-native-sync
 	fi; \
 	if command -v shfmt >/dev/null 2>&1; then \
 		if [ -n "$$SHELL_SCRIPTS" ]; then \
+			shfmt -d $$SHELL_SCRIPTS; \
 			SHFMT_FILES="$$(shfmt -l $$SHELL_SCRIPTS)"; \
 			if [ -n "$$SHFMT_FILES" ]; then \
 				echo "warn: shfmt would reformat:"; \
@@ -58,30 +74,11 @@ check: check-agent-role-sync check-guardrails-native-sync
 		echo "warn: shfmt not installed; skipping shfmt"; \
 	fi
 
+test:
+	@bash tests/codex-skills-link-test.sh
+
 check-agent-role-sync:
-	@set -eu; \
-	ref_body=$$(mktemp); target_body=$$(mktemp); \
-	trap 'rm -f "$$ref_body" "$$target_body"' EXIT; \
-	body() { awk '/^---$$/ { delimiters++; next } delimiters >= 2 { print }' "$$1"; }; \
-	status=0; \
-	for role in brainstormer build docs-verify eval-review idea-critic plan research-strategist second-brain writer-critic; do \
-		reference="$(CURDIR)/.claude/agents/$$role.md"; \
-		body "$$reference" > "$$ref_body"; \
-		for target in "$(CURDIR)/.config/opencode/agents/$$role.md"; do \
-			body "$$target" > "$$target_body"; \
-			if ! cmp -s "$$ref_body" "$$target_body"; then \
-				printf 'agent role body drift: %s (%s)\n' "$$role" "$${target#$(CURDIR)/}" >&2; status=1; \
-			fi; \
-		done; \
-		if [ "$$role" != build ] && [ "$$role" != plan ]; then \
-			target="$(CURDIR)/.config/pi/agent/agents/$$role.md"; \
-			body "$$target" > "$$target_body"; \
-			if ! cmp -s "$$ref_body" "$$target_body"; then \
-				printf 'agent role body drift: %s (%s)\n' "$$role" "$${target#$(CURDIR)/}" >&2; status=1; \
-			fi; \
-		fi; \
-	done; \
-	exit "$$status"
+	@python3 .agents/render-agent-roles.py --check
 
 # Drift check for the hand-maintained duplicates of
 # .agents/guardrails/sensitive-paths.json living in each agent's native

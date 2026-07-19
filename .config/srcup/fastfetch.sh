@@ -3,7 +3,6 @@ set -euo pipefail
 
 PREFIX="${PREFIX:-$HOME/.local}"
 
-
 # Upstream run.sh builds and runs fastfetch, but does not install and does not
 # set CMAKE_INSTALL_PREFIX. Configure directly so install stays under PREFIX.
 cmake -S . -B build \

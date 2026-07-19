@@ -4,7 +4,10 @@
 # wrapper (e.g. a sandbox). See `renv --help`.
 set -euo pipefail
 
-die() { printf 'renv: %s\n' "$1" >&2; exit "${2:-1}"; }
+die() {
+	printf 'renv: %s\n' "$1" >&2
+	exit "${2:-1}"
+}
 
 show_help() {
 	cat <<'EOF'
@@ -24,7 +27,10 @@ EOF
 }
 
 case "${1:-}" in
-	-h|--help) show_help; exit 0 ;;
+-h | --help)
+	show_help
+	exit 0
+	;;
 esac
 [ "$#" -ge 1 ] || die 'usage: renv <command> [args...]' 2
 

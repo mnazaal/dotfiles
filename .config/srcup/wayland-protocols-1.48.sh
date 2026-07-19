@@ -3,7 +3,6 @@ set -euo pipefail
 
 PREFIX="${PREFIX:-$HOME/.local}"
 
-
 # Purge stale root-owned build artifacts from prior sudo installs
 if [[ -f build/.ninja_deps ]] && [[ "$(stat -c %U build/.ninja_deps)" == "root" ]]; then
 	rm -rf build

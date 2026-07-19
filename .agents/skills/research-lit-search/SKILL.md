@@ -23,6 +23,19 @@ description: Use for literature search: related work, paper search, field survey
 5. If citation/reference expansion leaves a coverage gap, expand by author best-first, not breadth-first: take the authors of the top-ranked results, follow each author's other work, but cap to a few authors, keep only papers that pass the same relevance gate, and flag when a cluster is dominated by one lab. Fold survivors back into the clusters.
 6. Return map: clusters, representative papers, why each matters, caveats, next reads.
 
+## Novelty gate
+
+When the search is a novelty gate (routed from `research-protocol` before building a new
+method), the output is sharper than a field map:
+
+- For each nearest neighbor, name the single defining feature it is missing — not a vague
+  "it differs".
+- State the defensible delta as the *combination* no single paper has, and lead with it.
+- Assess scooping risk: which labs/authors are adjacent and iterating, and on which leg.
+- Record an explicit "what NOT to re-pursue" — answered searches and dead ends — so a later
+  session does not re-run them.
+- End on a verdict: survives/pursue (with any narrowed framing) vs. scooped/pivot.
+
 ## Related Skills
 
 - `research-paper` for deep reading of a result from the search.

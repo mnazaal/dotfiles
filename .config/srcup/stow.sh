@@ -3,7 +3,6 @@ set -euo pipefail
 
 PREFIX="${PREFIX:-$HOME/.local}"
 
-
 ./bootstrap
 ./configure --prefix="$PREFIX"
 make

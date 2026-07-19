@@ -25,7 +25,6 @@ if [[ -n "$cc_triplet" ]]; then
 fi
 prepend_path_var LD_LIBRARY_PATH "$PREFIX/lib"
 
-
 meson setup build --prefix="$PREFIX" --reconfigure
 ninja -C build
 ninja -C build install

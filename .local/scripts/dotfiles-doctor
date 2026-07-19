@@ -93,9 +93,9 @@ if command -v ssh >/dev/null 2>&1; then
 	control_path=$(ssh -G git@github.com 2>/dev/null | awk 'tolower($1) == "controlpath" { print $2; exit }')
 	if [[ -n "$control_path" && "$control_path" != none ]]; then
 		case "$control_path" in
-			~/*) control_path="$HOME/${control_path#~/}" ;;
-			/*) ;;
-			*) control_path="$HOME/$control_path" ;;
+		~/*) control_path="$HOME/${control_path#~/}" ;;
+		/*) ;;
+		*) control_path="$HOME/$control_path" ;;
 		esac
 		control_parent="${control_path%/*}"
 		if [[ "$control_parent" == "$control_path" ]]; then

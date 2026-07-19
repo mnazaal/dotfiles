@@ -3,7 +3,6 @@ set -euo pipefail
 
 PREFIX="${PREFIX:-$HOME/.local}"
 
-
 ./autogen.sh
 ./configure --prefix="$PREFIX"
 make

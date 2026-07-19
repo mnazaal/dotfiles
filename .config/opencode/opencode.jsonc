@@ -3,8 +3,8 @@
     "autoupdate": "notify",
 
     "default_agent": "plan",
-    "model": "openai/gpt-5.5",
-    "small_model": "opencode-go/kimi-k2.5",
+    "model": "openai/gpt-5.6-terra",
+    "small_model": "openai/gpt-5.5",
     "instructions": ["AGENTS.md"],
 
     "provider": {
@@ -22,9 +22,9 @@
         },
         "openai": {
             "models": {
-                "gpt-5.5": {
+                "gpt-5.6-terra": {
                     "options": {
-                        "reasoningEffort": "low"
+                        "reasoningEffort": "high"
                     }
                 }
             }
