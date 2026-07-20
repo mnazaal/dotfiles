@@ -47,6 +47,7 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Diffusion: overfit one image, visualize noising, reconstruct `x0`, loss by timestep, epsilon/x0/v convention, sampler matches training objective.
 - Conditioning: shuffle/zero/permute conditions; behavior should degrade or change meaningfully.
 - Metric worsens with MORE budget/data/optimization: a monotone *degradation* as you add the resource that should help is rarely noise — suspect a scale/units mismatch in the decision rule (an arbitrary latent/utility scale combined with a fixed real-unit term; the fixed term goes negligible as the latent amplitude grows with data) or an acquisition pathology. Confirm with a natural experiment: a condition where the bug MUST vanish (e.g. an interior vs boundary optimum) and check it does.
+- Threshold/penalty calibration along the path: to set a per-step threshold (sparsity penalty, acceptance cutoff, stopping rule) in a sequential build/search, measure the marginal quantity ALONG the actual operating trajectory (e.g. empty→solution build order), not only at the target/optimum. A threshold calibrated at the optimum can be off by a large factor from where the search operates, and if the marginal profile is non-monotone along the path, no constant threshold works — which the at-optimum measurement hides.
 
 ## Related Skills
 

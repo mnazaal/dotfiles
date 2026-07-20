@@ -18,7 +18,9 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Do not trust delegated-agent reports without checking produced artifacts/diffs.
 - A failure trace ending in worker/plugin teardown (e.g. xdist `OSError: cannot send`, `PluggyTeardownRaisedWarning`) with no `FAILED` line is harness/infra flake, not a regression — rerun once plain before treating it as real.
 - Resource-shaped parallel-test failures (worker death, process/thread creation failures, near-zero worker CPU growth while memory is exhausted) are infrastructure evidence first, not code evidence; rerun with lower/no parallelism before debugging application code.
+- Prevent oversubscription before it freezes an interactive machine: before a heavy local check (JAX/numpy/pytorch tests, probes, smoke runs), cap library thread pools (`OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS=1`, XLA single-thread) and never run two core-saturating jobs concurrently — library-threads × cores × stacked process pools can pin the whole workstation, not just slow the check.
 - To certify a numerical result is *correct* (not merely stable), check it against an independently-derived reference that shares no code path with the implementation (textbook formula in numpy/scipy, autodiff vs. analytic, a second library, brute-force enumeration) — and write that reference before reading the code's own tests, so their assertions don't anchor it. A test that asserts the code's own output proves stability, not correctness. A port may claim only “matches the reference implementation” from recorded replay/parity evidence; independent numerical correctness needs a separate oracle.
+- A passing correctness check certifies only the input regime it exercised. When the cheap gate runs at a benign scale (tiny values, short sequences, small deltas) but deployment runs orders of magnitude larger, add a check in the deployment-magnitude regime — sign/scale/overflow bugs hide where the gate never looks.
 
 ## Gate
 
@@ -53,6 +55,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Code changed used as bug-fixed evidence.
 - Partial checks presented as full proof.
 - Golden-snapshot or self-referential test (reuses the code's own helpers/output) treated as correctness evidence — it guards regressions, it does not prove correctness.
+- Re-deriving a property of an existing run from *assumed* or *default* inputs and trusting the result — the run's own recorded config (`params.json`, resolved config, manifest) is the source of truth; recomputing with a guessed upstream parameter launders an assumption into apparent evidence.
 - Background watcher loops left running after the watched command exits (`pgrep -f "x"` self-matches its own argv and never terminates).
 
 ## Related Skills

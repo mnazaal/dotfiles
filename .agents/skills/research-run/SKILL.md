@@ -26,6 +26,7 @@ Decide what a run result means and what to do next.
 - What seed(s)?
 - What config/commit/log path?
 - Is effect bigger than noise?
+- If non-significant: did the design have power for the *minimum effect worth acting on*? From the per-unit (per-seed) variance, compute the N that effect needs; a non-significant result below that N is inconclusive, not "no effect".
 - Is there a simpler baseline/control?
 - Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
@@ -63,6 +64,7 @@ If the project keeps a `LOG.md` (`context-project-docs`), offer to prepend the f
 - Training longer instead of checking broken assumptions.
 - Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.
 - Reading a verdict off a sweep point where both arms are saturated (floored/ceilinged) — the comparison is uninformative; pick a regime where the axis still moves the metric before comparing.
+- Calling a non-significant result "no effect" (or accepting a pre-registered null) without a power check — under-powered or confounded non-significance is inconclusive, not evidence of absence.
 - Comparing against a baseline we reimplemented when the authors'/established implementation exists and could be run via an adapter — a hand-rolled comparator that underperforms flatters the method.
 
 ## Related Skills

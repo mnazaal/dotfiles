@@ -61,6 +61,13 @@ project-name/
   outputs, sweeps, checkpoints, figures, tables, logs, and artifacts under it.
 - `results/runs/<run_id>/` is the canonical human-readable per-run record:
   resolved config, git commit, seed, metrics, logs, and artifacts.
+- Make each run's output path unique by its FULL sweep key — every varied
+  parameter — not a partial key plus a wall-clock timestamp. A second-resolution
+  timestamp collides for runs launched in the same second, and an omitted sweep
+  param collides across a sweep; either way concurrently-launched runs silently
+  overwrite on a shared filesystem and the loss surfaces only as *missing*
+  results, never an error. Keep a timestamp only to disambiguate genuine re-runs
+  of the identical config. (`dev-hpc` covers the sibling hydra `job.num` case.)
 - Track only layout/provenance docs inside generated-data/output directories
   (`data/README.md`, `results/README.md`); gitignore generated contents.
 - One command path should run every method/baseline through the same interface:
@@ -114,6 +121,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - `import mlflow`/`import wandb` scattered through experiment code.
 - Progress bars in captured logs.
 - A smoke test that mocks the tracker or bypasses the real entry point.
+- Adding a second sweep axis under one run/tag without checking the aggregation step groups by it — an aggregator keyed only on the first axis (e.g. strategy) silently pools across the new axis, and if it pairs on a shared key (seed) the repeated keys collide (last-write-wins). One swept value per tag, or fix the grouping first.
 
 ## Related Skills
 
