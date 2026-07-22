@@ -5,8 +5,8 @@ local function options()
     flavour = "mocha",
     transparent_background = true,
     integrations = {
+      fzf = true,
       gitsigns = true,
-      telescope = true,
       treesitter = true,
       which_key = true,
     },

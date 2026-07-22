@@ -240,9 +240,6 @@ function M.setup()
   local capabilities = lsp_capabilities()
 
   require("mason").setup({})
-  require("mason-lspconfig").setup({
-    automatic_enable = false,
-  })
 
   configure_diagnostics()
   register_servers(servers, capabilities)

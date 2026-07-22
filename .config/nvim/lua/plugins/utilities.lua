@@ -1,31 +1,13 @@
--- Utilities: Telescope, Oil, which-key, gitsigns, and Flash.
+-- Utilities: fzf-lua, Oil, which-key, gitsigns, and Flash.
 
 local M = {}
 
-local function telescope_options()
+local function fzf_lua_options()
   return {
-    defaults = {
-      layout_strategy = "horizontal",
-      layout_config = {
-        width = 0.9,
-        height = 0.8,
-        prompt_position = "top",
-      },
-      sorting_strategy = "ascending",
-      winblend = 0,
-      border = true,
-      borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
-      mappings = {
-        i = {
-          ["<Esc>"] = require("telescope.actions").close,
-        },
-      },
-    },
-    pickers = {
-      find_files = {
-        hidden = true,
-        find_command = { "rg", "--files", "--hidden", "--glob", "!**/.git/*" },
-      },
+    winopts = {
+      height = 0.85,
+      width = 0.90,
+      preview = { layout = "horizontal" },
     },
   }
 end
@@ -154,13 +136,14 @@ local function flash_options()
   }
 end
 
-local function setup_telescope()
-  require("telescope").setup(telescope_options())
+local function setup_fzf_lua()
+  require("fzf-lua").setup(fzf_lua_options())
 
-  vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<cr>", { desc = "Find files" })
-  vim.keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<cr>", { desc = "Grep files" })
-  vim.keymap.set("n", "<leader>fb", "<cmd>Telescope buffers<cr>", { desc = "Find buffers" })
-  vim.keymap.set("n", "<leader>fh", "<cmd>Telescope help_tags<cr>", { desc = "Help tags" })
+  local fzf = require("fzf-lua")
+  vim.keymap.set("n", "<leader>ff", fzf.files, { desc = "Find files" })
+  vim.keymap.set("n", "<leader>fg", fzf.live_grep, { desc = "Grep files" })
+  vim.keymap.set("n", "<leader>fb", fzf.buffers, { desc = "Find buffers" })
+  vim.keymap.set("n", "<leader>fh", fzf.helptags, { desc = "Help tags" })
 end
 
 local function setup_oil()
@@ -205,7 +188,7 @@ local function setup_flash()
 end
 
 function M.setup()
-  setup_telescope()
+  setup_fzf_lua()
   setup_oil()
   setup_which_key()
   setup_gitsigns()
