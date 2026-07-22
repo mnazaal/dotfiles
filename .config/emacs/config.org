@@ -420,6 +420,10 @@ To add multiple tags, add =:= after current tag.
                               "data/projects.org"
                               "agenda/aalto-outlook.org"
                               "agenda/inbox-recurring.org")))
+  ;; Silently skip agenda files that don't exist yet (e.g. before
+  ;; cal-sync-cron has generated primary-gcal.org / aalto-outlook.org)
+  ;; instead of prompting [R]emove/[A]bort at startup.
+  (org-agenda-skip-unavailable-files t)
   (org-agenda-start-with-log-mode t)
   (org-agenda-prefix-format '((dashboard-agenda . " %i %-12:c %s ")
                               (agenda . "○  %-12t %s")

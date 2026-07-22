@@ -50,8 +50,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 
   branch=$(git symbolic-ref --quiet --short HEAD) || {
-    printf '%s\n' 'pkgit: refusing to update: detached HEAD' >&2
-    exit 1
+    printf '%s\n' 'pkgit: detached HEAD (e.g. a pinned version tag); skipping source update' >&2
+    exit 0
   }
 
   upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || upstream=origin/$branch
@@ -160,7 +160,7 @@ function M.cmake(opts)
     return M.sh("cmake -S . -B build " .. M.join(flags) .. " && cmake --build build")
   end
   t.install = function() return M.sh("cmake --install build") end
-  t.uninstall = function() return M.sh("xargs rm < build/install_manifest.txt") end
+  t.uninstall = function() return M.sh("[ -f build/install_manifest.txt ] && xargs -d '\\n' -r rm -f < build/install_manifest.txt || true") end
   return M.target(t)
 end
 

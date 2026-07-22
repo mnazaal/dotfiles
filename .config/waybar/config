@@ -112,7 +112,7 @@
 
     "custom/lock": {
         "tooltip": false,
-        "on-click": "zsh -c 'source ~/.config/zsh/.zshenv; exec waylock'",
+        "on-click": "flock -n \"${XDG_RUNTIME_DIR:-/tmp}/swaylock.lock\" sh -c 'sleep 0.5; exec \"$HOME/.local/bin/swaylock\" -f'",
         "format": "\udb80\udf43 "
     },
 

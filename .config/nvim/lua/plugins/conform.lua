@@ -9,7 +9,7 @@ local function options()
       python = { "ruff_fix", "ruff_format", "ruff_organize_imports" },
       bash = { "shfmt" },
       sh = { "shfmt" },
-      json = { "prettier", "prettierd" },
+      json = { { "prettierd", "prettier" } },
       ["_"] = { "trim_whitespace" },
     },
     format_on_save = {

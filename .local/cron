@@ -22,5 +22,5 @@
 #
 # m h  dom mon dow   command
 */10 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/ical2org.lock" -c "$HOME/.local/scripts/cal-sync-cron" >> "$HOME/.local/state/ical2org.log" 2>&1'
-*/5 * * * * /usr/bin/flock -xn ~/.cache/mbsync/mbsync.lock -c "$HOME/.local/bin/mbsync -a && $HOME/.local/scripts/notmuch-cron new" > /dev/null 2>&1
+*/5 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync -a && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
 0 7 * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/rss2email.lock" -c "$HOME/.local/scripts/rss2email-cron run" >> "$HOME/.local/state/rss2email.log" 2>&1'

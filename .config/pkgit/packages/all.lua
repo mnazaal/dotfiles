@@ -79,7 +79,7 @@ return {
   mango = { url = "https://github.com/mangowm/mango.git", targets = meson_clean },
   ["nautilus-dropbox"] = { url = "https://github.com/dropbox/nautilus-dropbox.git", targets = lib.autotools({ autogen = true }) },
   neovim = {
-    url = "git@github.com:neovim/neovim.git",
+    url = "https://github.com/neovim/neovim.git",
     targets = lib.target({
       build = function() return 0 end,
       install = function() return lib.sh("make CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=" .. lib.q(prefix) .. " install") end,
@@ -91,17 +91,17 @@ return {
   pixman = { url = "https://gitlab.freedesktop.org/pixman/pixman.git", targets = meson },
   pwvucontrol = {
     url = "https://github.com/saivert/pwvucontrol.git",
-    targets = lib.meson({ pkg_config_path = local_pkg_config, flags = { "--pkg-config-path=" .. lib.q(local_pkg_config) } }),
+    targets = lib.meson({ pkg_config_path = local_pkg_config, flags = { "--pkg-config-path=" .. local_pkg_config } }),
   },
   qpdf = { url = "https://github.com/qpdf/qpdf.git", targets = cc },
   rdfind = { url = "https://github.com/pauldreik/rdfind.git", targets = lib.autotools() },
-  rofi = { url = "git@github.com:davatorium/rofi.git", targets = meson },
+  rofi = { url = "https://github.com/davatorium/rofi.git", targets = meson },
   scenefx = { url = "https://github.com/wlrfx/scenefx.git", targets = meson_clean },
   sioyek = {
     url = "https://github.com/ahrm/sioyek",
     targets = lib.target({
       build = function()
-        return lib.sh("QMAKE=${QMAKE:-$HOME/Qt/${QT_VERSION:-6.8.2}/${QT_ARCH:-gcc_64}/bin/qmake} ./build_linux.sh")
+        return lib.sh("QMAKE=${QMAKE:-$(command -v qmake6 2>/dev/null || printf '%s' \"$HOME/Qt/${QT_VERSION:-6.8.2}/${QT_ARCH:-gcc_64}/bin/qmake\")} ./build_linux.sh")
       end,
       install = function()
         local wrapper = prefix .. "/bin/sioyek"
