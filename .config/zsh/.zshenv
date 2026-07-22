@@ -28,7 +28,6 @@ export PASSWORD_STORE_DIR="$XDG_DATA_HOME/pass"
 export PASSWORD_STORE_ENABLE_EXTENSIONS=true
 export PASSWORD_STORE_EXTENSIONS_DIR="$XDG_DATA_HOME/password-store/extensions"
 export BASH_COMPLETION_USER_DIR="$XDG_DATA_HOME/bash-completion/completions"
-export PYTHONSTARTUP="$XDG_CONFIG_HOME/python/pythonrc"
 export PYTHON_HISTORY="$XDG_STATE_HOME/python_history"
 export PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/python"
 export PYTHONUSERBASE="$XDG_DATA_HOME/python"
@@ -48,7 +47,7 @@ export KERAS_HOME="$XDG_STATE_HOME/keras"
 export TEXMFHOME="$XDG_DATA_HOME/texlive/texmf-local"
 export TEXMFCONFIG="$XDG_CONFIG_HOME/texlive"
 export TEXMFVAR="$XDG_CACHE_HOME/texlive"
-export JULIAP_DEPOT_PATH="$XDG_DATA_HOME/juliap"
+export JULIA_DEPOT_PATH="$XDG_DATA_HOME/julia"
 
 export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
 export PI_OFFLINE=1

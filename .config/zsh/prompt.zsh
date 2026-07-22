@@ -2,9 +2,7 @@ autoload -Uz vcs_info
 setopt PROMPT_SUBST
 
 zstyle ':vcs_info:*'     enable git
-zstyle ':vcs_info:git:*' check-for-changes true
-zstyle ':vcs_info:git:*' stagedstr '+'
-zstyle ':vcs_info:git:*' unstagedstr '!'
+zstyle ':vcs_info:git:*' check-for-changes false
 zstyle ':vcs_info:git:*' formats       ' on %F{blue}%b%f'
 zstyle ':vcs_info:git:*' actionformats ' on %F{blue}%b%f|%F{red}%a%f'
 

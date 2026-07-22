@@ -50,8 +50,8 @@
     history_length = 20
 
     # Misc
-    dmenu = /usr/bin/dmenu -p dunst:
-    browser = /usr/bin/xdg-open
+    dmenu = rofi -dmenu -p dunst:
+    browser = xdg-open
     always_run_script = true
     title = Dunst
     class = Dunst

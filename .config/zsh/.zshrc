@@ -33,9 +33,12 @@ mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 # interactively, which would otherwise stall login on shared/HPC systems.
 compinit -i -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
 
+# Populate LS_COLORS so completion listings (and ls) are colorized.
+command -v dircolors >/dev/null 2>&1 && eval "$(dircolors -b)"
+
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' group-name ''
-zstyle ':completion:*' list-colors ''
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu select
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
     '[ -d "$realpath" ] && { eza --tree --color=always -- "$realpath" 2>/dev/null || ls -la --color=always -- "$realpath"; } || { bat --color=always -- "$realpath" 2>/dev/null || cat -- "$realpath"; }'
@@ -63,7 +66,7 @@ export FZF_DEFAULT_OPTS="
 --height=40%
 --layout=reverse
 --border
---inline-info
+--info=inline
 "
 
 # Aliases

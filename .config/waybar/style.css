@@ -40,20 +40,3 @@ window#waybar {
     color: @text;
     background-color: @base;
 }
-
-#workspaces button {
-    border-radius: 0;
-    color: @text;
-    padding-left: 8px;
-    padding-right: 8px;
-}
-
-#workspaces button.empty {
-    color: @surface2;
-}
-
-#workspaces button.active {
-    border-radius: 0;
-    background-color: @overlay0;
-    color: @text;
-}

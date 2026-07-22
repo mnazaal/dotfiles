@@ -2,7 +2,6 @@
     name = Nazaal
     email = 18580527+mnazaal@users.noreply.github.com
 [diff]
-    tool = meld
     colorMoved = default
 [log]
     date = iso-local
