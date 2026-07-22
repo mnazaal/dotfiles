@@ -182,6 +182,11 @@ function M.autotools(opts)
     local steps = {}
     if opts.bootstrap then table.insert(steps, "./bootstrap") end
     if opts.autogen then table.insert(steps, "./autogen.sh") end
+    -- Generate ./configure from configure.ac when the repo doesn't ship it
+    -- (rdfind etc.). Equivalent to a project's bootstrap.sh/autogen.sh but
+    -- name-agnostic. Fresh pkgit clones need this; srcup checkouts hid it by
+    -- being bootstrapped once by hand.
+    if opts.autoreconf then table.insert(steps, "autoreconf -fi") end
     local flags = M.qjoin(opts.configure_flags or {})
     local cfg = "./configure --prefix=" .. M.q(prefix)
     if flags ~= "" then cfg = cfg .. " " .. flags end

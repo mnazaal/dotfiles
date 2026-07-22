@@ -95,7 +95,7 @@ local repos = {
     targets = lib.meson({ pkg_config_path = local_pkg_config, flags = { "--pkg-config-path=" .. local_pkg_config } }),
   },
   qpdf = { url = "https://github.com/qpdf/qpdf.git", targets = cc },
-  rdfind = { url = "https://github.com/pauldreik/rdfind.git", targets = lib.autotools() },
+  rdfind = { url = "https://github.com/pauldreik/rdfind.git", targets = lib.autotools({ autoreconf = true }) },
   rofi = { url = "https://github.com/davatorium/rofi.git", targets = meson },
   scenefx = { url = "https://github.com/wlrfx/scenefx.git", targets = meson_clean },
   sioyek = {
