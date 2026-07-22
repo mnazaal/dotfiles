@@ -123,6 +123,9 @@
             "wc": "allow",
             "wc *": "allow",
 
+            "cat": "allow",
+            "cat *": "allow",
+
             "ruff": "allow",
             "ruff *": "allow",
 
