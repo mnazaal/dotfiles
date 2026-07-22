@@ -120,8 +120,12 @@ local function flash_options()
       multi_window = true,
     },
     modes = {
+      -- flash's `/`-search integration uses an internal Neovim symbol
+      -- (search_match_endcol via FFI) that is absent on nvim-nightly/0.13-dev,
+      -- which crashes incsearch. Keep it off until flash upstream catches up;
+      -- `s`/`S` jumps are unaffected.
       search = {
-        enabled = true,
+        enabled = false,
       },
       char = {
         enabled = false,
