@@ -6,7 +6,7 @@ local meson_clean = lib.meson({ clean_root_build = true })
 
 local local_pkg_config = prefix .. "/lib/x86_64-linux-gnu/pkgconfig:" .. prefix .. "/lib/pkgconfig:" .. prefix .. "/share/pkgconfig"
 
-return {
+local repos = {
   babl = { url = "https://gitlab.gnome.org/GNOME/babl.git", targets = meson },
   ccache = {
     url = "https://github.com/ccache/ccache.git",
@@ -158,3 +158,12 @@ chmod +x "$BIN/sioyek"
   wireplumber = { url = "https://github.com/PipeWire/wireplumber.git", targets = meson },
   wlroots = { url = "https://gitlab.freedesktop.org/wlroots/wlroots.git", targets = meson_clean },
 }
+
+-- pkgit validates a per-package `dependencies` table before building and logs
+-- "init.lua: 'dependencies' is not a table" when it's absent. No inter-package
+-- deps are declared (packages build in order), so default each to an empty table.
+for _, spec in pairs(repos) do
+  spec.dependencies = spec.dependencies or {}
+end
+
+return repos

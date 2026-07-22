@@ -86,6 +86,10 @@ function M.target(t)
       return build()
     end
   end
+  -- pkgit validates `dependencies` on the resolved target profile
+  -- (targets.<profile>.dependencies) before building; default to empty since no
+  -- inter-package deps are declared. default and quiet share the same table `t`.
+  t.dependencies = t.dependencies or {}
   return { default = t, quiet = t }
 end
 
@@ -127,6 +131,16 @@ end
 
 function M.meson(opts)
   opts = opts or {}
+  -- Export the local pkgconfig for the whole command — meson setup, ninja, and
+  -- any cargo/custom subproject it spawns (they run their own pkg-config that
+  -- reads PKG_CONFIG_PATH from the env). pkgit runs build and install as
+  -- SEPARATE shells, so the export must be applied to each (srcup gets this for
+  -- free with one `export` in a single script). Append existing, like srcup.
+  local function with_pcp(cmd)
+    if not opts.pkg_config_path then return cmd end
+    return "export PKG_CONFIG_PATH=" .. M.q(opts.pkg_config_path) ..
+      '${PKG_CONFIG_PATH:+:"$PKG_CONFIG_PATH"}; ' .. cmd
+  end
   local t = {}
   t.build = function()
     if opts.clean_root_build then M.clean_root_ninja_build() end
@@ -134,12 +148,9 @@ function M.meson(opts)
     local flags = M.qjoin(opts.flags or {})
     local cmd = "meson setup build --prefix=" .. M.q(prefix) .. " --reconfigure"
     if flags ~= "" then cmd = cmd .. " " .. flags end
-    if opts.pkg_config_path then
-      cmd = M.with_env({ PKG_CONFIG_PATH = opts.pkg_config_path }, cmd)
-    end
-    return M.sh(cmd .. " && ninja -C build")
+    return M.sh(with_pcp(cmd .. " && ninja -C build"))
   end
-  t.install = function() return M.sh("ninja -C build install") end
+  t.install = function() return M.sh(with_pcp("ninja -C build install")) end
   t.uninstall = function() return M.sh("ninja -C build uninstall") end
   return M.target(t)
 end
