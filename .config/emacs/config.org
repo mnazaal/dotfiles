@@ -245,6 +245,7 @@ See suggested completions for incomplete command prefixes in the minibuffer.
 
 #+begin_src emacs-lisp
 (use-package which-key
+  :ensure nil ;; built into Emacs 30+
   :hook (after-init . which-key-mode))
 #+end_src
 
@@ -656,30 +657,20 @@ Save different locations within buffers for easy navigation.
   (bookmark-default-file (expand-file-name "bookmarks" org-directory)))
 #+end_src
 
-** undo-tree                                                           :text:
+** vundo                                                           :text:
 Visualise undo history as it is - a tree structure.
 - =C-x u= : View undo tree.
 - =d=     : While in undo tree - shows diffs in separate window.
 
 #+begin_src emacs-lisp
-(use-package undo-tree
+(use-package vundo
   :after evil
-  :hook
-  (conf-mode . undo-tree-mode)
-  (prog-mode . undo-tree-mode)
-  (text-mode . undo-tree-mode)
   :bind
-  ([remap evil-redo] . undo-tree-redo) ;; C-r
-  ([remap evil-undo] . undo-tree-undo) ;; u
+  ("C-x u" . vundo)
   :custom
-  (undo-tree-auto-save-message nil)
-  (evil-undo-system 'undo-tree)
-  (undo-tree-limit (* 1 1024 1024)) ;; 1 MB
-  (undo-tree-visualizer-timestamps t)
-  (undo-tree-visualizer-diff t)
-  (undo-tree-auto-save-history t)
-  (undo-tree-history-directory-alist
-   `(("." . ,(expand-file-name "var/undo" user-emacs-directory)))))
+  ;; Use Emacs' built-in undo/redo (undo-tree replacement); vundo visualizes it.
+  (evil-undo-system 'undo-redo)
+  (vundo-glyph-alist vundo-unicode-symbols))
 #+end_src
 
 ** dired                                               :directory_management:
@@ -1281,31 +1272,27 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
   (setf (alist-get 'bash-ts-mode   apheleia-mode-alist) '(shfmt)))
 #+end_src
 
-** dap-mode                                                          :coding:
+** dape                                                          :coding:
 Python debugger via Debug Adapter Protocol. Requires =debugpy=.
 - =C-c d d= : Start debug session.
 - =C-c d b= : Toggle breakpoint.
 - =C-c d n= / =C-c d i= : Step over / into.
 
 #+begin_src emacs-lisp
-(use-package dap-mode
+(use-package dape
   :after eglot
-  :hook
-  (dap-stopped . (lambda (_arg) (call-interactively #'dap-hydra)))
-  :config
-  (require 'dap-python)
-  (setq dap-python-debugger 'debugpy)
-  :bind-keymap
-  ("C-c d" . dap-mode-map)
+  :custom
+  ;; Put dape's command map under C-c d (matches the old dap-mode prefix).
+  (dape-key-prefix (kbd "C-c d"))
   :bind
-  (:map dap-mode-map
-        ("d" . dap-debug)
-        ("b" . dap-breakpoint-toggle)
-        ("n" . dap-next)
-        ("i" . dap-step-in)
-        ("o" . dap-step-out)
-        ("c" . dap-continue)
-        ("q" . dap-disconnect)))
+  (:map dape-global-map
+        ("d" . dape)
+        ("b" . dape-breakpoint-toggle)
+        ("n" . dape-next)
+        ("i" . dape-step-in)
+        ("o" . dape-step-out)
+        ("c" . dape-continue)
+        ("q" . dape-quit)))
 #+end_src
 
 ** rainbow-delimiters                                           :text:visual:
