@@ -17,10 +17,6 @@
       "rev": "086a40dc7ed8242c03be9f47fbcee68699cc2395",
       "src": "https://github.com/stevearc/conform.nvim"
     },
-    "flash.nvim": {
-      "rev": "fcea7ff883235d9024dc41e638f164a450c14ca2",
-      "src": "https://github.com/folke/flash.nvim"
-    },
     "fzf-lua": {
       "rev": "532d463f5c83595192fe740572d8fd6902b2217a",
       "src": "https://github.com/ibhagwan/fzf-lua"
@@ -32,10 +28,6 @@
     "leap.nvim": {
       "rev": "d7f8ee64155b7790188f17a993390f32577cfb81",
       "src": "https://codeberg.org/andyg/leap.nvim"
-    },
-    "mason-lspconfig.nvim": {
-      "rev": "25f609e7fca78af7cede4f9fa3af8a94b1c4950b",
-      "src": "https://github.com/mason-org/mason-lspconfig.nvim"
     },
     "mason.nvim": {
       "rev": "b03fb0f20bc1d43daf558cda981a2be22e73ac42",
@@ -56,10 +48,6 @@
     "plenary.nvim": {
       "rev": "b9fd5226c2f76c951fc8ed5923d85e4de065e509",
       "src": "https://github.com/nvim-lua/plenary.nvim"
-    },
-    "telescope.nvim": {
-      "rev": "7ef4d6dccb78ee71e552bbd866176762ad328afa",
-      "src": "https://github.com/nvim-telescope/telescope.nvim"
     },
     "which-key.nvim": {
       "rev": "3aab2147e74890957785941f0c1ad87d0a44c15a",
