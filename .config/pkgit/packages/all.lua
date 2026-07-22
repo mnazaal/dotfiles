@@ -87,7 +87,10 @@ local repos = {
     }),
   },
   notmuch = { url = "https://github.com/notmuch/notmuch.git", targets = lib.autotools() },
-  ["pass-otp"] = { url = "https://github.com/tadfisher/pass-otp", targets = lib.make_prefix() },
+  ["pass-otp"] = {
+    url = "https://github.com/tadfisher/pass-otp",
+    targets = lib.make_prefix({ vars = { BASHCOMPDIR = prefix .. "/share/bash-completion/completions" } }),
+  },
   pdfpc = { url = "https://github.com/pdfpc/pdfpc.git", targets = cc },
   pixman = { url = "https://gitlab.freedesktop.org/pixman/pixman.git", targets = meson },
   pwvucontrol = {
