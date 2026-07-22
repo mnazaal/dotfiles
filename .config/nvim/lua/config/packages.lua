@@ -12,7 +12,7 @@ local function plugin_specs()
     { src = "https://github.com/stevearc/oil.nvim", name = "oil.nvim" },
     { src = "https://github.com/folke/which-key.nvim", name = "which-key.nvim" },
     { src = "https://github.com/lewis6991/gitsigns.nvim", name = "gitsigns.nvim" },
-    { src = "https://github.com/folke/flash.nvim", name = "flash.nvim" },
+    { src = "https://codeberg.org/andyg/leap.nvim", name = "leap.nvim" },
     { src = "https://github.com/carlos-algms/agentic.nvim", name = "agentic.nvim" },
     { src = "https://github.com/saghen/blink.cmp", name = "blink.cmp", version = vim.version.range("1.*") },
   }

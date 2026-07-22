@@ -1,4 +1,4 @@
--- Utilities: fzf-lua, Oil, which-key, gitsigns, and Flash.
+-- Utilities: fzf-lua, Oil, which-key, gitsigns, and leap.
 
 local M = {}
 
@@ -114,32 +114,6 @@ local function gitsigns_options()
   }
 end
 
-local function flash_options()
-  return {
-    search = {
-      multi_window = true,
-    },
-    modes = {
-      -- flash's `/`-search integration uses an internal Neovim symbol
-      -- (search_match_endcol via FFI) that is absent on nvim-nightly/0.13-dev,
-      -- which crashes incsearch. Keep it off until flash upstream catches up;
-      -- `s`/`S` jumps are unaffected.
-      search = {
-        enabled = false,
-      },
-      char = {
-        enabled = false,
-      },
-    },
-    jump = {
-      nohlsearch = true,
-    },
-    label = {
-      uppercase = false,
-    },
-  }
-end
-
 local function setup_fzf_lua()
   require("fzf-lua").setup(fzf_lua_options())
 
@@ -163,32 +137,12 @@ local function setup_gitsigns()
   require("gitsigns").setup(gitsigns_options())
 end
 
-local function setup_flash()
-  require("flash").setup(flash_options())
-
-  vim.keymap.set({ "n", "x", "o" }, "s", function()
-    require("flash").jump()
-  end, { desc = "Flash jump" })
-
-  vim.keymap.set({ "n", "x", "o" }, "<leader>j", function()
-    require("flash").jump()
-  end, { desc = "Flash jump" })
-
-  vim.keymap.set({ "n", "x", "o" }, "S", function()
-    require("flash").treesitter()
-  end, { desc = "Flash treesitter" })
-
-  vim.keymap.set("o", "r", function()
-    require("flash").remote()
-  end, { desc = "Remote flash" })
-
-  vim.keymap.set({ "o", "x" }, "R", function()
-    require("flash").treesitter_search()
-  end, { desc = "Treesitter search" })
-
-  vim.keymap.set("c", "<C-s>", function()
-    require("flash").toggle()
-  end, { desc = "Toggle flash search" })
+local function setup_leap()
+  -- leap.nvim replaces flash.nvim (which FFI-crashes on nvim nightly). No
+  -- setup() needed; just the <Plug> mappings. Repo moved GitHub -> Codeberg.
+  vim.keymap.set({ "n", "x", "o" }, "s", "<Plug>(leap)", { desc = "Leap" })
+  vim.keymap.set({ "n", "x", "o" }, "<leader>j", "<Plug>(leap)", { desc = "Leap" })
+  vim.keymap.set("n", "S", "<Plug>(leap-from-window)", { desc = "Leap from window" })
 end
 
 function M.setup()
@@ -196,7 +150,7 @@ function M.setup()
   setup_oil()
   setup_which_key()
   setup_gitsigns()
-  setup_flash()
+  setup_leap()
 end
 
 return M
