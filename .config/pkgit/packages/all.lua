@@ -17,6 +17,7 @@ return {
     url = "git://git.git.savannah.gnu.org/emacs.git",
     targets = lib.autotools({
       autogen = true,
+      parallel = true,
       configure_flags = {
         "--with-pgtk",
         "--with-native-compilation=aot",
@@ -101,14 +102,49 @@ return {
     url = "https://github.com/ahrm/sioyek",
     targets = lib.target({
       build = function()
-        return lib.sh("QMAKE=${QMAKE:-$(command -v qmake6 2>/dev/null || printf '%s' \"$HOME/Qt/${QT_VERSION:-6.8.2}/${QT_ARCH:-gcc_64}/bin/qmake\")} ./build_linux.sh")
+        return lib.sh(
+          "set -e\nBIN=" .. lib.q(prefix .. "/bin") .. "\n" ..
+          [==[
+QT_VERSION="${QT_VERSION:-6.8.2}"
+QT_ARCH="${QT_ARCH:-gcc_64}"
+find_qmake() {
+  if [ -n "${QMAKE:-}" ]; then printf '%s\n' "$QMAKE"; return 0; fi
+  for candidate in \
+    "$HOME/.local/src/qt/$QT_VERSION/$QT_ARCH/bin/qmake" \
+    "$HOME/Qt/$QT_VERSION/$QT_ARCH/bin/qmake" \
+    "$HOME/.local/opt/qt/$QT_VERSION/$QT_ARCH/bin/qmake" \
+    "$HOME/.local/share/aqt/Qt/$QT_VERSION/$QT_ARCH/bin/qmake"; do
+    [ -x "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
+  done
+  command -v qmake6 || command -v qmake
+}
+QMAKE=$(find_qmake)
+version=$("$QMAKE" --version) || { echo "sioyek: qmake not found; install Qt 6.7 or 6.8" >&2; exit 1; }
+case "$version" in
+  *"Qt version 6.7"*|*"Qt version 6.8"*) : ;;
+  *) printf 'sioyek: needs Qt 6.7 or 6.8 qmake\n%s\n' "$version" >&2; exit 1 ;;
+esac
+git submodule update --init --recursive
+make distclean >/dev/null 2>&1 || make clean >/dev/null 2>&1 || true
+QMAKE="$QMAKE" ./build_linux.sh
+qt_prefix=$(realpath "$(dirname "$QMAKE")/..")
+case "$qt_prefix" in
+  "$HOME"/*) : ;;
+  *) echo "sioyek: qt_prefix outside HOME — refusing wrapper: $qt_prefix" >&2; exit 1 ;;
+esac
+sioyek_build=$(realpath "$PWD/build/sioyek")
+mkdir -p "$BIN"
+cat > "$BIN/sioyek" <<WRAP
+#!/usr/bin/env sh
+export LD_LIBRARY_PATH="$qt_prefix/lib:\${LD_LIBRARY_PATH:-}"
+export QT_PLUGIN_PATH="$qt_prefix/plugins\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}"
+exec "$sioyek_build" "\$@"
+WRAP
+chmod +x "$BIN/sioyek"
+]==]
+        )
       end,
-      install = function()
-        local wrapper = prefix .. "/bin/sioyek"
-        return lib.sh("mkdir -p " .. lib.q(prefix .. "/bin") ..
-          " && { printf '%s\n' '#!/usr/bin/env sh'; printf 'exec %s \"$@\"\n' \"$(pwd)/build/sioyek\"; } > " .. lib.q(wrapper) ..
-          " && chmod +x " .. lib.q(wrapper))
-      end,
+      install = function() return 0 end,
     }),
   },
   slurp = { url = "https://github.com/emersion/slurp", targets = meson },

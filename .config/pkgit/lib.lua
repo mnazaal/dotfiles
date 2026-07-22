@@ -175,7 +175,7 @@ function M.autotools(opts)
     local cfg = "./configure --prefix=" .. M.q(prefix)
     if flags ~= "" then cfg = cfg .. " " .. flags end
     table.insert(steps, cfg)
-    table.insert(steps, "make")
+    table.insert(steps, opts.parallel and 'make -j"$(nproc)"' or "make")
     return M.sh(M.join(steps, " && "))
   end
   t.install = function() return M.sh("make install") end
