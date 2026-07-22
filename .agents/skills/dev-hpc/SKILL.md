@@ -9,6 +9,11 @@ description: Use for running experiments on an HPC/SLURM cluster (e.g. Triton): 
 
 Get a project's experiments onto a SLURM cluster and results back, reproducibly, driven from a laptop.
 
+## Never run heavy compute on a login node
+
+- Any multi-minute CPU/GPU job — test suite, executing docs/notebook build, training, data prep, large enumeration — runs on a *compute node* via `sbatch`/`srun`, never bare on the login node. This binds the commands you **hand the user** too: give the `sbatch scripts/*_slurm.sh` or `srun --pty …` form, not a raw `pytest`/`make`/`python heavy.py` — suggesting a bare heavy command for a cluster is the same violation as running it yourself. Login nodes are shared; admins kill heavy jobs there and may suspend the account.
+- Prefer a hard guard on the heavy path so the mistake can't recur: refuse when there's no allocation (`$SLURM_JOB_ID`/`$PBS_JOBID` unset) AND the hostname matches `*login*`, with an explicit override env for edge hosts. Point the repo's docs/scripts at the batch wrapper, not the raw command.
+
 ## Code + Env Sync
 
 - Sync code to the cluster over git (push to a remote/bare repo the cluster pulls). rsync is for *results only*, one-way.
