@@ -145,12 +145,32 @@ function M.meson(opts)
   -- SEPARATE shells, so the export must be applied to each (srcup gets this for
   -- free with one `export` in a single script). Append existing, like srcup.
   local function with_pcp(cmd)
-    if not opts.pkg_config_path then return cmd end
-    return "export PKG_CONFIG_PATH=" .. M.q(opts.pkg_config_path) ..
-      '${PKG_CONFIG_PATH:+:"$PKG_CONFIG_PATH"}; ' .. cmd
+    local exports = ""
+    if opts.pkg_config_path then
+      exports = exports .. "export PKG_CONFIG_PATH=" .. M.q(opts.pkg_config_path) ..
+        '${PKG_CONFIG_PATH:+:"$PKG_CONFIG_PATH"}; '
+    end
+    -- General prepend-to-existing env exports (e.g. GI_TYPELIB_PATH / LD_LIBRARY_PATH /
+    -- XDG_DATA_DIRS at prefix), for builds that run an in-tree tool which dlopens or
+    -- introspects prefix libs — works even when the session env (e.g. mango's) lacks them.
+    for name, value in pairs(opts.env or {}) do
+      exports = exports .. "export " .. name .. "=" .. M.q(value) ..
+        '${' .. name .. ':+:"$' .. name .. '"}; '
+    end
+    return exports .. cmd
   end
   local t = {}
   t.build = function()
+    -- pkgit's own per-package `version` field is a no-op in the installed
+    -- binary (it always clones ref HEAD), so pin a release tag/branch here
+    -- instead. `--detach` leaves HEAD detached, which git_update_source_only
+    -- then skips on later builds. Idempotent: re-checking-out the same tag is
+    -- a no-op. Runs after git_update_source_only has ff-merged the default
+    -- branch on the very first (fresh-clone) build.
+    if opts.checkout then
+      local code = M.sh("git checkout --detach " .. M.q(opts.checkout))
+      if code ~= 0 then return code end
+    end
     if opts.clean_root_build then M.clean_root_ninja_build() end
     if opts.clean_unwritable_log then M.clean_unwritable_meson_log() end
     local flags = M.qjoin(opts.flags or {})
@@ -185,6 +205,14 @@ end
 
 function M.autotools(opts)
   opts = opts or {}
+  -- Extra `VAR=value` make args, applied to build + install + uninstall, for
+  -- Makefiles that hardcode an absolute system dir (e.g. nautilus-dropbox's
+  -- NAUTILUS_EXTENSION_DIR=/usr/lib/.../nautilus/extensions-4, which needs
+  -- pointing under prefix so a ~/.local install doesn't hit EACCES on /usr).
+  local mkvars = ""
+  for name, value in pairs(opts.make_vars or {}) do
+    mkvars = mkvars .. " " .. name .. "=" .. M.q(value)
+  end
   local t = {}
   t.build = function()
     local steps = {}
@@ -199,11 +227,11 @@ function M.autotools(opts)
     local cfg = "./configure --prefix=" .. M.q(prefix)
     if flags ~= "" then cfg = cfg .. " " .. flags end
     table.insert(steps, cfg)
-    table.insert(steps, opts.parallel and 'make -j"$(nproc)"' or "make")
+    table.insert(steps, (opts.parallel and 'make -j"$(nproc)"' or "make") .. mkvars)
     return M.sh(M.join(steps, " && "))
   end
-  t.install = function() return M.sh("make install") end
-  t.uninstall = function() return M.sh("make uninstall") end
+  t.install = function() return M.sh("make install" .. mkvars) end
+  t.uninstall = function() return M.sh("make uninstall" .. mkvars) end
   return M.target(t)
 end
 
