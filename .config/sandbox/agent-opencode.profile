@@ -6,6 +6,7 @@
 use dev
 
 RO+=( "$H/.agents" "$H/.config/opencode" )
+RO+=( "$H/dotfiles" )
 RW+=( "$H/.local/share/opencode" "$H/.local/state/opencode" )
 RW+=( "$H/.cache/opencode" )
 SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "OPENROUTER_API_KEY" "ASTA_MCP_API_KEY" "EDITOR" )

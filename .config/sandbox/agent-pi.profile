@@ -6,5 +6,6 @@
 use dev
 
 RO+=( "$H/.agents" "$H/.config/pi" )
+RO+=( "$H/dotfiles" )
 RW+=( "$H/.local/share/pi" "$H/.local/state/pi" )
 SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "OPENROUTER_API_KEY" "ASTA_MCP_API_KEY" )
