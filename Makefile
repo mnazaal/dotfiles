@@ -77,7 +77,11 @@ check: test check-agent-role-sync check-guardrails-native-sync
 test:
 	@bash tests/codex-skills-link-test.sh
 	@bash tests/renv-codex-test.sh
+	@bash tests/renv-guardrails-preflight-test.sh
+	@bash tests/renv-opencode-test.sh
 	@bash tests/sandbox-codex-profile-test.sh
+	@bash tests/sandbox-env-test.sh
+	@bash tests/sandbox-external-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
 	@bun test ./.config/codex/hooks/guardrails.test.ts

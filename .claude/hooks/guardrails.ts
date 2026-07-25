@@ -12,7 +12,8 @@ let data: any;
 try {
   data = JSON.parse(await Bun.stdin.text());
 } catch {
-  process.exit(0);
+  console.error("Claude guardrail hook received invalid input");
+  process.exit(2);
 }
 
 const tool = data.tool_name ?? "";

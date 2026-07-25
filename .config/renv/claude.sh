@@ -4,6 +4,7 @@
 # Confine this agent's git history to claude/* branches (enforced by the shared
 # git hooks in ~/.config/git/hooks). Mirrors opencode's OPENCODE=1 convention.
 AGENT_BRANCH_PREFIX="claude"
+RENV_REQUIRE_GUARDRAILS=1
 
 ASTA_MCP_API_KEY="$(pass show asta-mcp)" ||
 	{
@@ -39,6 +40,7 @@ ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
 ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
 
 export AGENT_BRANCH_PREFIX
+export RENV_REQUIRE_GUARDRAILS
 export ASTA_MCP_API_KEY
 export HEADROOM_PORT
 export HEADROOM_ANTHROPIC_BASE_URL

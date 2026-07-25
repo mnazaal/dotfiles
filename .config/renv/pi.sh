@@ -4,6 +4,7 @@
 # Confine this agent's git history to pi/* branches (enforced by the shared
 # git hooks in ~/.config/git/hooks). Mirrors opencode's OPENCODE=1 convention.
 AGENT_BRANCH_PREFIX="pi"
+RENV_REQUIRE_GUARDRAILS=1
 
 OPENROUTER_API_KEY="$(pass show openrouter-pi)" ||
 	{
@@ -18,6 +19,7 @@ ASTA_MCP_API_KEY="$(pass show asta-mcp)" ||
 	}
 
 export AGENT_BRANCH_PREFIX
+export RENV_REQUIRE_GUARDRAILS
 export OPENROUTER_API_KEY
 export ASTA_MCP_API_KEY
 

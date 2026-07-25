@@ -2,6 +2,7 @@
 
 # Shared Git hooks restrict this session to codex/* branches.
 AGENT_BRANCH_PREFIX="codex"
+RENV_REQUIRE_GUARDRAILS=1
 CODEX_HOME="${CODEX_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/codex}"
 
 ASTA_MCP_API_KEY="$(pass show asta-mcp)" ||
@@ -10,7 +11,7 @@ ASTA_MCP_API_KEY="$(pass show asta-mcp)" ||
 		return 1
 	}
 
-export AGENT_BRANCH_PREFIX CODEX_HOME ASTA_MCP_API_KEY
+export AGENT_BRANCH_PREFIX RENV_REQUIRE_GUARDRAILS CODEX_HOME ASTA_MCP_API_KEY
 
 # The outer sandbox is the filesystem boundary for this explicit launch. Keep
 # bare `codex` on its conservative local default.

@@ -168,7 +168,7 @@ guard_hook="$HOME/.claude/hooks/guardrails.ts"
 if command -v bun >/dev/null 2>&1; then
 	if [[ ! -f "$guard_hook" ]]; then
 		fail "agent guard hook missing (fails open): ~/.claude/hooks/guardrails.ts"
-	elif printf '' | bun "$guard_hook" >/dev/null 2>&1; then
+	elif printf '{}\n' | bun "$guard_hook" >/dev/null 2>&1; then
 		ok "agent guard hook loads (bun): guardrails.ts"
 	else
 		fail "agent guard hook fails to load (fails open): ~/.claude/hooks/guardrails.ts"

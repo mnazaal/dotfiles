@@ -98,11 +98,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Skill",
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Glob|Grep|Skill",
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.claude/hooks/guardrails.ts\"; [ -f \"$f\" ] && bun \"$f\" || exit 0"
+            "command": "f=\"$HOME/.claude/hooks/guardrails.ts\"; if [ -f \"$f\" ] && bun \"$f\"; then exit 0; fi; printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Claude guardrail hook unavailable; confirm manually\"}}'"
           }
         ]
       }

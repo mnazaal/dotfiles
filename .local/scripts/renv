@@ -10,6 +10,22 @@ die() {
 	exit "${2:-1}"
 }
 
+verify_guardrails() {
+	local root="${HOME}/.agents/guardrails"
+	local required=(core.ts sensitive-paths.json dangerous-commands.json skill-gates.json)
+	local file
+	for file in "${required[@]}"; do
+		[ -r "$root/$file" ] || die "guardrail asset is missing or unreadable: $root/$file"
+	done
+	command -v bun >/dev/null 2>&1 || die 'bun is required for managed guardrails'
+	bun -e '
+		const files = Bun.argv.slice(1);
+		const [paths, commands, gates] = await Promise.all(files.map(async (file) => JSON.parse(await Bun.file(file).text())));
+		if (!Array.isArray(paths.credentials) || !Array.isArray(commands.escalators) || !Array.isArray(gates.gates)) process.exit(1);
+	' -- "$root/sensitive-paths.json" "$root/dangerous-commands.json" "$root/skill-gates.json" ||
+		die "guardrail policy is invalid: $root"
+}
+
 show_help() {
 	cat <<'EOF'
 renv — run a command with an optional per-command environment file
@@ -49,6 +65,8 @@ if [ -f "$envfile" ]; then
 	# shellcheck source=/dev/null
 	. "$envfile" || die "failed to load env file: $envfile"
 fi
+
+[ "${RENV_REQUIRE_GUARDRAILS:-0}" != "1" ] || verify_guardrails
 
 # An env file may set RENV_WRAP to a wrapper command (a bash array) to run the
 # resolved command under — e.g. RENV_WRAP=(sandbox -p agent-claude --) to confine

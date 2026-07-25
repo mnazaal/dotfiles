@@ -36,24 +36,16 @@ export type ToolEvent = {
 export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
 
 // --- shared JSON loading ----------------------------------------------------
-// Try the deployed copy first, then the ~/dotfiles stow source (works pre-deploy
-// and on hosts without the symlink). Fails open with a loud stderr line.
+// Managed harnesses must use the deployed copy.  A missing or malformed policy
+// is a launch/configuration failure, never an unprotected allow-all policy.
 function loadJson(name: string): any {
-  const candidates = [
-    resolve(HOME, ".agents/guardrails", name),
-    resolve(HOME, "dotfiles/.agents/guardrails", name),
-  ];
-  for (const p of candidates) {
-    if (!existsSync(p)) continue;
-    try {
-      return JSON.parse(readFileSync(p, "utf8"));
-    } catch (e) {
-      console.error(`guardrails: failed to parse ${p}: ${e}`);
-      return {};
-    }
+  const path = resolve(HOME, ".agents/guardrails", name);
+  if (!existsSync(path)) throw new Error(`guardrails: missing ${path}`);
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    throw new Error(`guardrails: failed to parse ${path}: ${e}`);
   }
-  console.error(`guardrails: no ${name} found (${candidates.join(", ")})`);
-  return {};
 }
 
 function machineryOn(spec: unknown, agent: string): boolean {
@@ -581,6 +573,7 @@ function stringValues(input: Record<string, unknown> | undefined, keys: string[]
 
 export function pathsFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string[] {
   const paths = stringValues(input, ["path", "filePath", "file_path", "file", "directory", "notebook_path"]);
+  if ((tool ?? "").toLowerCase().includes("glob") && typeof input?.pattern === "string") paths.push(input.pattern);
   const command = typeof input?.command === "string" ? input.command : undefined;
   if ((tool ?? "").toLowerCase().includes("apply_patch") && command) paths.push(...extractPatchPaths(command));
   return [...new Set(paths)];

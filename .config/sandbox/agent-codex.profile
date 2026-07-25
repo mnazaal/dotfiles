@@ -13,3 +13,4 @@ RO+=(
 # still blocks tool-mediated writes to it. Hook skill receipts are stateful.
 RW+=( "$H/.local/state/codex" )
 RW_FILES+=( "$H/.config/codex/config.toml" )
+SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "CODEX_HOME" "ASTA_MCP_API_KEY" )

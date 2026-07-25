@@ -15,7 +15,7 @@
     "npm:pi-tool-display",
     "npm:@zackify/pi-claude-permissions"
   ],
-  "lastChangelogVersion": "0.79.9",
+  "lastChangelogVersion": "0.79.10",
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-5.5",

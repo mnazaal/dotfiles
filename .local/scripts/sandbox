@@ -137,8 +137,11 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 run_bwrap() {
 	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
 	local d f
-	local args=(--unshare-all)
+	local args=(--unshare-all --clearenv)
 	[ "$NET" -eq 1 ] && args+=(--share-net)
+	for d in "${SANDBOX_ENV[@]}"; do
+		[ -n "${!d+x}" ] && args+=(--setenv "$d" "${!d}")
+	done
 	args+=(--die-with-parent --proc /proc --dev /dev --tmpfs /tmp)
 	[ "$HOME_TMPFS" -eq 1 ] && args+=(--tmpfs "$H")
 	args+=(--chdir "$PWD")
@@ -184,7 +187,10 @@ run_podman() {
 	local d
 	local pre=() # podman global flags (must precede `run`)
 	local name="${PROFILE_NAME:-sandbox}-$$"
-	local p=(run --rm --name "$name" --userns=keep-id --env-host -w "$PWD" --security-opt label=disable)
+	local p=(run --rm --name "$name" --userns=keep-id --http-proxy=false -w "$PWD" --security-opt label=disable)
+	for d in "${SANDBOX_ENV[@]}"; do
+		[ -n "${!d+x}" ] && p+=(--env "$d=${!d}")
+	done
 	# Give commands normal scratch space without exposing the host's /tmp.
 	p+=(--tmpfs /tmp:rw,nosuid,nodev,mode=1777)
 	if [ -n "$PODMAN_RUNTIME" ]; then
@@ -229,6 +235,10 @@ fi
 
 # accumulators — profiles and flags append to these
 declare -a RW=() RO=() RW_FILES=() RO_FILES=()
+# Only these non-secret host variables cross the sandbox boundary by default.
+# Profiles append the minimal harness-specific variables (including any required
+# launch-time credential) to SANDBOX_ENV.
+declare -a SANDBOX_ENV=(HOME PWD PATH LANG LC_ALL LC_CTYPE TERM COLORTERM NO_COLOR EDITOR VISUAL XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_RUNTIME_DIR XDG_STATE_HOME WAYLAND_DISPLAY)
 NET=1        # 1 share network, 0 unshare
 HOME_TMPFS=1 # bwrap: hide $HOME behind tmpfs
 DRYRUN=0
@@ -349,6 +359,18 @@ dedupe RW
 dedupe RW_FILES
 dedupe RO
 dedupe RO_FILES
+
+# Profiles are trusted shell snippets, but environment names still need to be
+# valid before indirect expansion below.
+declare -A _seen_env=()
+env_out=()
+for name in "${SANDBOX_ENV[@]}"; do
+	[[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "invalid sandbox environment name: $name"
+	[ -z "${_seen_env[$name]:-}" ] || continue
+	_seen_env[$name]=1
+	env_out+=("$name")
+done
+SANDBOX_ENV=("${env_out[@]}")
 
 case "$BACKEND" in
 podman) run_podman ;;

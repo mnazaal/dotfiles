@@ -1,15 +1,34 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
 
+test("missing deployed policy prevents guardrail construction", () => {
+  const home = mkdtempSync(join(tmpdir(), "guardrails-empty-home-"));
+  const core = join(import.meta.dir, "../../../.agents/guardrails/core.ts");
+  const script = `import { createGuardrails } from ${JSON.stringify(core)}; createGuardrails("codex");`;
+  const result = Bun.spawnSync(["bun", "-e", script], {
+    cwd: home,
+    env: { ...process.env, HOME: home },
+    stderr: "pipe",
+  });
+  rmSync(home, { recursive: true, force: true });
+  expect(result.exitCode).not.toBe(0);
+});
+
 test("secret paths are denied for reads", () => {
   const rails = createGuardrails("opencode");
   const r = rails.evaluate({ tool: "read", paths: ["~/.ssh/config"], cwd });
   expect(r.decision).toBe("deny");
+});
+
+test("glob patterns are treated as read paths", () => {
+  const rails = createGuardrails("claude");
+  const event = toolEventFromInput("Glob", { pattern: "~/.ssh/**" }, cwd);
+  expect(rails.evaluate(event).decision).toBe("deny");
 });
 
 test("guardrail machinery is readable but not writable", () => {
@@ -119,10 +138,23 @@ test("shell commands referencing a canonical skill path produce load receipts", 
   expect([...skillReceipts("apply_patch", { command: "*** Begin Patch\n*** Update File: .agents/skills/dev-git/SKILL.md\n*** End Patch" })]).toEqual([]);
 });
 
-test("Claude guardrail hook observes Skill calls to persist load receipts", () => {
+test("Claude guardrail hook covers path-capable tools and asks when unavailable", () => {
   const settings = JSON.parse(readFileSync(join(import.meta.dir, "../../../.claude/settings.json"), "utf8"));
   const matchers = settings.hooks.PreToolUse.map((entry: { matcher?: string }) => entry.matcher ?? "");
   expect(matchers.some((matcher: string) => matcher.split("|").includes("Skill"))).toBe(true);
+  expect(matchers.some((matcher: string) => matcher.split("|").includes("Glob"))).toBe(true);
+  expect(matchers.some((matcher: string) => matcher.split("|").includes("Grep"))).toBe(true);
+  const commands = settings.hooks.PreToolUse.flatMap((entry: { hooks?: { command?: string }[] }) =>
+    (entry.hooks ?? []).map((hook) => hook.command ?? ""));
+  expect(commands.some((command: string) => command.includes('"permissionDecision":"ask"'))).toBe(true);
+  expect(commands.some((command: string) => command.includes("exit 2"))).toBe(false);
+});
+
+test("Codex only registers guardrails for evaluated hook events", () => {
+  const hooks = JSON.parse(readFileSync(join(import.meta.dir, "../hooks.json"), "utf8"));
+  expect(hooks.hooks.PreToolUse).toBeDefined();
+  expect(hooks.hooks.PermissionRequest).toBeDefined();
+  expect(hooks.hooks.UserPromptSubmit).toBeUndefined();
 });
 
 test("apply_patch paths are normalized without treating patch text as bash", () => {
