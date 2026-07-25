@@ -36,16 +36,26 @@ export type ToolEvent = {
 export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
 
 // --- shared JSON loading ----------------------------------------------------
-// Managed harnesses must use the deployed copy.  A missing or malformed policy
-// is a launch/configuration failure, never an unprotected allow-all policy.
+// Prefer the deployed copy, then the ~/dotfiles stow source. Everything under
+// ~/.agents is a stow symlink into ~/dotfiles, so a harness that can reach one
+// tree but not the other (fresh deploy, or a sandbox whose bind of ~/.agents was
+// skipped because the path did not exist at launch) must still find its policy.
+// Unreachable through BOTH, or malformed, is a launch/configuration failure —
+// never an unprotected allow-all policy.
 function loadJson(name: string): any {
-  const path = resolve(HOME, ".agents/guardrails", name);
-  if (!existsSync(path)) throw new Error(`guardrails: missing ${path}`);
-  try {
-    return JSON.parse(readFileSync(path, "utf8"));
-  } catch (e) {
-    throw new Error(`guardrails: failed to parse ${path}: ${e}`);
+  const candidates = [
+    resolve(HOME, ".agents/guardrails", name),
+    resolve(HOME, "dotfiles/.agents/guardrails", name),
+  ];
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
+    try {
+      return JSON.parse(readFileSync(path, "utf8"));
+    } catch (e) {
+      throw new Error(`guardrails: failed to parse ${path}: ${e}`);
+    }
   }
+  throw new Error(`guardrails: missing ${name} (tried ${candidates.join(", ")})`);
 }
 
 function machineryOn(spec: unknown, agent: string): boolean {
