@@ -13,24 +13,35 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 
 ## Rules
 
-- Use `context-org` before reading or writing Org files.
-- Read available Org agenda/TODO context before asking what to do.
-- Prefer existing agenda output or configured Org agenda commands when available; otherwise inspect agenda files directly; if neither is known, ask for the agenda source.
-- Treat scheduled items, deadlines, and meetings as constraints, not automatically as highest priority.
+- Use `context-org` for the store layout and the read-only policy. Never write
+  to `~/org`; propose changes as snippets the user yanks into Emacs.
+- **Read the undated backlog, not just the agenda.** The agenda is a date view,
+  so it shows commitments and hides everything captured without a `SCHEDULED`.
+  Read `agenda/inbox.org` and `agenda/backlog.org` directly — those items are
+  invisible in the agenda and are the ones that rot.
+- Read the generated calendars (`primary-gcal.org`, `aalto-outlook.org`) for
+  fixed commitments; they are the reliable half of the store.
+- Treat scheduled items, deadlines, and meetings as constraints, not
+  automatically as highest priority.
 - Distinguish fixed commitments from optional work.
 - Prefer a small daily plan: 1–3 must-do items plus a short backup list.
-- Do not mutate Org files, reschedule tasks, mark TODOs done, or create daily notes unless explicitly requested.
+- Do not mutate Org files, reschedule tasks, mark TODOs done, or create daily
+  notes.
 - Ask only for missing context that materially changes today's plan.
 
 ## Workflow
 
 1. Identify today's date, day phase, and available work window.
-2. Load Org context through `context-org`: agenda, scheduled items, deadlines, and open TODOs.
-3. Separate fixed commitments from candidate tasks.
-4. Identify conflicts, overload, stale TODOs, and unclear next actions.
-5. Use `decide-priority` when ranking candidate tasks requires explicit tradeoffs.
-6. Produce a compact morning brief with a recommended first action.
-7. Route into the relevant execution skill only after the user chooses or confirms the next item.
+2. Read today's fixed commitments from the generated calendars.
+3. Read the undated backlog (`inbox.org`, `backlog.org`) — anything with no
+   `SCHEDULED` or `DEADLINE`, plus how long it has sat there. Age is the signal:
+   a captured item nobody dated is one nobody decided about.
+4. Separate fixed commitments from candidate tasks; find conflicts and overload.
+5. Use `decide-priority` when ranking candidates requires explicit tradeoffs.
+6. Produce the brief, and close the loop: emit the proposed dates as an org
+   snippet the user can yank. Read-only means the processing step depends on
+   them acting, so make acting a paste rather than a re-derivation.
+7. Route into the relevant execution skill only after the user confirms.
 
 ## Output Shape
 
@@ -48,11 +59,19 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 ### Good Next Tasks
 - ...
 
+### Stale Captures (undated, invisible to the agenda)
+- <item> — captured <date>, <n> days undated
+
 ### Risks / Conflicts
 - ...
 
 ### Recommended First Action
 ...
+
+### Proposed Dates — yank into Emacs
+```org
+SCHEDULED: <YYYY-MM-DD day>
+```
 
 ### If Low Energy
 ...
