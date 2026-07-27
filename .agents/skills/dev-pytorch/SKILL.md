@@ -1,6 +1,6 @@
 ---
 name: dev-pytorch
-description: Use for PyTorch code: torch, torch.nn, torch.optim, DataLoader, tensors, modules, training loops, GPU/device placement, autograd, train/eval mode, AMP, vectorization, torch.compile.
+description: Use for PyTorch code, and for reading a PyTorch reference implementation before porting it: torch, torch.nn, torch.optim, DataLoader, tensors, modules, training loops, GPU/device placement, autograd, train/eval mode, AMP, vectorization, torch.compile, weight layouts, RNG sites, Lightning hooks.
 ---
 
 # Skill: Dev PyTorch
@@ -46,6 +46,28 @@ model.load_state_dict(ckpt["model"])
 optimizer.load_state_dict(ckpt["opt"])
 ```
 
+## Reading a Reference Implementation
+
+The usual reason to open PyTorch here is to port it. `dev-jax-port` owns the
+parity protocol; this is what that protocol needs from the PyTorch side.
+
+- **Find every RNG site**, not just `torch.manual_seed`: weight init, dropout,
+  DataLoader shuffle and its per-worker generator, augmentation, and any
+  `random`/`numpy` call inside the dataset. A port that re-samples rather than
+  replaying these cannot be compared against the reference at all.
+- **Layouts are conventions, not facts.** `nn.Linear` stores weight as
+  `(out, in)` and computes `x @ W.T`; conv layouts and fused gate orderings
+  (LSTM/GRU `i,f,g,o`) differ across frameworks. Read the shape, never assume it.
+- **The harness does things the model file does not show.** Under Lightning or a
+  similar trainer, optimizer construction, LR scheduling, gradient clipping,
+  accumulation, AMP casting, and `zero_grad` placement live in hooks. Read the
+  harness before concluding the training step is what the module implies.
+- **Note what silently changes numbers**: `.train()` vs `.eval()` for dropout and
+  BatchNorm running statistics, `.detach()` placement, in-place ops, and whether
+  the loss reduces by `mean` or `sum` and over which axes.
+- Check the reference's own tests and comments for invariants the implementation
+  never restates.
+
 ## Anti-Patterns
 
 - `.item()` in hot loops — always forces a CPU sync.
@@ -55,6 +77,7 @@ optimizer.load_state_dict(ckpt["opt"])
 
 ## Related Skills
 
+- `dev-jax-port` when reading this reference is the prelude to porting it — that skill owns the replay/parity protocol.
 - `debug-ml-research` for plausible-but-wrong ML runs.
 - `dev-ml-perf` when the job is slow or OOMs — name the bottleneck before tuning here.
 - `dev-python` for packaging/test tooling.

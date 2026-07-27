@@ -1,6 +1,6 @@
 ---
 name: dev-viz
-description: Use for visualization code: plots, charts, figures, dashboards, palettes, legends, matplotlib, seaborn, plotly, network graphs, pgfplots, colorblind-safe design, export formats.
+description: Use for visualization code and manuscript figures: plots, charts, figures for a paper, column-width sizing, font matching, error bars and seed variability, dashboards, palettes, legends, matplotlib, seaborn, plotly, network graphs, pgfplots, colorblind-safe design, export formats.
 ---
 
 # Skill: Dev Viz
@@ -9,9 +9,35 @@ description: Use for visualization code: plots, charts, figures, dashboards, pal
 
 - Use colorblind-safe categorical palettes and perceptually uniform sequential maps.
 - Never rely on color alone; add labels, markers, line styles, shapes, or annotations.
-- Keep legends explicit, axes labeled, and contrast high.
 - Prefer vector output for plots and paper/document figures unless raster is required.
 - Match project/document export pipeline.
+
+## Paper Figures
+
+A manuscript figure is a typeset element, not an image. These are the parts that
+do not follow from general plotting sense.
+
+- **Size in the script, not in LaTeX.** Set `figsize` in inches to the target
+  column or text width and emit at final size. Scaling with
+  `\includegraphics[width=...]` rescales the text too, so each figure lands at a
+  different effective font size — the usual reason a paper's figures look like
+  they came from different papers.
+- **Match the document's type.** Set font family and size to the body text once,
+  in a shared style module every figure script imports. Per-script rcParams is
+  how a manuscript acquires six fonts.
+- **Plot the quantity the claim is about.** For a two-arm comparison over seeds,
+  show the paired per-seed difference and its interval — not two overlapping
+  mean±std bands. Overlapping bars are not the test in either direction
+  (`research-run`); a figure supporting a significance claim should show the
+  difference the claim is about.
+- **Show n, and say what the interval is.** Number of seeds behind every error
+  bar, and whether it is SD, SEM, or a bootstrap CI. They differ by large
+  factors and are indistinguishable by eye, so an unlabelled bar is unreadable
+  evidence.
+- Generated figures are build artifacts: regenerate, never hand-edit. The
+  generator stays outside a synced manuscript directory, and the committed
+  artifact must be byte-deterministic — `research-manuscript-workflow` owns both
+  rules.
 
 ## Workflow
 
@@ -25,10 +51,13 @@ description: Use for visualization code: plots, charts, figures, dashboards, pal
 
 - Rainbow maps for ordered values.
 - Categories distinguished by color only.
-- Unlabeled axes or ambiguous units.
 - Raster-only output for line art meant for papers.
+- Sizing a figure by scaling it in LaTeX, which silently changes its font size.
+- Two mean±std bands where the claim is about their difference.
+- An error bar with no stated n and no stated interval type.
 
 ## Related Skills
 
-- `research-run` for interpreting plots/metrics.
+- `research-run` for interpreting plots/metrics, and for why the paired difference is the quantity to plot.
+- `research-manuscript-workflow` for the figure pipeline: generator placement, committed artifacts, byte-determinism.
 - `context-org` for org/LaTeX export conventions.
