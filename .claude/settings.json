@@ -110,5 +110,7 @@
   },
   "effortLevel": "high",
   "tui": "fullscreen",
-  "diffTool": "auto"
+  "diffTool": "auto",
+  "disableAgentView": true,
+  "env": { "CLAUDE_CODE_DISABLE_AGENT_VIEW": "1" }
 }
