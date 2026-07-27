@@ -1,6 +1,6 @@
 ---
 name: research-manuscript-workflow
-description: Use for ML/scientific paper writing workflows: LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, and agent-safe manuscript collaboration.
+description: Use for ML/scientific paper writing workflows: LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, reviewer responses and rebuttals, and agent-safe manuscript collaboration.
 ---
 
 # Skill: Research Manuscript Workflow
@@ -277,6 +277,29 @@ Agents may help classify comments:
 - optional
 - misunderstanding to clarify
 - out of scope
+
+Triage against the window, not against reviewer order. The response period is
+fixed and short, so rank by weight-on-the-decision over cost-to-answer and start
+where a cheap answer defuses a strong objection. A point raised by two reviewers
+outranks a longer one raised by one.
+
+- **Show, do not promise.** A rebuttal presenting a result beats one undertaking
+  to add it, and a commitment you cannot land by camera-ready is worse than a
+  clean concession. Estimate the experiment against the remaining days BEFORE
+  offering it.
+- **Concede early and plainly where the reviewer is right.** Contesting every
+  point reads as non-responsive, and words spent defending a weak point are
+  taken from the strong ones.
+- **A misunderstanding is usually a writing failure.** Answer it, then name the
+  text change that stops it recurring — "clarified in §3.2" is the part that
+  actually resolves it.
+- **Rebuttal experiments are still experiments.** Seeds, pairing, and the
+  selection rules apply unchanged (`research-run`); a number produced at one seed
+  to hit the deadline is the standard way to make the review worse. If it cannot
+  be done properly inside the window, say so rather than running it badly.
+- Keep a claim-by-claim map from reviewer point → evidence → text change in the
+  planning area. That map is what makes the camera-ready pass mechanical instead
+  of a re-read of every thread.
 
 But final text changes remain human-owned unless the user explicitly changes
 the project policy as described in the `.tex` guardrail.
