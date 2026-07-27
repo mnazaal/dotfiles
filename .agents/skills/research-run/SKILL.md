@@ -1,6 +1,6 @@
 ---
 name: research-run
-description: Use for ML/research runs: configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken verdicts.
+description: Use for ML/research runs at both ends. Before launching — designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken verdicts.
 ---
 
 # Skill: Research Run
@@ -17,6 +17,29 @@ Decide what a run result means and what to do next.
 - Prefer the cheapest check that reduces uncertainty.
 - If run looks plausible but wrong, use `debug-ml-research`.
 
+## Before Launching
+
+Design-time decisions that cannot be repaired afterwards. Settle these before
+the sweep runs: no analysis rescues an underpowered or unpaired design, and the
+cost of getting them wrong is the whole sweep.
+
+- **Name the comparison of interest now.** The best cell of an ablation grid is
+  biased upward by selection alone. Naming the comparison up front is what makes
+  the number reportable later without a correction or a fresh seed set.
+- **Size it.** For a two-arm comparison at conventional power, roughly
+  `n ≈ 16σ²/Δ²` per arm, from pilot per-seed variance σ and the minimum
+  difference Δ worth acting on. If you cannot state Δ, you cannot size the sweep
+  — and a non-significant result from an unsized design is inconclusive, not
+  evidence of no effect.
+- **Pair on seed.** Run both arms on the SAME seeds and compare per-seed
+  differences; that removes seed variance from the comparison and usually needs
+  far fewer runs than unpaired arms. Pair wherever the arms share a data or init
+  draw.
+- **Pick a regime where the axis still bites.** Two arms saturated at a floor or
+  ceiling give an uninformative comparison however many seeds you spend on it.
+- **Estimate per-cell wall-clock before fanning out.** `dev-hpc` owns the
+  cluster-side minimum and the batching that clears it.
+
 ## Checklist
 
 - What changed?
@@ -26,15 +49,14 @@ Decide what a run result means and what to do next.
 - What seed(s)?
 - What config/commit/log path?
 - Is effect bigger than noise?
-- If non-significant: did the design have power for the *minimum effect worth acting on*? From the per-unit (per-seed) variance, compute the N that effect needs; a non-significant result below that N is inconclusive, not "no effect".
-- How many seeds does that minimum effect need? For a two-arm comparison at conventional power, roughly `n ≈ 16σ²/Δ²` per arm from pilot per-seed variance σ and target difference Δ. Compute it BEFORE launching; discovering the design was underpowered after the fact wastes the whole sweep.
-- Are the arms paired on seed? Running both arms on the SAME seeds and comparing per-seed differences removes seed variance from the comparison and usually needs far fewer runs than unpaired arms. Pair wherever the arms share a data/init draw.
+- If non-significant: was the design ever powered for the minimum effect worth acting on (Before Launching)? Below that N the result is inconclusive, not "no effect".
+- Were the arms paired on seed (Before Launching)? If not, the comparison carries seed variance it did not need to.
 - Report an interval on the *difference*, not two point estimates. With few seeds prefer a paired-difference CI or a bootstrap over quoting each arm's mean ± std and eyeballing the overlap — non-overlapping error bars is not the same test, in either direction.
 - Is there a simpler baseline/control?
 - Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
 - Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
-- How many comparisons produced this winner? The best cell of an ablation grid is biased upward by selection alone. Either name the comparison of interest before running, or correct for the number of cells, or confirm the winner on a fresh seed set before reporting the gap.
+- How many comparisons produced this winner? If the comparison was not named before running (Before Launching), correct for the number of cells or confirm the winner on a fresh seed set before reporting the gap.
 
 ## Verdicts
 
