@@ -45,8 +45,10 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 5. Update the decision state and repeat until scope, constraints, risks, dependencies, and success criteria are clear.
 6. For each resolved decision, check whether it is hard to reverse, would
    surprise a future reader, and reflects a real trade-off between
-   alternatives. If all three hold, offer to record it (an ADR in
-   `docs/adr/` if that convention exists, otherwise inline in the summary).
+   alternatives. If all three hold, offer to record it in the project's
+   decision log — `research-plan` owns its shape and home (a `## Decision log`
+   section in `PLAN.md` by default, `docs/adr/` where that convention already
+   exists). Never inline it into a plan section instead.
 7. Summarize decisions made, unresolved risks, and the recommended next action.
 
 ## Routing
@@ -56,6 +58,7 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 - Use `dev-ponytail` when the plan may be over-engineered.
 - Use `debug-root-cause` when the plan is actually an unclear bug fix.
 - Use `research-protocol` before academic-paper, literature, citation, related-work, bibliography, author-lookup, or field-survey content.
+- Use `research-plan` for the decision log's shape and home, and for persisting a settled direction into `PLAN.md`.
 - Use `meta-skills-improve` when the interview reveals a reusable workflow or skill improvement.
 
 ## Anti-Patterns
