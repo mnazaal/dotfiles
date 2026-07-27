@@ -60,4 +60,6 @@ No handoff artifact / generic "catch me up" → `research-session` Session Start
 - `research-run` for the per-result verdict blocks a session summary cites.
 - `research-session` for generic orientation ("catch me up") when there is no
   handoff artifact to resume from.
+- `learn-project` when resuming reveals the user no longer understands the work
+  the handoff assumes — reconstructing agent state does not reconstruct theirs.
 - `dev-git` for the commit.

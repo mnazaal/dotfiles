@@ -7,7 +7,7 @@ description: Use for research session orientation, idea triage, and project fram
 
 ## Session Start
 
-Use when choosing or framing research work, not for writing the durable plan. If the user asks to persist decisions in `PLAN.md`, route to `research-plan`; if ambiguity blocks even framing the question, route to `plan-interview`.
+Use when choosing or framing research work, not for writing the durable plan. If the user asks to persist decisions in `PLAN.md`, route to `research-plan`; if ambiguity blocks even framing the question, route to `plan-interview`. If the user wants to understand what was already done rather than pick what to do next ("walk me through this", "I've lost the thread"), route to `learn-project` — this briefing is deliberately shallow and will not get them there.
 
 1. Capture focus, if user gave one.
 2. Inspect available research state: active projects, recent notes, open tasks, recent papers, run artifacts, saved ideas.
@@ -84,3 +84,5 @@ framing + decisions to the plan via `research-plan`.
 - `decide-priority` for scoring pursue/refine/park/kill.
 - `research-lit-search` / `research-paper` / `research-run` as routed targets.
 - `plan-day` for day-level planning rather than research-thread orientation.
+- `learn-project` when the user needs to rebuild their own understanding of the
+  project, including its math, rather than choose the next action.

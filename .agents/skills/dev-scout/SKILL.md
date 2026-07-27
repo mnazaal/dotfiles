@@ -37,3 +37,5 @@ For large external artifacts (repos, logs, transcripts, terminal output) ingeste
 
 - `debug-*` for suspicious broken paths.
 - `dev-*` for implementation after scouting.
+- `learn-codebase` when the findings are for the user to internalize rather than
+  for an agent to act on; it calls this skill for the mapping.
