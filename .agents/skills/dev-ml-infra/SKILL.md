@@ -123,6 +123,14 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - A smoke test that mocks the tracker or bypasses the real entry point.
 - Adding a second sweep axis under one run/tag without checking the aggregation step groups by it — an aggregator keyed only on the first axis (e.g. strategy) silently pools across the new axis, and if it pairs on a shared key (seed) the repeated keys collide (last-write-wins). One swept value per tag, or fix the grouping first.
 
+## Boundary
+
+- Owns the experiment scaffolding: repo layout, hydra-zen config, tracker seam, progress output, the smoke run, the one entry point.
+- What goes inside `data/` — provenance, splits, preprocessing statistics — is `dev-ml-data`.
+- The model and numerics behind the entry point are `dev-jax` / `dev-pytorch`.
+- Getting these configs onto a cluster, and everything about submission, is `dev-hpc`.
+- Interpreting what the runs produced is `research-run`; this skill only ensures they are comparable and reproducible.
+
 ## Related Skills
 
 - `dev-python` for project/env conventions.

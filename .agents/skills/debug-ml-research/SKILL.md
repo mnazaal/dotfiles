@@ -49,6 +49,14 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Metric worsens with MORE budget/data/optimization: a monotone *degradation* as you add the resource that should help is rarely noise — suspect a scale/units mismatch in the decision rule (an arbitrary latent/utility scale combined with a fixed real-unit term; the fixed term goes negligible as the latent amplitude grows with data) or an acquisition pathology. Confirm with a natural experiment: a condition where the bug MUST vanish (e.g. an interior vs boundary optimum) and check it does.
 - Threshold/penalty calibration along the path: to set a per-step threshold (sparsity penalty, acceptance cutoff, stopping rule) in a sequential build/search, measure the marginal quantity ALONG the actual operating trajectory (e.g. empty→solution build order), not only at the target/optimum. A threshold calibrated at the optimum can be off by a large factor from where the search operates, and if the marginal profile is non-monotone along the path, no constant threshold works — which the at-optimum measurement hides.
 
+## Boundary
+
+- Owns diagnosis of a run that completed and is wrong: the ladder, the probes, the conventions.
+- Anything that crashes, errors, or fails a test has a symptom to reproduce — `debug-root-cause`.
+- A run that is valid and merely disappointing is not broken; `research-run` decides what it means.
+- Building the data path is `dev-ml-data`; this skill is what you reach for once a data bug already reached a run.
+- Writing these checks as standing tests before the failure is `dev-tdd`.
+
 ## Related Skills
 
 - `debug-root-cause` for crash-type bugs.

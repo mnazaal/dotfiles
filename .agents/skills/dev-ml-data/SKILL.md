@@ -93,6 +93,14 @@ mistake produces plausible numbers instead of an error.
 - A synthetic generator that returns data without the ground truth it was drawn
   from.
 
+## Boundary
+
+- Owns the data correctness spine: provenance, splits, preprocessing statistics, caches, loader determinism, synthetic generators.
+- Diagnosing a data bug that already reached a run is `debug-ml-research`; this skill is the constructive side.
+- Where `data/` and `results/` sit, and how runs are launched, is `dev-ml-infra`.
+- Loader and PRNG mechanics in a specific framework are `dev-pytorch` / `dev-jax`.
+- Input-pipeline throughput is `dev-ml-perf` — correctness here, speed there.
+
 ## Related Skills
 
 - `debug-ml-research` when a data bug has already reached a run.

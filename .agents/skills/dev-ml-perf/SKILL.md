@@ -62,6 +62,15 @@ state + activations.
 - Reaching for AMP, `torch.compile`, or donation while the job is input-bound.
 - Profiling on a login node instead of inside an allocation (`dev-hpc`).
 
+## Boundary
+
+- Owns naming the bottleneck with evidence, and memory accounting. It stops there.
+- Once the bottleneck is named, the fix is `dev-jax` / `dev-pytorch` — do not tune here.
+- Slow because the input pipeline is wrong is `dev-ml-data`.
+- Slow on a cluster because of allocation, partition, or launcher shape is `dev-hpc`.
+- A performance change that alters batch size or any other config has changed the experiment; `research-run` decides whether results still compare.
+- Fast but wrong is not a perf problem — `debug-ml-research`.
+
 ## Related Skills
 
 - `dev-jax` / `dev-pytorch` for framework-specific fixes once the bottleneck is named.

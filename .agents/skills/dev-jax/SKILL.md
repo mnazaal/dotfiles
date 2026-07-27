@@ -68,6 +68,13 @@ arr = arr.at[i].set(val)
 - Swapping in a cheaper *algorithm* (coarser grid, mean-field / approximate inference) to speed a hot path before profiling it — the cost is usually loop-invariant **recomputation** (constant arrays rebuilt each step, `jnp` re-dispatched on tiny arrays inside a Python loop, an exact marginal recomputed when its inputs barely moved), not the algorithm. `cProfile` one representative step and hoist the invariants exactly first; that often recovers the speedup with no accuracy loss and shows whether the approximation is needed at all.
 - Assuming `vmap`/`jit` over a batch beats an eager per-item loop without timing it. Batching cuts dispatch count, but if the batched dimension's shape varies call-to-call (e.g. a deduplicated particle set of changing size) the program recompiles per shape — compile cost can exceed the dispatch it saved, and eager wins. Time both on the real, shape-varying workload before committing.
 
+## Boundary
+
+- Owns JAX idioms: transformations, PRNG discipline, pytrees, jit/vmap/scan, and the library choices above.
+- A slow or OOMing job is not a JAX question until the bottleneck is named — `dev-ml-perf` first, then come back.
+- A run that completes and is wrong is `debug-ml-research`, not a transformation bug.
+- Matching another implementation's numbers is `dev-jax-port`; this skill assumes JAX is the source of truth, that one assumes it is not.
+
 ## Related Skills
 
 - `dev-python` for Python project/tooling conventions.
