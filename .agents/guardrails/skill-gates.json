@@ -1,5 +1,5 @@
 {
-  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude, Codex, pi, and opencode; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate — never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
+  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude, Codex, pi, and opencode; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?, arg_contains?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. `arg_contains` is a case-insensitive substring tested against the command's argument list, for gates keyed on a remote/target name rather than a subcommand. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate — never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
 
   "gates": [
     {
@@ -46,6 +46,36 @@
       "skills": ["dev-worktree"],
       "trigger": { "type": "capability", "all_of": ["test-command", "git-worktree"] },
       "message": "running tests inside a git worktree"
+    },
+    {
+      "skills": ["research-manuscript-sync"],
+      "trigger": { "type": "bash", "command": "git", "arg_contains": "overleaf" },
+      "message": "running git against an Overleaf bridge remote"
+    },
+    {
+      "skills": ["research-manuscript-sync"],
+      "trigger": { "type": "bash", "command": "make", "arg_contains": "overleaf" },
+      "message": "running an Overleaf sync target"
+    },
+    {
+      "skills": ["dev-security"],
+      "trigger": { "type": "write", "path_glob": "**/.envrc" },
+      "message": "editing a direnv file"
+    },
+    {
+      "skills": ["dev-security"],
+      "trigger": { "type": "write", "path_glob": "**/*.pem" },
+      "message": "writing a key or certificate file"
+    },
+    {
+      "skills": ["dev-security"],
+      "trigger": { "type": "write", "path_glob": "**/*credential*" },
+      "message": "editing a credentials file"
+    },
+    {
+      "skills": ["dev-security"],
+      "trigger": { "type": "write", "path_glob": "**/secrets.*" },
+      "message": "editing a secrets file"
     }
   ]
 }

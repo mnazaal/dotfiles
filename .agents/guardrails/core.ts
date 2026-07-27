@@ -398,8 +398,8 @@ export function createGuard(agent: string) {
 
 export type SkillGateHit = { skills: string[]; message: string };
 
-// Gate triggers — one of three, discriminated by `trigger.type`.
-type BashTrigger = { type: "bash"; command: string; subcommands?: string[] };
+// Gate triggers — one of four, discriminated by `trigger.type`.
+type BashTrigger = { type: "bash"; command: string; subcommands?: string[]; arg_contains?: string };
 type WriteTrigger = { type: "write"; path_glob: string; at_root?: boolean; except?: string[] };
 type FetchTrigger = { type: "fetch"; domains: string[] };
 type CapabilityTrigger = { type: "capability"; all_of: string[] };
@@ -422,7 +422,8 @@ function globMatch(glob: string, s: string): boolean {
 /**
  * Skill gates (skill-gates.json): observable events that require an agent skill
  * to have been loaded this session. Four trigger types — `bash` (command +
- * optional subcommands), `write` (a Write/Edit path), `fetch` (a WebFetch URL),
+ * optional subcommands, and/or `arg_contains` matched against the argument
+ * list), `write` (a Write/Edit path), `fetch` (a WebFetch URL),
  * and `capability` (a provider-neutral event classification).
  * The core only matches events to gates; the ADAPTER supplies the session
  * evidence ("was the skill loaded?"), since that is host-specific. Adapters
@@ -461,6 +462,10 @@ export function createSkillGate() {
         if (t.subcommands?.length) {
           const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : NO_OPTS);
           if (!t.subcommands.includes(sub)) continue;
+        }
+        if (t.arg_contains) {
+          const needle = t.arg_contains.toLowerCase();
+          if (!parsed.args.some((a) => a.toLowerCase().includes(needle))) continue;
         }
         hits.push(hit(g));
       }

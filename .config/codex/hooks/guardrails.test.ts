@@ -166,3 +166,30 @@ test("apply_patch paths are normalized without treating patch text as bash", () 
   expect(event.paths).toEqual(["PLAN.md"]);
   expect(rails.evaluate(event).skill).toBe("context-project-docs");
 });
+
+test("arg_contains narrows a bash gate to matching arguments", () => {
+  const rails = createGuardrails("opencode");
+  const hit = rails.evaluate({
+    tool: "bash",
+    command: "git subtree push --prefix=manuscript overleaf main",
+    cwd,
+  });
+  expect(hit.skills).toEqual(["research-manuscript-sync"]);
+
+  const miss = rails.evaluate({
+    tool: "bash",
+    command: "git subtree push --prefix=docs origin main",
+    cwd,
+  });
+  expect(miss.decision).toBe("allow");
+
+  expect(rails.evaluate({ tool: "bash", command: "make overleaf-push", cwd }).skills)
+    .toEqual(["research-manuscript-sync"]);
+});
+
+test("secret-bearing project files require dev-security", () => {
+  const rails = createGuardrails("opencode");
+  for (const path of [".envrc", "certs/server.pem", "config/credentials.json", "config/secrets.yaml"]) {
+    expect(rails.evaluate({ tool: "write", paths: [path], cwd }).skills).toEqual(["dev-security"]);
+  }
+});
