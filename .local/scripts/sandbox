@@ -153,6 +153,7 @@ run_bwrap() {
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then args+=(--bind "$d" "$d"); fi; done
 	for f in "${RO_FILES[@]}"; do if [ -e "$f" ]; then args+=(--ro-bind "$f" "$f"); fi; done
 	for f in "${RW_FILES[@]}"; do if [ -e "$f" ]; then args+=(--bind "$f" "$f"); fi; done
+	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi; done
 
 	# wayland clipboard: bind only the single socket, never the whole runtime dir
 	if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ] &&
@@ -215,6 +216,7 @@ run_podman() {
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
 	for d in "${RO_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
+	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 
 	if [ "$DRYRUN" -eq 1 ]; then
 		printf 'podman'
@@ -234,7 +236,11 @@ if [ "${1:-}" = "--init" ]; then
 fi
 
 # accumulators — profiles and flags append to these
-declare -a RW=() RO=() RW_FILES=() RO_FILES=()
+# RO_LAST is emitted AFTER every RW bind, so a read-only path nested inside a
+# writable one stays read-only. Plain RO is emitted first, where an overlapping
+# RW bind wins — which is why the read-only $H/.agents bind does not protect
+# its stow targets under the writable $H/dotfiles bind.
+declare -a RW=() RO=() RW_FILES=() RO_FILES=() RO_LAST=()
 # Only these non-secret host variables cross the sandbox boundary by default.
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
@@ -322,7 +328,7 @@ is_home_or_ancestor() {
 
 # Reject binds that would re-expose all of $HOME or /, including ancestors of
 # $HOME such as /home. Such a bind defeats the allowlist just as completely.
-for d in "${RW[@]}" "${RO[@]}"; do
+for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}"; do
 	rd=$(readlink -f "$d" 2>/dev/null || printf '%s' "$d")
 	if [ "$rd" = "/" ] || is_home_or_ancestor "$rd"; then
 		die "refusing to bind '$d' — it re-exposes all of \$HOME or /"
@@ -359,6 +365,7 @@ dedupe RW
 dedupe RW_FILES
 dedupe RO
 dedupe RO_FILES
+dedupe RO_LAST
 
 # Profiles are trusted shell snippets, but environment names still need to be
 # valid before indirect expansion below.

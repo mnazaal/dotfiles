@@ -16,6 +16,7 @@ mkdir -p \
 	"$home/.local/state/opencode" \
 	"$home/.local/share/pi" \
 	"$home/.local/state/pi" \
+	"$home/dotfiles/.agents/guardrails" \
 	"$project"
 
 assert_profile() { # profile required mounts... -- forbidden mount fragments...
@@ -47,23 +48,51 @@ assert_profile() { # profile required mounts... -- forbidden mount fragments...
 	done
 }
 
+# A forbidden entry is matched as a substring, so "DIR:DIR" also matches the
+# read-only mount "DIR:DIR:ro". Forbidding the read-write form therefore needs
+# the trailing space that separates it from the next argument.
 assert_profile agent-opencode \
 	"$home/.agents:$home/.agents:ro" \
+	"$home/dotfiles:$home/dotfiles:ro" \
 	"$home/.config/opencode:$home/.config/opencode:ro" \
 	"$home/.local/share/opencode:$home/.local/share/opencode" \
 	"$home/.local/state/opencode:$home/.local/state/opencode" \
 	"$home/.cache/opencode:$home/.cache/opencode" \
 	-- \
 	"$home/.config:$home/.config:ro" \
-	"$home/dotfiles:$home/dotfiles" \
+	"$home/dotfiles:$home/dotfiles " \
 	"$home/projects:$home/projects"
 
 assert_profile agent-pi \
 	"$home/.agents:$home/.agents:ro" \
+	"$home/dotfiles:$home/dotfiles:ro" \
 	"$home/.config/pi:$home/.config/pi:ro" \
 	"$home/.local/share/pi:$home/.local/share/pi" \
 	"$home/.local/state/pi:$home/.local/state/pi" \
 	-- \
 	"$home/.config:$home/.config:ro" \
-	"$home/dotfiles:$home/dotfiles" \
+	"$home/dotfiles:$home/dotfiles " \
 	"$home/projects:$home/projects"
+
+assert_mount_order() { # profile earlier-mount later-mount
+	local profile=$1 earlier=$2 later=$3 output rest
+	output=$(cd "$project" && HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+		"$repo/.local/scripts/sandbox" --dry-run -p "$profile" -- /bin/true)
+	case "$output" in *"$earlier"*) ;; *)
+		printf '%s profile missing mount: %s\n' "$profile" "$earlier" >&2
+		exit 1
+		;; esac
+	rest=${output#*"$earlier"}
+	case "$rest" in *"$later"*) ;; *)
+		printf '%s profile binds %s before %s; the writable bind would win\n' \
+			"$profile" "$later" "$earlier" >&2
+		exit 1
+		;; esac
+}
+
+# The guardrail source must be read-only AND bound after the writable dotfiles
+# bind that contains it. $HOME/.agents is stow symlinks into $HOME/dotfiles, so
+# the read-only bind there does not protect the targets.
+assert_mount_order agent-claude \
+	"$home/dotfiles:$home/dotfiles" \
+	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
