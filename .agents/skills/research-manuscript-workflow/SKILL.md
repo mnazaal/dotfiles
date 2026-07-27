@@ -8,19 +8,8 @@ description: Use for ML/scientific paper writing workflows: LaTeX manuscript dir
 ## Purpose
 
 Set the safety and portability boundaries for ML/scientific manuscript work.
-For citation or related-work content, load `research-protocol` first.
-
-## When to Use
-
-Load this skill when the user asks about:
-
-- setting up a `manuscript/` or paper directory
-- writing a scientific/ML paper in LaTeX
-- organizing figures, tables, experiments, and paper text
-- arXiv, workshop, conference, camera-ready, or rebuttal workflows
-- editor/citation/build tooling for paper writing
-- turning an existing research project into a manuscript
-- agent-safe workflows for editing or reviewing paper drafts
+For citation or related-work content, load `research-protocol` first. Where a
+project's own conventions conflict with anything here, the project wins.
 
 ## Core Rule: Human-Owned `.tex`
 
@@ -84,35 +73,12 @@ it just work?
 
 ## Syncing to a hosted git bridge (Overleaf)
 
-This is optional, provider-specific troubleshooting. Verify the current provider
-behavior and repository state before any destructive recovery path.
-
 When the synced directory is a monorepo subdir pushed to a hosted LaTeX git
-bridge (Overleaf is the common case), the bridge is locked down — plan for it:
-
-- Its default branch is usually `main` (not `master`); it typically FORBIDS
-  `--force` and pushing new branches, and requires a linear history built on its
-  initial commit.
-- `git subtree push` from a PRE-EXISTING subdir never fast-forwards (its split
-  doesn't share the host's first commit) and force is rejected. Fix: a one-time
-  `subtree add` re-seed — drop the prefix (`git rm -r <dir> && commit`, THEN
-  `rm -rf <dir>`: `git rm` leaves untracked/ignored files like `build/`, so the
-  dir survives on disk and `subtree add` refuses with "prefix already exists"),
-  `git subtree add --prefix=<dir> <remote> main`, restore your content, then push.
-- Recurring: `git subtree pull` / `push` (wrap as `make <host>-pull` / `-push`).
-  Two rules: **pull before push**, and **commit before push** (subtree only sends
-  committed state). Sync from the integration branch (usually `main`) — the sync
-  boundary is the `--prefix` **subdir**, NOT a branch, so keep no dedicated
-  manuscript/host branch; any seed / re-seed branch is one-time throwaway
-  scaffolding, deleted once the re-seed lands (a long-lived one is pure bookkeeping).
-- The committed generated artifacts (Core Rule) ride along automatically — no
-  force-add.
-- **Scope check (external-sync safety).** Only the `--prefix`'d subdir crosses to
-  the host. After a push, inspect the actual remote tree (`git ls-tree <host>/main`)
-  and confirm ZERO parent-repo paths (`src/`, tests, lockfiles) — `--prefix=<dir>`
-  on every push/pull is the boundary; the sole leak vector is a bare `git push
-  <host>` of the whole repo (which the bridge shape rejects anyway). Verify the
-  tree, don't assume it.
+bridge, the bridge is locked down — linear history, no `--force`, no new
+branches — and a pre-existing subdir needs a one-time re-seed before `subtree
+push` will ever fast-forward. See `research-manuscript-sync` for that procedure,
+the recurring pull/push rules, and the post-push scope check that confirms no
+parent-repo paths crossed.
 
 ## Project Layout Convention
 
@@ -164,26 +130,10 @@ documentation and related documents.
 Do not split the manuscript into a separate repository unless collaboration,
 publisher requirements, or artifact submission constraints require it.
 
-## Manuscript Contract
-
-A good manuscript directory has one clear purpose: produce the paper artifact.
-
-Recommended components:
-
-- `main.tex`: top-level LaTeX entry point
-- `sections/`: human-authored paper sections
-- `macros.tex`: commands/macros
-- `notation.tex`: notation table or shared symbols
-- `figures/source/`: figure source assets (generators move to the code layer when the manuscript is synced — see Core Rule)
-- `figures/generated/`: deterministic generated figure outputs (committed when synced)
-- `tables/generated/`: deterministic generated table outputs (committed when synced)
-- `latexmkrc`: build settings
-- `Makefile`: paper build commands (pure `latexmk` when synced — no pipeline reachout)
-
-The claims/evidence ledger is NOT listed here: it is planning, not publishable
-source, so it lives in the project planning area (`notes/`), not a synced
-`manuscript/` — see the Claims and Evidence Ledger section. Keep generated files
-clearly separated from human-authored files.
+The directory has one purpose: produce the paper artifact. Keep generated files
+clearly separated from human-authored ones. The claims/evidence ledger is
+deliberately absent from the tree — it is planning, not publishable source, so it
+lives in the project planning area (`notes/`), not a synced `manuscript/`.
 
 ## Claims and Evidence Ledger
 
@@ -280,20 +230,7 @@ Do not fabricate citations. For literature search, related work, citation
 verification, or bibliography generation, follow the host's research/citation
 verification policy before producing paper-specific content.
 
-## Editor Workflow
-
-Use whichever editor/tooling the project standardizes on. A good scientific
-writing setup should provide:
-
-- LaTeX-aware editing and build integration
-- fast insertion of math, environments, labels, references, and citations
-- source/PDF synchronization when available
-- spell checking and optional prose/style linting
-- focused prose layout for long-form writing
-- version-control diff review
-- PDF review and annotation support
-
-Suggested division of labor:
+## Division of Labor
 
 - planning notes: claims, outlines, derivations, reviewer TODOs
 - LaTeX: final paper source
@@ -346,25 +283,19 @@ the project policy as described in the `.tex` guardrail.
 
 ## Checklist for Setting Up a Manuscript
 
-When setting up a project manuscript workflow:
+1. Inspect the existing project layout; locate result directories and experiment
+   entry points.
+2. Propose the `manuscript/` skeleton, build commands, bibliography source, and
+   generated figure/table paths.
+3. Create or recommend the claims/evidence ledger in the planning area.
+4. Report the proposed layout and next actions BEFORE implementing.
+5. If it will be synced or shipped, apply both Core Rules.
 
-1. Inspect existing project layout.
-2. Identify result directories and experiment entry points.
-3. Recommend a `manuscript/` skeleton.
-4. Define build commands.
-5. Connect bibliography source.
-6. Define generated figure/table paths.
-7. Create or recommend a claims/evidence ledger.
-8. Preserve the `.tex` no-edit boundary.
-9. Report the proposed layout and next actions before implementation.
-10. If the manuscript will be git-synced (Overleaf) or shipped (arXiv), enforce
-    the Core Rule: generators outside the synced boundary, generated artifacts
-    committed, claims ledger in the planning area.
+## Related Skills
 
-## Portability Notes
-
-- Keep this workflow independent of any one editor, package manager, agent
-  harness, or personal bibliography database.
-- Follow the host environment's routing for citations, documentation, security,
-  verification, and project-specific toolchains.
-- Prefer project-local conventions over personal defaults when they conflict.
+- `research-manuscript-sync` for pushing a `manuscript/` subdir to an Overleaf
+  git bridge.
+- `research-protocol` before any citation, related-work, or bibliography content.
+- `context-project-docs` for where `notes/` and standing project docs belong.
+- `dev-viz` for the figure generators feeding `figures/generated/`.
+- `research-run` for the results those figures and tables report.
