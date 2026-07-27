@@ -13,6 +13,8 @@ Turn a learning goal into a durable, revisitable workspace instead of a one-shot
 
 Treat the current directory as the workspace for this topic. Create files lazily, on first use.
 
+**First check the directory is not an existing project.** If it contains a `PLAN.md`, `pyproject.toml`, `.git`, or a populated `src/`, stop and ask for a dedicated learning directory. `CONTEXT.md` and `LOG.md` are owned names there — the project glossary (`plan-interview`) and the prepend-only run log (`context-project-docs`) — and writing lessons into them corrupts both.
+
 - `MISSION.md` — why the user wants to learn this. Grounds every lesson.
 - `CONTEXT.md` — one growing learning reference/cheat-sheet, sectioned by term or concept. This is scoped to the learning workspace; repo-root project terminology remains owned by `plan-interview`.
 - `LOG.md` — one running, prepend-only log of non-obvious insights or corrected misconceptions, dated newest first. Drives the next lesson's difficulty; add a correction entry later if an old entry turns out wrong.
