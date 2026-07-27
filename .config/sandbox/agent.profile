@@ -7,6 +7,7 @@ RO+=(
 	"$H/.config"
 	"$H/.local"        # user-installed bins/libs (cargo, go, …)
 	"$H/org/roam"      # org-roam notes (read-only for agents)
+	"$H/org/agenda"      # org-agenda (read-only for agents)
 )
 RW+=(
 	"$H/dotfiles"               # stow symlink targets + agent config work
