@@ -9,6 +9,7 @@ description: Mandatory for academic papers, literature, citations, related work,
 
 - Do not cite papers from memory.
 - Verify papers/citations/authors with configured paper-search tools before citing.
+- Verifying an identifier is not verifying a claim. When a paper's *content* — what it assumes, proves, or requires — will change a design, a plan, or a risk entry, confirm that content against the paper itself (snippet or full-text search), not against a summary, whether yours or a subagent's. Batch metadata lookups confirm existence only.
 - For broad literature or field surveys, use the configured literature-search workflow.
 - If verification tools are unavailable, say so before giving unverified memory-based context.
 - Load this protocol before producing externally sourced academic, citation, related-work, author, metadata, bibliography, or field-survey claims. Purely local experiment interpretation or project orientation may route directly to `research-run`/`research-session` until it makes literature claims.

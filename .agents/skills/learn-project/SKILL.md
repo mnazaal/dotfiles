@@ -60,6 +60,11 @@ Report ~15 lines: what the project is, the live claims, what is settled versus
 open, and the current front. With no claim spine, derive candidates from status
 plus the newest chronology, and record its absence as a defect.
 
+**"What the project is" means the problem, not the documents** — what is
+observed, what is unknown, what the target quantity is, what actions are
+available. A document inventory is not orientation, and claim-scoped depth
+entered before this lands is wasted.
+
 ## Claim-Scoped Depth
 
 Depth is always scoped to one claim. Covering a whole project at
