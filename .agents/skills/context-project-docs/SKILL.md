@@ -13,12 +13,14 @@ A project carries four standing documents — next, past, vocabulary, outward �
 - `LOG.md` — prepend-only run/result log, newest entry at top (what happened). Entries follow the canonical LOG ordering below.
 - `CONTEXT.md` — terminology glossary, the shared vocabulary. Entries owned by `plan-interview`.
 - `README.md` — the outward-facing snapshot for someone not in the project. For research-code repos, include a `research-map`-generated, provenance-stamped Overview block.
+`PLAN.md` additionally carries the cross-session state block — where the work stands right now (branch, running jobs, env quirks, promoted scratchpad artifacts, the entry point) — in a delimited `session-handoff:begin/end` region directly below the title, shape owned by `session-handoff`. **Replaced, never appended**: it is single-valued, and `git log -p PLAN.md` is its archive, the same reasoning that rejects `CHANGELOG.md` below. It sits above the plan because a cold reader needs it first, holds only state with no other home, and points at the rest rather than re-narrating it. No separate handoff document — that would be a fifth standing doc for ten lines.
 
 ## Rules
 
 - Create no standing markdown outside the canonical set without asking. Agents minting `SUMMARY.md`, `NOTES.md`, `IMPLEMENTATION.md`, `TESTING.md` is the failure mode this skill exists to stop.
 - No `CHANGELOG.md`: conventional commits + `git log` are the changelog; there are no external consumers and no backcompat obligation (`dev-ponytail`).
-- Scratch analysis goes to chat or the scratchpad; decisions go to `PLAN.md`; results go to `LOG.md`.
+- Scratch analysis goes to chat or the scratchpad; decisions go to `PLAN.md`; results go to `LOG.md`; where-the-work-stands goes to `PLAN.md`'s `session-handoff` block.
+- `LOG.md` holds runs and results, not session summaries. A session handoff appended here is a single-valued record stored append-only: every superseded copy stays in the read path forever and dilutes the results the log exists for (`session-handoff`).
 - For ML research repos, the standard layout includes root `README.md`, `PLAN.md`, `LOG.md`, and `notes/`. Keep the first three as standing docs; keep detailed working/research notes under `notes/` and point to them from PLAN/LOG instead of duplicating their narrative.
 - Write as tersely as the content allows: no restated context, no filler sections, no empty headings. **One fact, one home** — a LOG/PLAN entry is a verdict + the load-bearing numbers + a pointer to the detailed artifact (`notes/` file, commit), not a re-narration of it; if it restates what another doc already holds, cut it to a one-line pointer. (`session-handoff` inlines key *numbers* so they survive, not the narrative — the narrative has one home.)
 - `LOG.md` is prepend-only and newest first — insert new entries at the top; corrections are new entries, never rewrites.

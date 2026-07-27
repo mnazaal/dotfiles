@@ -13,37 +13,64 @@ session whose state lives only in chat/scratchpad.
 
 ## Workflow
 
-1. If the project uses the canonical `context-project-docs` layout, update
-   `LOG.md` by prepending a session-summary entry in canonical LOG order: what was done, the verdicts, and an
-   explicit **what NOT to re-pursue** (dead ends, pre-empted directions). Shape
-   per `context-project-docs` / `research-run`. Otherwise ask for the approved
-   durable handoff location.
-2. If present and governed by the project-doc policy, update `PLAN.md` status +
-   the next-session decisions/actions.
-3. Persist ephemeral state: move scratchpad scripts/results the next session
-   needs into the repo (or durable store). Make the handoff **self-contained** —
-   inline the key numbers so it survives even if the artifacts are lost.
-4. Record state, env quirks, and what is now superseded in the handoff block;
-   do not rely on an undefined external memory surface.
-5. Offer to commit the durable changes (`dev-git`); commit only with explicit
+1. Write the handoff into a delimited block at the TOP of `PLAN.md`, directly
+   below the title — **replace the block, never append a second one.** A handoff
+   is single-valued: there is exactly one current answer to "where am I", and
+   every older one is superseded by definition. `git log -p PLAN.md` is the
+   archive, so replacing loses nothing. Same shape as `research-map`'s README
+   block (`context-project-docs`): generated, delimited, regenerated rather than
+   hand-edited.
+
+   ```markdown
+   <!-- session-handoff:begin (2026-07-27) -->
+   …state, entry point, next action…
+   <!-- session-handoff:end -->
+   ```
+
+2. Keep it to state with no other home: current branch, uncommitted or unmerged
+   work, experiments still running (cluster job IDs, background tasks), env
+   quirks found this session, scratchpad artifacts promoted into the repo and
+   where they landed, and the single **entry point** — which section to read
+   first and what concrete action follows, in words, never chat-local shorthand.
+   It sits above the plan because a cold reader needs it first, and it stays
+   short because everything durable lives below it.
+3. Route durable content to its existing home rather than restating it: verdicts
+   and load-bearing numbers → `LOG.md` (`research-run`); decisions, execution
+   order, next actions → `PLAN.md` (`research-plan`); dead ends and what NOT to
+   re-pursue → `PLAN.md` risks. The handoff POINTS at these; it does not
+   re-narrate them.
+4. Enumerate the scratchpad and decide each item explicitly, keep or discard.
+   It is session-scoped and usually gone next session, so anything not promoted
+   is lost — and which artifacts the next session needs cannot be predicted,
+   which is why this is a list rather than a judgement.
+5. Cold-read check before finishing: re-read the block as if you had none of
+   this session's context, and name what you would still have to re-derive. Fix
+   those gaps. This step is explicit because the writer holds maximum context
+   and is therefore the worst-placed reader to notice what is missing — that is
+   precisely how a record ends up complete and unusable (`learn-project`).
+6. Offer to commit the durable changes (`dev-git`); commit only with explicit
    user authorization.
-6. Name the single **entry-point** and next action in words: which doc to read
-   first next session, and what concrete action follows. Do not use chat-local
-   shorthand.
 
 ## Resume (reverse direction)
 
 Trigger: "continue from where we left off", "resume this project", "pick up".
 Read what this skill writes BEFORE acting:
 
-1. `LOG.md` first entry — a SESSION HANDOFF block is the entry point (arc,
-   what-NOT-to-re-pursue, next actions); else read the newest `research-run` blocks.
-2. PLAN.md status + next actions; handoff-recorded env quirks and superseded state.
-3. Verify live state first: `git branch --show-current` + uncommitted/unmerged
-   work, and any experiments still running (cluster jobs, background tasks).
-4. Confirm the next action with the user, then route.
+1. `PLAN.md`'s `session-handoff:begin/end` block — the entry point. Current by
+   construction; no scanning, no deciding which copy is newest.
+2. Only if it is absent (a project predating this layout): scan `LOG.md` for the
+   newest SESSION HANDOFF block. It is NOT necessarily the first entry — runs
+   logged afterwards prepend above it — so falling through to "read the newest
+   `research-run` blocks" silently skips the handoff.
+3. The rest of `PLAN.md`: execution order, open risks, decision log.
+4. Verify live state before trusting any of it: `git branch --show-current`,
+   uncommitted/unmerged work, and any experiments still running (cluster jobs,
+   background tasks).
+5. Confirm the next action with the user, then route.
 
 No handoff artifact / generic "catch me up" → `research-session` Session Start.
+If the artifact reconstructs agent state but the user has lost their own grasp
+of the work, that is `learn-project` — re-reading the handoff will not fix it.
 
 ## Anti-Patterns
 
@@ -51,8 +78,15 @@ No handoff artifact / generic "catch me up" → `research-session` Session Start
 - A handoff that lists what was done but not what is next or what is a dead end.
 - Handoff entries that rely on invented labels from the chat, e.g. “continue
   with P1/T2”, instead of restating the concrete next action.
-- Re-narrating the same content across LOG + PLAN + memory — each has one role
-  (past / next / cross-session state); point between them, do not duplicate.
+- Re-narrating the same content across HANDOFF + LOG + PLAN — each has one role
+  (cross-session state / past / next); point between them, do not duplicate.
+- Appending a session summary to `LOG.md`. That is the run/result log; a
+  single-valued record accumulating in a prepend-only log means every superseded
+  copy is re-read forever, and the results it exists to hold get diluted.
+- Guessing which scratchpad artifacts the next session will want, instead of
+  enumerating them and deciding each.
+- Treating a written handoff as sufficient without reading it cold. The gap is
+  invisible from inside the session that produced it.
 
 ## Related Skills
 
