@@ -72,4 +72,5 @@ arr = arr.at[i].set(val)
 
 - `dev-python` for Python project/tooling conventions.
 - `debug-ml-research` for silent experiment failures.
+- `dev-ml-perf` when the job is slow or OOMs — name the bottleneck before tuning here.
 - `dev-verification` before completion claims.

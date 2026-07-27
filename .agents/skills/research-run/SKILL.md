@@ -27,10 +27,14 @@ Decide what a run result means and what to do next.
 - What config/commit/log path?
 - Is effect bigger than noise?
 - If non-significant: did the design have power for the *minimum effect worth acting on*? From the per-unit (per-seed) variance, compute the N that effect needs; a non-significant result below that N is inconclusive, not "no effect".
+- How many seeds does that minimum effect need? For a two-arm comparison at conventional power, roughly `n ≈ 16σ²/Δ²` per arm from pilot per-seed variance σ and target difference Δ. Compute it BEFORE launching; discovering the design was underpowered after the fact wastes the whole sweep.
+- Are the arms paired on seed? Running both arms on the SAME seeds and comparing per-seed differences removes seed variance from the comparison and usually needs far fewer runs than unpaired arms. Pair wherever the arms share a data/init draw.
+- Report an interval on the *difference*, not two point estimates. With few seeds prefer a paired-difference CI or a bootstrap over quoting each arm's mean ± std and eyeballing the overlap — non-overlapping error bars is not the same test, in either direction.
 - Is there a simpler baseline/control?
 - Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
 - Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
+- How many comparisons produced this winner? The best cell of an ablation grid is biased upward by selection alone. Either name the comparison of interest before running, or correct for the number of cells, or confirm the winner on a fresh seed set before reporting the gap.
 
 ## Verdicts
 
@@ -60,6 +64,8 @@ If the project keeps a `LOG.md` (`context-project-docs`), offer to prepend the f
 - Comparing across changed eval pipelines.
 - Cherry-picking best seed.
 - Treating one seed as robust.
+- Quoting each arm's mean ± std and reading overlap as the test. The quantity of interest is the difference and its own variance; overlapping bars can still be a significant paired difference, and non-overlapping bars are not automatically significant.
+- Reporting the top cell of a sweep as the effect size without correcting for selection or confirming it on fresh seeds.
 - Reporting metric movement without variance/noise context.
 - Training longer instead of checking broken assumptions.
 - Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.

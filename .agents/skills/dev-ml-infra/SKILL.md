@@ -126,6 +126,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 ## Related Skills
 
 - `dev-python` for project/env conventions.
+- `dev-ml-data` for what goes in `data/`: provenance, splits, preprocessing statistics, caches.
 - `dev-jax` / `dev-pytorch` for the model code itself.
 - `dev-tdd` and `dev-verification` for the e2e-evidence discipline.
 - `research-run` for interpreting the runs this infra produces.

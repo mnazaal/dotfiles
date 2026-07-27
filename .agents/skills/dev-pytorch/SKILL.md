@@ -56,5 +56,6 @@ optimizer.load_state_dict(ckpt["opt"])
 ## Related Skills
 
 - `debug-ml-research` for plausible-but-wrong ML runs.
+- `dev-ml-perf` when the job is slow or OOMs — name the bottleneck before tuning here.
 - `dev-python` for packaging/test tooling.
 - `dev-viz` for plotting outputs.
