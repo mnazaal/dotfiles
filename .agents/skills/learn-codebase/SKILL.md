@@ -81,8 +81,7 @@ Route each; do not fix silently.
 
 ## Boundary
 
-- Comprehension, not audit. Systematic human verification with reviewed tests →
-  `dev-audit`.
+- Comprehension, not verification. Pinning behavior with tests → `dev-tdd`.
 - Chasing one specific wrong behavior → `debug-root-cause`.
 - An agent-facing structural map, or gathering as a sub-step of another skill →
   `dev-scout`. That skill stays terse and non-interactive because other skills
@@ -110,5 +109,5 @@ Route each; do not fix silently.
   porting it.
 - `dev-ponytail` for the deletion call on an unjustifiable abstraction.
 - `dev-tdd` for covering an unenforced invariant.
-- `dev-audit` when comprehension should escalate to verified coverage.
+- `dev-tdd` when comprehension should escalate to pinned behavior.
 - `context-project-docs` for README claims that no longer match.

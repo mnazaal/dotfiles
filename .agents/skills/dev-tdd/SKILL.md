@@ -34,6 +34,24 @@ description: Use for test-first development: features, bug fixes, regression tes
 6. Refactor only while green.
 7. Repeat with the next behavior.
 
+## What Earns a Characterization Test
+
+Not all code repays pinning. Spend the effort where being subtly wrong is
+silently critical, because that is the class where nothing fails loudly:
+
+- Losses, log-probs, samplers, transforms and their Jacobians, custom gradients,
+  normalizations, numerical kernels.
+- Data and eval paths that could leak or misalign labels (`dev-ml-data`).
+- Public API, CLI, and serialization — anything defining an external contract or
+  able to silently corrupt stored data.
+
+Below that: code with real behavior that is shallow to verify or fails loudly
+gets a contract test. Code with no meaningful behavior or external contract —
+cosmetic plotting, logging, repr-only — gets neither; leave it alone.
+
+Pin behavior with a characterization test BEFORE changing it, so an improvement
+pass cannot alter behavior silently.
+
 ## ML Test Types
 
 Standing tests for ML code — the proactive form of `debug-ml-research`'s checks; write them before the failure, not after. Check details live there, not here:
@@ -50,6 +68,14 @@ Standing tests for ML code — the proactive form of `debug-ml-research`'s check
 - Testing mocks instead of behavior.
 - Broad golden tests that fail opaquely.
 - Refactors while red.
+
+## Boundary
+
+- Owns the red-green-refactor loop and what a test should assert.
+- It does not certify completion — a green suite is not evidence a claim holds; `dev-verification` owns that gate.
+- The content of the ML checks lives in `debug-ml-research`; this skill owns writing them before the failure rather than after.
+- The standing pipeline gate is `dev-ml-infra`'s smoke run, not a unit test written here.
+- Chasing a failure whose cause is unknown is `debug-root-cause`, not another test.
 
 ## Related Skills
 

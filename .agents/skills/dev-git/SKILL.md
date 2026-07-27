@@ -10,7 +10,7 @@ description: Use when committing work or choosing integration path: stage correc
 - If anything looks like a private email/user's personal directories/password/secret/API token etc, stop and notify the user immediately.
 - Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included.
 - AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides Claude Code's built-in commit-heredoc template, which defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
-- `Human-audited: yes` trailer: add only when the user explicitly confirms they reviewed every staged hunk (e.g. after a `review-loop` pass — staged = audited); never self-certify. A commit mixing audited and unaudited hunks gets no trailer — split it. Line-level audit coverage is computed from blame by `git-audit-coverage`.
+- Staging is the user's record of what they have actually read. Stage what you are told to stage; never stage on the user's behalf to make a commit look complete.
 - Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial. Evidence must reflect the *committed* state: inspect the staged diff and ensure no relevant unstaged or untracked changes are required for the check to pass.
 - Do not amend a pushed commit without explicit user confirmation.
 - Verify status before integration decisions.
@@ -39,7 +39,7 @@ rejected-commit round-trip.
    - Imperative subject ≤ 50 chars.
    - Conventional Commits prefix if the project uses them (`feat:`, `fix:`, `refactor:`, `chore:`, etc.).
    - Body (optional): *why*, not a file list.
-   - Trailer block: one `Assisted-by: <tool-name> (<model-id>)` line per AI tool that substantially contributed. Use `Assisted-by:`, never `Co-Authored-By:`. Add `Human-audited: yes` only under the rule above.
+   - Trailer block: one `Assisted-by: <tool-name> (<model-id>)` line per AI tool that substantially contributed. Use `Assisted-by:`, never `Co-Authored-By:`.
 5. Commit via heredoc to preserve formatting and trailers:
    ```bash
    git commit -m "$(cat <<'EOF'
@@ -74,4 +74,4 @@ rejected-commit round-trip.
 - `dev-git-rescue` for history rewriting and recovery.
 - `decide-review` for review gate before integration.
 - `dev-worktree` when a suspected pre-existing failure needs cross-venv verification, not just a stash.
-- `dev-audit` for a codebase-wide human-verification campaign that drives `Human-audited:` coverage across many commits.
+- `dev-tdd` for what earns a characterization test before you touch it.
