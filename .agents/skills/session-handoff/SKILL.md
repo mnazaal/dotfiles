@@ -49,7 +49,10 @@ session whose state lives only in chat/scratchpad.
    and is therefore the worst-placed reader to notice what is missing — that is
    precisely how a record ends up complete and unusable (`learn-project`).
 6. Offer to commit the durable changes (`dev-git`); commit only with explicit
-   user authorization.
+   user authorization. The block is written BEFORE its own commit lands, so it
+   cannot claim a clean tree: describe the repo as it will be after that commit
+   and name the commit as pending. Otherwise the next session's first act is
+   discovering that the handoff misreported state.
 
 ## Resume (reverse direction)
 

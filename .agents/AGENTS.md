@@ -58,6 +58,9 @@ This file is global routing and behavior policy. Keep it small.
   visible to `ps -p` forever, so `until ! ps -p <launcher>` never exits. Once a
   wait task is armed, consume its notification instead of abandoning it for
   manual polling.
+- `pkill -f <pattern>` matches the shell running it, so the command kills itself
+  and reports a spurious exit code. Bracket a character — `pkill -f 'jo[b]name'`
+  — or match the worker PID.
 
 ## Skills
 

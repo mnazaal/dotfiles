@@ -36,6 +36,9 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Eval: preprocessing, mode, metrics, checkpoint reload, sampler parameterization, no leakage.
 - Seed sweep: for a stochastic method never conclude from one seed — run several; a fix that rescues one seed can fail others (complementary failure modes), and one green seed is not recovery.
 - Passing by side-effect: a change that makes the metric pass but that you cannot derive is unverified — it may pass via an unrelated side-effect (e.g. accidentally breaking a symmetry) and mask the real bug.
+- Fidelity fix turns a green test red: the prior is that the test was calibrated against the bug, not that the fix broke the science. Derive what the *corrected* objective implies for the asserted quantity before "restoring" the metric — the old passing value may have been the bias. Converse of passing by side-effect.
+- Nested-variant gain: a variant that *contains* the current model (an added edge or parameter, reproducible by setting it to zero) should gain ~½ nat of fitted log-likelihood. A large gain is misspecification — generator and scorer disagree about the model — not evidence for the variant. Check this before interpreting any model-comparison number.
+- Converged baseline: before believing an effect measured by refitting, refit the *reference* configuration from known-good parameters. If that beats your baseline by the same order as the effect, you measured the optimizer, not the effect.
 - Self-satisfying metric: include a tripwire baseline that *must* fail (e.g. a zero-width predictor scored for coverage); if it also "passes", the eval is self-consistent — truth sits at the center of its own prediction, or is averaged over items sharing one ground truth — and proves nothing. Coverage/calibration is a property over (parameter, data) draws (SBC), not over items within one fixed truth.
 
 ## Specialized Probes
@@ -52,7 +55,7 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 ## Boundary
 
 - Owns diagnosis of a run that completed and is wrong: the ladder, the probes, the conventions.
-- Anything that crashes, errors, or fails a test has a symptom to reproduce — `debug-root-cause`.
+- Anything that crashes or errors has a symptom to reproduce — `debug-root-cause`. A failed *statistical* assertion (recovery threshold, calibration bound, metric bar) is not that: it reproduces trivially, and the open question is whether the asserted number was ever right. That is this skill — routing it to `debug-root-cause` burns the run budget re-observing a number nobody has justified.
 - A run that is valid and merely disappointing is not broken; `research-run` decides what it means.
 - Building the data path is `dev-ml-data`; this skill is what you reach for once a data bug already reached a run.
 - Writing these checks as standing tests before the failure is `dev-tdd`.

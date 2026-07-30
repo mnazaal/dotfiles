@@ -11,5 +11,6 @@ Makefile
 .claude/projects
 ^/\.config/codex/config\.toml$
 ^/\.config/codex/tmp$
+^tests$
 
 ^/org$

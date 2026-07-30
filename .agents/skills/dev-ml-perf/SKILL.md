@@ -61,6 +61,8 @@ state + activations.
 - Reducing batch size as the first OOM response, silently changing the experiment.
 - Reaching for AMP, `torch.compile`, or donation while the job is input-bound.
 - Profiling on a login node instead of inside an allocation (`dev-hpc`).
+- Fanning out local jobs with `taskset` alone: pinning cores does not shrink per-process XLA/BLAS thread pools (sized from `nproc`), so N concurrent jobs spawn N×`nproc` threads and thrash. Cap `OMP_NUM_THREADS`/intra-op threads alongside the pinning, or run sequentially. Tell: an identical job getting progressively slower across a session.
+- Extrapolating wall-clock from a measurement taken under different load — re-measure on a shared box rather than scaling an earlier number.
 
 ## Boundary
 
