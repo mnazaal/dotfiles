@@ -14,7 +14,7 @@ RW+=(
 	"$H/.cache"                 # tool caches (bun, uv, pip, …)
 	"$H/.local/share"           # uv python installs, bun packages, …
 	"$H/.local/state/nvim"      # Neovim LSP logs/state for in-agent editors
-	"$H/.local/state/headromm"  # Headroom MCP logs/state for in-agent editors
+	"$H/.local/state/headroom"  # Headroom MCP logs/state for in-agent editors
 	"$H/org/agents"             # shared agent wiki (read-write)
 	"$H/projects"               # all projects — agents often need to cross-reference
 )
