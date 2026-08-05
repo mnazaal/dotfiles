@@ -34,6 +34,10 @@ Every delegated task states:
    findings must remain understandable when copied without prior chat context.
 7. Required skills for the delegated scope. Name each required skill explicitly;
    do not assume a subagent inherits the parent session's loaded skills.
+8. Artifact requirement: the agent names the files it fetched and leaves them
+   readable. A delegated agent's quoted evidence and the artifact it leaves
+   behind are not the same thing — a correct quote can sit beside a file that
+   cannot support it.
 
 ## Coordination Rules
 
@@ -43,6 +47,8 @@ Every delegated task states:
 - Keep one owner for integration decisions in the parent context.
 - Treat subagent output as evidence, not truth: inspect cited files, diffs, or
   artifacts before claiming completion (`dev-verification`).
+- Verify a delegated fact before it enters a commit message, a plan, or a claim.
+  Propagation is where an unchecked report stops being cheap to retract.
 - If agents disagree, resolve with the smallest direct check, not a tie-break by
   confidence or verbosity.
 

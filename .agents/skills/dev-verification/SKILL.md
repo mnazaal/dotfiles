@@ -44,6 +44,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 | port matches reference implementation | recorded replay/parity evidence against the reference implementation, with scope and tolerances stated |
 | experiment pipeline works | e2e smoke run through the real entry point on tiny synthetic data — loss drops, metrics/artifacts logged (`dev-ml-infra`); unit-green alone is insufficient |
 | agent completed | inspect changed files/artifacts, then verify independently |
+| flag/option behaves as documented | resolved default read from source or a runtime probe — `--help` and docstrings go stale, and a default decides whether config is needed at all |
 | rename/repath complete | the OLD name has zero hits across every relevant file type (`.py` **and** `.md`/`.rst`/`.ipynb`/config), searched whitespace-tolerantly — a line-anchored `grep`/`sed` sweep reports false-clean on references wrapped across lines (docstrings, RST `:class:`/`:mod:` links) |
 
 ## Anti-Patterns
@@ -57,6 +58,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Golden-snapshot or self-referential test (reuses the code's own helpers/output) treated as correctness evidence — it guards regressions, it does not prove correctness.
 - Re-deriving a property of an existing run from *assumed* or *default* inputs and trusting the result — the run's own recorded config (`params.json`, resolved config, manifest) is the source of truth; recomputing with a guessed upstream parameter launders an assumption into apparent evidence.
 - Background watcher loops left running after the watched command exits (`pgrep -f "x"` self-matches its own argv and never terminates).
+- Recommending configuration from a truncated `--help`/docs read — dump the full option surface and read all of it before advising which flags to set.
 
 ## Related Skills
 

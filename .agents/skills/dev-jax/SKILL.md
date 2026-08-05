@@ -78,6 +78,7 @@ arr = arr.at[i].set(val)
 ## Related Skills
 
 - `dev-python` for Python project/tooling conventions.
+- `dev-pytorch` when the task involves reading or running PyTorch code, even if the target is JAX — load it alongside this skill rather than inferring torch idioms.
 - `debug-ml-research` for silent experiment failures.
 - `dev-ml-perf` when the job is slow or OOMs — name the bottleneck before tuning here.
 - `dev-verification` before completion claims.
