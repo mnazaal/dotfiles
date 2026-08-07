@@ -76,11 +76,7 @@ const TABLE: Row[] = [
   // that result stopped carrying its category, nested commands would silently
   // fall back to the unlisted-category default of ask.
   { command: "sh -c 'sudo id'", expected: "deny", note: "category propagates through recursion" },
-  {
-    command: "bash -c 'rm -rf /'",
-    expected: { claude: "allow", default: "ask" },
-    note: "hook allows; Claude Code's own circuit breaker still prompts for / and ~",
-  },
+  { command: "bash -c 'rm -rf /'", expected: "deny", note: "top-level target, through recursion" },
 
   // --- confinement tampering: the agent disabling its own guard ----------------
   { command: "unset AGENT_BRANCH_PREFIX", expected: "deny" },
@@ -94,6 +90,11 @@ const TABLE: Row[] = [
   { command: "git commit --no-verify -m x", expected: "deny" },
   { command: "git push --force origin main", expected: "deny" },
   { command: "git branch -D claude/topic", expected: "deny" },
+  // The rule's message already says "forced/deleted"; -d is the safe variant
+  // but is still a deletion, and there is no ask tier left to surface it.
+  { command: "git branch -d claude/topic", expected: "deny", note: "merged-only delete is still a delete" },
+  { command: "git branch --delete claude/topic", expected: "deny" },
+  { command: "git branch -a", expected: "allow", note: "listing must stay allowed" },
   { command: "git update-ref refs/heads/main HEAD", expected: "deny" },
 
   // --- disk-destructive: no block devices in the container, never legitimate ---
@@ -102,10 +103,45 @@ const TABLE: Row[] = [
   { command: "shred -u secrets.bin", expected: "deny" },
 
   // --- candidates for allow: the sandbox already contains these -----------------
+  // Recursive force rm inside the project is recoverable via agent-checkpoint,
+  // which only claude has wired -- hence the per-agent split.
   {
     command: "rm -rf build",
     expected: { claude: "allow", default: "ask" },
-    note: "recoverable via agent-checkpoint, which only claude has wired",
+    note: "inside the project, checkpoint covers it",
+  },
+  {
+    command: "rm -rf ./build/cache",
+    expected: { claude: "allow", default: "ask" },
+    note: "nested inside the project",
+  },
+
+  // ...but a top-level target is denied for EVERY agent, including claude.
+  // Checkpoint refs live in .git inside the repo, so deleting a repo root or a
+  // home directory destroys the work and its only recovery together. There is
+  // no severity value that makes that acceptable.
+  { command: "rm -rf /", expected: "deny", note: "filesystem root" },
+  { command: "rm -rf ~", expected: "deny", note: "home" },
+  { command: "rm -rf ~/dotfiles", expected: "deny", note: "direct child of home: a repo root" },
+  { command: "rm -rf ~/projects", expected: "deny", note: "direct child of home" },
+  { command: "rm -rf $HOME/dotfiles", expected: "deny", note: "$HOME normalizes to the same path" },
+  { command: "rm -rf .", expected: "deny", note: "the whole working directory" },
+  { command: "rm -rf ..", expected: "deny", note: "an ancestor of the working directory" },
+  {
+    command: "cd /tmp && rm -rf /tmp/project",
+    expected: "deny",
+    note: "absolute path equal to cwd, reached from another segment",
+  },
+  // `cd` then a RELATIVE target is the form an agent actually produces, and it
+  // is invisible unless the effective directory is tracked across segments:
+  // resolving `dotfiles` against the event cwd gives <cwd>/dotfiles, not ~/dotfiles.
+  { command: "cd ~ && rm -rf dotfiles", expected: "deny", note: "relative target after cd home" },
+  { command: "cd /tmp && rm -rf project", expected: "deny", note: "relative target after cd" },
+  { command: "cd .. && rm -rf project", expected: "deny", note: "relative target after cd up" },
+  {
+    command: "cd build && rm -rf src",
+    expected: { claude: "allow", default: "ask" },
+    note: "cd tracking must not over-broaden: still inside the project",
   },
   {
     command: "chmod 777 script.sh",
@@ -128,6 +164,13 @@ const TABLE: Row[] = [
     note: "a READ; pre-commit uses this exact form",
   },
   { command: "git replace -l", expected: "allow", note: "a LIST" },
+  { command: "git replace --list", expected: "allow", note: "a LIST" },
+  { command: "git replace", expected: "allow", note: "bare invocation lists" },
+  // Write forms of `replace` that carry fewer than two operands. An
+  // operand-count heuristic misses both, so `replace` must be treated as a
+  // write unless it is provably a list.
+  { command: "git replace --graft abc123", expected: "deny", note: "one operand, still a WRITE" },
+  { command: "git replace --convert-graft-file", expected: "deny", note: "no operands, still a WRITE" },
   {
     command: "git symbolic-ref HEAD refs/heads/main",
     expected: "deny",

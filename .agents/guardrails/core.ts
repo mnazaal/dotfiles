@@ -247,6 +247,29 @@ function resolveAny(input: string, cwd: string): string {
   return resolve(cwd, input);
 }
 
+/**
+ * A recursive-force rm target that would take a whole project, a home, or the
+ * filesystem with it. agent-checkpoint refs live in .git *inside* the repo, so
+ * deleting a repo root destroys the work and its only recovery in one command.
+ *
+ * `base` is the effective directory the target resolves against (which `cd`
+ * moves); `origin` is the directory the tool call started in. Both are anchors:
+ * `cd /tmp && rm -rf project` resolves against /tmp but still destroys origin.
+ *
+ * Best-effort by design: this guards against model error, not deliberate
+ * circumvention, which no amount of string parsing can cover.
+ */
+function isTopLevelRmTarget(target: string, base: string, origin: string): boolean {
+  const resolved = resolveAny(target, base);
+  if (resolved === "/" || resolved === HOME) return true;
+  // A direct child of $HOME is a project root or top-level store.
+  if (resolved.startsWith(HOME + "/") && !resolved.slice(HOME.length + 1).includes("/")) return true;
+  for (const anchor of [resolve(base), resolve(origin)]) {
+    if (resolved === anchor || anchor.startsWith(resolved + "/")) return true;
+  }
+  return false;
+}
+
 function hasProtectedSegment(path: string, operation: Operation = "unknown"): boolean {
   for (const comp of path.replace(/\\/g, "/").split("/")) {
     if (comp === ".env" || comp.startsWith(".env.")) return true;
@@ -340,16 +363,20 @@ export function createGuard(agent: string) {
         // update-ref and fast-import are always writes. symbolic-ref and replace
         // have read forms that must pass -- .config/git/hooks/pre-commit runs
         // `git symbolic-ref --quiet --short HEAD`, and `git replace -l` lists.
-        // Treat those two as writes only when deleting or when a value operand
-        // is supplied alongside the name.
-        const hasReadForm = sub === "symbolic-ref" || sub === "replace";
+        // Both are write-unless-proven-read: an operand count alone misses
+        // `git replace --graft <commit>` (one operand) and
+        // `git replace --convert-graft-file` (none), which both rewrite refs.
         const deleting = rest.some(t => t === "-d" || t === "--delete");
         const operands = rest.filter(t => !t.startsWith("-")).length;
-        if (!hasReadForm || deleting || operands >= 2) return `direct git ref op (git ${sub})`;
+        const readForm =
+          (sub === "symbolic-ref" && !deleting && operands < 2) ||
+          (sub === "replace" && !deleting &&
+            (rest.length === 0 || rest.some(t => t === "-l" || t === "--list")));
+        if (!readForm) return `direct git ref op (git ${sub})`;
       }
       if (sub === "config" && rest.some(t => gitConfigKey(t) === "core.hookspath")) return "git hooks bypass (git config core.hooksPath)";
       if (rest.includes("--no-verify")) return "git hook skip (--no-verify)";
-      if (sub === "branch" && rest.some(t => t === "-f" || t === "--force" || t === "-D")) return "forced/deleted git branch";
+      if (sub === "branch" && rest.some(t => t === "-f" || t === "--force" || t === "-D" || t === "-d" || t === "--delete")) return "forced/deleted git branch";
       if (sub === "push" && rest.some(t => t === "-f" || t === "--force" || t === "--delete" || t === "-d" || t.startsWith("--force"))) return "force/delete git push";
       return undefined;
     }
@@ -371,16 +398,43 @@ export function createGuard(agent: string) {
 
   type Danger = { reason: string; category: string };
 
-  function dangerReason(cmd: string): Danger | undefined {
+  function dangerReason(cmd: string, cwd: string): Danger | undefined {
+    // Effective directory, tracked across segments. `cd ~ && rm -rf dotfiles`
+    // resolves its target against ~, not against the directory the tool call
+    // started in -- without this the most common destructive form is invisible.
+    let here = cwd;
+    let hereKnown = true;
     for (const seg of splitSegments(cmd)) {
       const tamper = confinementTamperReason(tokenize(seg));
       if (tamper) return { reason: tamper, category: "confinement" };
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
       const { command, args } = parsed;
+      if (command === "cd") {
+        const target = firstNonFlag(args);
+        if (!target) here = HOME;
+        else if (target === "-") hereKnown = false;
+        else here = resolveAny(target, here);
+        continue;
+      }
       if (ESCALATORS.has(command)) return { reason: "privilege escalation", category: "escalation" };
       if (DESTRUCTIVE.has(command)) return { reason: "destructive command", category: "disk-destructive" };
-      if (command === "rm" && hasRmRecursiveForce(args)) return { reason: "recursive force rm", category: "recursive-force-rm" };
+      if (command === "rm" && hasRmRecursiveForce(args)) {
+        const targets = args.filter(a => !a.startsWith("-"));
+        // After `cd -` the directory is unknowable. A false deny costs a
+        // rerun; a false allow costs the repository.
+        const relative = targets.some(
+          t => !t.startsWith("/") && !t.startsWith("~") && !t.startsWith("$"),
+        );
+        const TOPLEVEL = "recursive-force-rm-toplevel";
+        if (!hereKnown && relative) {
+          return { reason: "rm -rf with an unresolvable cwd", category: TOPLEVEL };
+        }
+        if (targets.some(t => isTopLevelRmTarget(t, here, cwd))) {
+          return { reason: "rm -rf of a top-level path", category: TOPLEVEL };
+        }
+        return { reason: "recursive force rm", category: "recursive-force-rm" };
+      }
       if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args)))
         return { reason: "world-writable permissions", category: "world-writable" };
       if (command === "git") { const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" }; }
@@ -390,11 +444,12 @@ export function createGuard(agent: string) {
       }
       if (SHELL_RUNNERS.has(command)) {
         const inner = dashCArg(args);
-        if (inner) { const nested = dangerReason(inner); if (nested) return nested; }
+        if (inner) { const nested = dangerReason(inner, here); if (nested) return nested; }
       }
     }
     return undefined;
   }
+
 
   // unified entry point ------------------------------------------------------
   function evaluate(input: { command?: string; path?: string; paths?: string[]; cwd: string; operation?: Operation }): Decision {
@@ -407,7 +462,7 @@ export function createGuard(agent: string) {
     if (input.command) {
       const r1 = blockedCommand(input.command, cwd);
       if (r1) return { decision: "deny", reason: `sensitive path in command (${r1})` };
-      const r2 = dangerReason(input.command);
+      const r2 = dangerReason(input.command, cwd);
       if (r2) return { decision: severityOf(r2.category), reason: r2.reason };
     }
     return { decision: "allow" };

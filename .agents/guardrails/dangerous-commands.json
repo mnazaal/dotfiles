@@ -70,6 +70,7 @@
     "confinement": "deny",
     "disk-destructive": "deny",
     "git-guard-bypass": "deny",
+    "recursive-force-rm-toplevel": "deny",
     "world-writable": {
       "claude": "allow",
       "codex": "ask",

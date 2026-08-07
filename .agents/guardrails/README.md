@@ -27,8 +27,12 @@ Adapters (thin, import `core.ts`):
 
 ## Decisions
 
-`evaluate()` returns `deny` (secrets / machinery writes / ref-rewrites), `ask`
-(escalation / destructive / git-bypass / confinement / find), or `allow`. 
+`evaluate()` returns `deny`, `ask`, or `allow`. Path rules decide secrets,
+machinery writes, and protected globs. Command rules are classified by
+`severity` in `dangerous-commands.json`: a category maps either to one decision
+for every agent, or to a per-agent object shaped like `find_policy`. An unlisted
+category falls back to `ask`, so the mechanism stays inert until a category is
+named.
 
 Adapters map:
 - Claude → PreToolUse `permissionDecision` (deny / ask)
@@ -84,6 +88,15 @@ then retry" message.
   Set an agent `false` only while bootstrapping.
 - **`find_policy`** (per agent) — `always` (gate any find) / `exec` (only when an
   `-exec`/`-delete` primary is present) / `off`.
+- **`severity`** (per category, optionally per agent) — the decision a command
+  rule produces. A string applies to every agent; an object keys by agent like
+  `find_policy`. An unlisted category falls back to `ask`, so the map is
+  fail-safe. Never-legitimate categories (`escalation`, `confinement`,
+  `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`) deny
+  for everyone. Categories the sandbox already contains (`world-writable`,
+  `recursive-force-rm`) allow only where `agent-checkpoint` is wired: `ask`
+  means "hard block" to codex and opencode, so allowing there would loosen the
+  two agents that cannot recover uncommitted work.
 
 ## Native permission layers
 
@@ -148,4 +161,4 @@ where the sandbox works the profile is still reachable via
 
 Add a path, a dangerous command, or a skill gate to the relevant JSON; all
 agents pick it up on their next hook/plugin load. Keep `core.ts`
-dependency-free so every runtime can import it. 
+dependency-free so every runtime can import it.
