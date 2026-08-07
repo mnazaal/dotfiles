@@ -77,21 +77,6 @@
       "Bash(sudo:*)",
       "Bash(doas:*)",
       "Bash(pkexec:*)"
-    ],
-    "ask": [
-      "Bash(git reset --hard:*)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(git clean:*)",
-      "Bash(git rebase:*)",
-      "Bash(git cherry-pick:*)",
-      "Bash(git branch -D:*)",
-      "Bash(git restore:*)",
-      "Bash(git checkout --:*)",
-      "Bash(git tag -d:*)",
-      "Bash(git stash drop:*)",
-      "Bash(git stash clear)",
-      "Bash(find:*)"
     ]
   },
   "model": "opus[1m]",
