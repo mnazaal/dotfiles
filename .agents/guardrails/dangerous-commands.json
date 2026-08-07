@@ -4,21 +4,83 @@
   "escalators": ["sudo", "doas", "pkexec", "su", "run0", "machinectl"],
 
   "destructive": [
-    "mkfs", "mkfs.ext2", "mkfs.ext3", "mkfs.ext4", "mkfs.fat", "mkfs.vfat",
-    "mkfs.ntfs", "mkfs.btrfs", "mkfs.xfs", "mkfs.zfs", "mkswap", "dd", "shred",
-    "sfdisk", "fdisk", "parted", "pvcreate", "vgcreate", "lvcreate"
+    "mkfs",
+    "mkfs.ext2",
+    "mkfs.ext3",
+    "mkfs.ext4",
+    "mkfs.fat",
+    "mkfs.vfat",
+    "mkfs.ntfs",
+    "mkfs.btrfs",
+    "mkfs.xfs",
+    "mkfs.zfs",
+    "mkswap",
+    "dd",
+    "shred",
+    "sfdisk",
+    "fdisk",
+    "parted",
+    "pvcreate",
+    "vgcreate",
+    "lvcreate"
   ],
 
-  "command_wrappers": ["command", "builtin", "env", "time", "nice", "nohup", "setsid", "stdbuf", "timeout"],
+  "command_wrappers": [
+    "command",
+    "builtin",
+    "env",
+    "time",
+    "nice",
+    "nohup",
+    "setsid",
+    "stdbuf",
+    "timeout"
+  ],
 
   "shell_runners": ["sh", "bash", "zsh", "dash", "ksh"],
 
-  "find_exec_primaries": ["-exec", "-execdir", "-delete", "-fprintf", "-ok", "-okdir"],
+  "find_exec_primaries": [
+    "-exec",
+    "-execdir",
+    "-delete",
+    "-fprintf",
+    "-ok",
+    "-okdir"
+  ],
 
-  "git_ref_write_subcmds": ["update-ref", "symbolic-ref", "fast-import", "replace"],
+  "git_ref_write_subcmds": [
+    "update-ref",
+    "symbolic-ref",
+    "fast-import",
+    "replace"
+  ],
 
   "git_global_value_opts": ["-C", "--git-dir", "--work-tree", "--namespace"],
 
   "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
-  "find_policy": { "claude": "exec", "codex": "exec", "pi": "exec", "opencode": "exec" }
+  "find_policy": {
+    "claude": "off",
+    "codex": "exec",
+    "pi": "exec",
+    "opencode": "exec"
+  },
+  "_severity": "Per-category decision for command rules. A string applies to every agent; an object keys by agent like find_policy. An unlisted category resolves to 'ask', so this is fail-safe.",
+  "severity": {
+    "escalation": "deny",
+    "confinement": "deny",
+    "disk-destructive": "deny",
+    "git-guard-bypass": "deny",
+    "world-writable": {
+      "claude": "allow",
+      "codex": "ask",
+      "pi": "ask",
+      "opencode": "ask"
+    },
+    "recursive-force-rm": {
+      "claude": "allow",
+      "codex": "ask",
+      "pi": "ask",
+      "opencode": "ask"
+    }
+  }
 }

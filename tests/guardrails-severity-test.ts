@@ -43,42 +43,100 @@ const decideAs = (agent: string, command: string) =>
   railsFor.get(agent)!.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision;
 const decide = (command: string) => decideAs("claude", command);
 
-type Row = { command: string; expected: "deny" | "ask" | "allow"; note?: string };
+type Agent = (typeof AGENTS)[number];
+type Severity = "deny" | "ask" | "allow";
+
+// A row expects either one severity for every harness, or a per-agent split.
+// The split is not cosmetic: `ask` means "prompt" to claude and pi but "hard
+// block" to codex and opencode, so reclassifying a row to `allow` loosens those
+// two from blocked to permitted. Rows that rely on agent-checkpoint for their
+// safety therefore stay `ask` wherever no checkpoint is wired.
+type Expected = Severity | ({ default: Severity } & Partial<Record<Agent, Severity>>);
+
+const expectedFor = (e: Expected, agent: Agent): Severity =>
+  typeof e === "string" ? e : (e[agent] ?? e.default);
+
+const label = (e: Expected): string =>
+  typeof e === "string"
+    ? e
+    : Object.entries(e)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(" ");
+
+type Row = { command: string; expected: Expected; note?: string };
 
 const TABLE: Row[] = [
-  // --- privilege escalation: candidate for deny --------------------------------
-  { command: "sudo apt install ripgrep", expected: "ask" },
-  { command: "env FOO=1 sudo id", expected: "ask", note: "wrapper-aware; a Bash(sudo:*) rule misses this" },
-  { command: "doas id", expected: "ask" },
+  // --- privilege escalation: never legitimate, so silent rather than prompted --
+  { command: "sudo apt install ripgrep", expected: "deny" },
+  { command: "env FOO=1 sudo id", expected: "deny", note: "wrapper-aware; a Bash(sudo:*) rule misses this" },
+  { command: "doas id", expected: "deny" },
 
-  // --- confinement tampering: candidate for deny -------------------------------
-  { command: "unset AGENT_BRANCH_PREFIX", expected: "ask" },
-  { command: "AGENT_BRANCH_PREFIX=other git commit -m x", expected: "ask" },
-  { command: "env -i bash -c 'git commit'", expected: "ask" },
-  { command: "GIT_CONFIG_COUNT=1 git commit -m x", expected: "ask" },
+  // --- severity must survive `sh -c` recursion ---------------------------------
+  // dangerReason recurses into shell runners and returns the nested result; if
+  // that result stopped carrying its category, nested commands would silently
+  // fall back to the unlisted-category default of ask.
+  { command: "sh -c 'sudo id'", expected: "deny", note: "category propagates through recursion" },
+  {
+    command: "bash -c 'rm -rf /'",
+    expected: { claude: "allow", default: "ask" },
+    note: "hook allows; Claude Code's own circuit breaker still prompts for / and ~",
+  },
 
-  // --- git guard bypass: candidate for deny ------------------------------------
-  { command: "git -c core.hooksPath=/dev/null commit -m x", expected: "ask" },
-  { command: "git commit --no-verify -m x", expected: "ask" },
-  { command: "git push --force origin main", expected: "ask" },
-  { command: "git branch -D claude/topic", expected: "ask" },
-  { command: "git update-ref refs/heads/main HEAD", expected: "ask" },
+  // --- confinement tampering: the agent disabling its own guard ----------------
+  { command: "unset AGENT_BRANCH_PREFIX", expected: "deny" },
+  { command: "AGENT_BRANCH_PREFIX=other git commit -m x", expected: "deny" },
+  { command: "env -i bash -c 'git commit'", expected: "deny" },
+  { command: "GIT_CONFIG_COUNT=1 git commit -m x", expected: "deny" },
 
-  // --- disk-destructive: candidate for deny ------------------------------------
-  { command: "dd if=/dev/zero of=/dev/sda", expected: "ask" },
-  { command: "mkfs.ext4 /dev/sdb1", expected: "ask" },
-  { command: "shred -u secrets.bin", expected: "ask" },
+  // --- git guard bypass: unapprovable, run it yourself in a terminal -----------
+  // dev-git already says to present these rather than run them; deny enforces it.
+  { command: "git -c core.hooksPath=/dev/null commit -m x", expected: "deny" },
+  { command: "git commit --no-verify -m x", expected: "deny" },
+  { command: "git push --force origin main", expected: "deny" },
+  { command: "git branch -D claude/topic", expected: "deny" },
+  { command: "git update-ref refs/heads/main HEAD", expected: "deny" },
+
+  // --- disk-destructive: no block devices in the container, never legitimate ---
+  { command: "dd if=/dev/zero of=/dev/sda", expected: "deny" },
+  { command: "mkfs.ext4 /dev/sdb1", expected: "deny" },
+  { command: "shred -u secrets.bin", expected: "deny" },
 
   // --- candidates for allow: the sandbox already contains these -----------------
-  { command: "rm -rf build", expected: "ask", note: "the one worth keeping; see checkpoint contract" },
-  { command: "chmod 777 script.sh", expected: "ask" },
-  { command: "find . -name '*.pyc' -exec rm {} ;", expected: "ask", note: "find_policy=exec" },
+  {
+    command: "rm -rf build",
+    expected: { claude: "allow", default: "ask" },
+    note: "recoverable via agent-checkpoint, which only claude has wired",
+  },
+  {
+    command: "chmod 777 script.sh",
+    expected: { claude: "allow", default: "ask" },
+    note: "system paths are ro and the container is single-user; a lint concern, not a boundary",
+  },
+  {
+    command: "find . -name '*.pyc' -exec rm {} ;",
+    expected: { claude: "allow", default: "ask" },
+    note: "find_policy.claude=off; a workflow nudge the sandbox already contains",
+  },
 
-  // --- the read-form trap: promoting ref ops to deny would break this -----------
+  // --- read vs write forms of the ref subcommands ------------------------------
+  // symbolic-ref and replace are in git_ref_write_subcmds but have read forms.
+  // .config/git/hooks/pre-commit:12 runs `git symbolic-ref --quiet --short HEAD`,
+  // so denying the read form would break committing entirely.
   {
     command: "git symbolic-ref --short HEAD",
-    expected: "ask",
-    note: "a READ, but symbolic-ref is in git_ref_write_subcmds; pre-commit uses this exact form",
+    expected: "allow",
+    note: "a READ; pre-commit uses this exact form",
+  },
+  { command: "git replace -l", expected: "allow", note: "a LIST" },
+  {
+    command: "git symbolic-ref HEAD refs/heads/main",
+    expected: "deny",
+    note: "a WRITE: name plus value operand",
+  },
+  {
+    command: "git update-ref -d refs/heads/x",
+    expected: "deny",
+    note: "always a write, no read form",
   },
 
   // --- controls: must stay allow through any reclassification ------------------
@@ -89,17 +147,17 @@ const TABLE: Row[] = [
 ];
 
 for (const { command, expected, note } of TABLE) {
-  test(`${expected}: ${command}${note ? ` (${note})` : ""}`, () => {
+  test(`${label(expected)}: ${command}${note ? ` (${note})` : ""}`, () => {
     for (const agent of AGENTS) {
-      expect(`${agent}: ${decideAs(agent, command)}`).toBe(`${agent}: ${expected}`);
+      expect(`${agent}: ${decideAs(agent, command)}`).toBe(`${agent}: ${expectedFor(expected, agent)}`);
     }
   });
 }
 
-test("the ask tier is non-empty today, and this is what emptying it must change", () => {
-  const asked = TABLE.filter((r) => r.expected === "ask");
-  expect(asked.length).toBeGreaterThan(0);
-  // Every ask row must be reclassified deliberately. When the tier is emptied
-  // this expectation flips to 0 and each row above carries deny or allow.
-  expect(TABLE.filter((r) => decide(r.command) === "ask").length).toBe(asked.length);
+// Progress marker, not an assertion about behavior: the rows above are the
+// contract. Emptying the tier means this list reaches zero.
+test("rows still awaiting reclassification are visible", () => {
+  const remaining = TABLE.filter((r) => expectedFor(r.expected, "claude") === "ask").map((r) => r.command);
+  if (remaining.length) console.log(`claude ask tier not yet empty (${remaining.length} rows)`);
+  expect(remaining.every((c) => decideAs("claude", c) === "ask")).toBe(true);
 });

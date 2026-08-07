@@ -275,6 +275,15 @@ export function createGuard(agent: string) {
   const GIT_VALUE_OPTS = new Set<string>(dc.git_global_value_opts ?? []);
   const findPolicy: string = (dc.find_policy ?? {})[agent] ?? "exec";
 
+  const SEVERITY: Record<string, unknown> = dc.severity ?? {};
+  function severityOf(category: string): "deny" | "ask" | "allow" {
+    const spec = SEVERITY[category];
+    const value = typeof spec === "string"
+      ? spec
+      : (spec as Record<string, string> | undefined)?.[agent];
+    return value === "deny" || value === "allow" ? value : "ask";
+  }
+
   // path guard ---------------------------------------------------------------
   function blocked(path: string, operation: Operation = "unknown"): string | undefined {
     for (const s of credentials) {
@@ -327,7 +336,17 @@ export function createGuard(agent: string) {
       if (GIT_VALUE_OPTS.has(a)) { i += 2; continue; }
       if (a.startsWith("-")) { i += 1; continue; }
       const sub = a, rest = args.slice(i + 1);
-      if (GIT_REF_WRITE.has(sub)) return `direct git ref op (git ${sub})`;
+      if (GIT_REF_WRITE.has(sub)) {
+        // update-ref and fast-import are always writes. symbolic-ref and replace
+        // have read forms that must pass -- .config/git/hooks/pre-commit runs
+        // `git symbolic-ref --quiet --short HEAD`, and `git replace -l` lists.
+        // Treat those two as writes only when deleting or when a value operand
+        // is supplied alongside the name.
+        const hasReadForm = sub === "symbolic-ref" || sub === "replace";
+        const deleting = rest.some(t => t === "-d" || t === "--delete");
+        const operands = rest.filter(t => !t.startsWith("-")).length;
+        if (!hasReadForm || deleting || operands >= 2) return `direct git ref op (git ${sub})`;
+      }
       if (sub === "config" && rest.some(t => gitConfigKey(t) === "core.hookspath")) return "git hooks bypass (git config core.hooksPath)";
       if (rest.includes("--no-verify")) return "git hook skip (--no-verify)";
       if (sub === "branch" && rest.some(t => t === "-f" || t === "--force" || t === "-D")) return "forced/deleted git branch";
@@ -350,21 +369,24 @@ export function createGuard(agent: string) {
     return undefined;
   }
 
-  function dangerReason(cmd: string): string | undefined {
+  type Danger = { reason: string; category: string };
+
+  function dangerReason(cmd: string): Danger | undefined {
     for (const seg of splitSegments(cmd)) {
       const tamper = confinementTamperReason(tokenize(seg));
-      if (tamper) return tamper;
+      if (tamper) return { reason: tamper, category: "confinement" };
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
       const { command, args } = parsed;
-      if (ESCALATORS.has(command)) return "privilege escalation";
-      if (DESTRUCTIVE.has(command)) return "destructive command";
-      if (command === "rm" && hasRmRecursiveForce(args)) return "recursive force rm";
-      if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args))) return "world-writable permissions";
-      if (command === "git") { const r = gitBypassReason(args); if (r) return r; }
+      if (ESCALATORS.has(command)) return { reason: "privilege escalation", category: "escalation" };
+      if (DESTRUCTIVE.has(command)) return { reason: "destructive command", category: "disk-destructive" };
+      if (command === "rm" && hasRmRecursiveForce(args)) return { reason: "recursive force rm", category: "recursive-force-rm" };
+      if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args)))
+        return { reason: "world-writable permissions", category: "world-writable" };
+      if (command === "git") { const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" }; }
       if (command === "find") {
-        if (findPolicy === "always") return "find — prefer grepika/read tools";
-        if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) return "find with -exec/-delete";
+        if (findPolicy === "always") return { reason: "find — prefer grepika/read tools", category: "find" };
+        if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) return { reason: "find with -exec/-delete", category: "find" };
       }
       if (SHELL_RUNNERS.has(command)) {
         const inner = dashCArg(args);
@@ -386,7 +408,7 @@ export function createGuard(agent: string) {
       const r1 = blockedCommand(input.command, cwd);
       if (r1) return { decision: "deny", reason: `sensitive path in command (${r1})` };
       const r2 = dangerReason(input.command);
-      if (r2) return { decision: "ask", reason: r2 };
+      if (r2) return { decision: severityOf(r2.category), reason: r2.reason };
     }
     return { decision: "allow" };
   }
