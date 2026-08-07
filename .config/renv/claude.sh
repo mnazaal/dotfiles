@@ -87,20 +87,6 @@ else
 fi
 unset _toplevel _common _rw
 
-# --- Permission mode --------------------------------------------------------
-# The sandbox above is the boundary, not the permission prompt: every reachable
-# path is an allowlisted bind and only $PWD is writable. So inside a git
-# worktree, drop the prompts — git is what makes those writes recoverable.
-# Outside one there is nothing to recover from, so fall back to normal
-# prompting and the allowlist in .claude/settings.json. Deny rules still apply
-# in every mode, including this one.
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-	# shellcheck disable=SC2034  # read by renv after sourcing
-	RENV_PRE_ARGS=(--permission-mode bypassPermissions)
-else
-	printf 'claude.sh: cwd is not a git worktree — starting with normal permissions\n' >&2
-fi
-
 # The sandbox mounts the claude binary read-only, so its self-updater can't write
 # (you'd see "Auto-update failed"). Disable it in the sandbox; update claude on
 # the host instead (outside renv).
