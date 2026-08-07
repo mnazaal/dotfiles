@@ -75,6 +75,7 @@ check: test check-agent-role-sync check-guardrails-native-sync
 	fi
 
 test:
+	@bash tests/agent-checkpoint-test.sh
 	@bash tests/codex-skills-link-test.sh
 	@bash tests/renv-claude-test.sh
 	@bash tests/renv-codex-test.sh
@@ -87,6 +88,7 @@ test:
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
 	@bun test ./.config/codex/hooks/guardrails.test.ts
+	@bun test ./tests/guardrails-severity-test.ts
 
 check-agent-role-sync:
 	@python3 .agents/render-agent-roles.py --check

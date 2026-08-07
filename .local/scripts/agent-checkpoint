@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# agent-checkpoint — snapshot the working tree to
+# refs/agent-checkpoint/<prefix>/<epoch>.
+#
+# Harness-agnostic: invoked by whatever per-turn hook each agent provides. It
+# exists so the shared guardrail `ask` tier can be empty — allow-all rests on
+# "git makes writes recoverable", but git only protects COMMITTED work. This
+# captures uncommitted and untracked work too.
+#
+# Refs are namespaced by AGENT_BRANCH_PREFIX, the convention the shared git
+# hooks already use, so two agents in one repo never collide.
+#
+# Uses a temporary index, not `git stash create`, which silently omits untracked
+# files. The real index, working tree, HEAD, and stash stack are never touched.
+# Never fails: this runs every turn, so every path ends in exit 0.
+set -uo pipefail
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+[ -n "$(git status --porcelain 2>/dev/null)" ] || exit 0
+
+idx=$(mktemp -u 2>/dev/null) || exit 0
+tree=$(
+      export GIT_INDEX_FILE="$idx"
+      git read-tree HEAD 2>/dev/null || exit 1
+      git add -A 2>/dev/null || exit 1
+      git write-tree 2>/dev/null || exit 1
+)
+rm -f "$idx" 2>/dev/null || true
+[ -n "$tree" ] || exit 0
+
+sha=$(git commit-tree "$tree" -p HEAD -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) || exit 0
+[ -n "$sha" ] || exit 0
+
+git update-ref \
+      "refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}/$(date +%s)" \
+      "$sha" 2>/dev/null || exit 0
+
+printf 'checkpoint %s\n' "$sha"
+exit 0
