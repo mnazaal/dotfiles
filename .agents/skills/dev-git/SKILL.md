@@ -35,6 +35,13 @@ rejected-commit round-trip.
    `git status` before each commit — the index holds *everything* staged so far
    (e.g. leftover from an earlier `git rm`), not just the most recent `git add`;
    `git restore --staged <path>` to drop anything that shouldn't ride along.
+   When one *file* carries two threads and interactive staging (`git add -p`) is
+   unavailable, don't squash them by default: snapshot the final versions outside
+   the repo, remove the second thread's content, commit the first, then restore
+   the snapshot for the second. **Verify before staging** — grep the intermediate
+   state for the other thread's distinctive terms and confirm zero matches. A
+   half-peeled document commits content whose rationale lives in a commit that
+   does not exist yet, which is worse than not splitting at all.
 4. Write the commit message:
    - Imperative subject ≤ 50 chars.
    - Conventional Commits prefix if the project uses them (`feat:`, `fix:`, `refactor:`, `chore:`, etc.).

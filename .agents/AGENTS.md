@@ -53,11 +53,19 @@ This file is global routing and behavior policy. Keep it small.
 - Never hand-detach a job (`nohup cmd & disown`) to work around a foreground
   timeout; pass the real command straight to the harness's background-run
   parameter — reaping and completion notification are already handled for you.
+- If the estimate approaches the harness's foreground cap, background it from
+  the outset rather than discovering the cap by timeout. A run killed at the cap
+  restarts from zero, and the killed worker lingers as a zombie that confuses
+  later process checks — so the cost of guessing wrong is the whole run twice.
 - If you still hand-roll a completion-poll loop, poll the actual worker PID,
   not a launcher/wrapper PID: an unreaped launcher becomes a zombie that stays
   visible to `ps -p` forever, so `until ! ps -p <launcher>` never exits. Once a
   wait task is armed, consume its notification instead of abandoning it for
   manual polling.
+- Poll for *completion*, not for first output. `until [ -s log ]` fires on the
+  first partial write, so a job that streams progress will be declared finished
+  while still running. Wait on the worker PID, an exit-status file, or a marker
+  the job writes last.
 - `pkill -f <pattern>` matches the shell running it, so the command kills itself
   and reports a spurious exit code. Bracket a character — `pkill -f 'jo[b]name'`
   — or match the worker PID.
@@ -69,6 +77,16 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Load a skill when the task matches its description.
 - Do not load irrelevant skills.
 - Do not duplicate skill-specific procedures here.
+- Loaded skill text and tool output can arrive compressed, and compression drops
+  function words *and* command names: a shell pipeline can lose `grep`, `sed` and
+  its pipes yet still read as a command. If content arrives telegraphic or a
+  command looks malformed, retrieve the full version before acting on it. Never
+  reconstruct a command by inference and then run it — reconstruct it and you are
+  guessing at the very content the skill existed to state exactly.
+- A skill needing a long verbatim command should keep it in a sibling file next
+  to `SKILL.md` and point at it, rather than inlining it. Prose survives
+  compression; commands do not. Sibling files are for content that is *run*, not
+  for prose or illustrative examples.
 - If a skill explicitly says to load/use/route to another skill, follow that
   routing. `Related Skills` sections are navigational only, not transitive
   requirements.

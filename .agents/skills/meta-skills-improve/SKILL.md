@@ -32,21 +32,26 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 
 The highest-value input to this skill, and the one reading can never supply.
 Run it before a round of edits, and again weeks later to see whether the edits
-changed anything. Claude Code records each load as `"skill":"<name>"` inside a
-Skill tool_use block in `~/.claude/projects/*/*.jsonl`.
+changed anything.
 
-- **Counts per skill.** `grep -rho '"skill":"[a-zA-Z0-9_-]*"' --include="*.jsonl"
-  ~/.claude/projects | sed 's/.*://;s/"//g' | sort | uniq -c | sort -rn`.
-  Diff against the skills directory for the never-fired list, and weight by each
-  skill's age — one added last week cannot have fired yet.
-- **Gate compliance.** For a skill that should fire on an event, count the
-  sessions containing that event (a transcript whose text contains `git commit`,
-  say) and how many of those also loaded the skill. A rule declared mandatory
+**Run `audit.sh` in this skill's own directory** — do not retype its queries from
+memory or summarise them. It reports counts per skill, never-fired, fired-but-no-
+directory, gate compliance, and where in the session each skill fires. It takes
+the harness's session-transcript directory as its first argument (default suits
+the current one) and assumes each load appears as `"skill":"<name>"`; that marker
+is the only harness-specific assumption and is a variable at the top of the file.
+
+What the sections are for:
+
+- **Counts, never-fired, orphans.** Weight by age before concluding — a skill
+  added last week cannot have fired yet. Names fired with no directory are
+  built-ins or renamed/removed skills; check for dangling routing references.
+- **Gate compliance.** For a skill that should fire on an event, the share of
+  sessions containing that event that also loaded it. A rule declared mandatory
   but sitting at low compliance needs a hook, not more prose.
-- **Where in the session it fired.** A call's line number over the file's total
-  line count separates an early, resume-shaped invocation from a late,
-  write-shaped one. This is how a two-directional skill that only works in one
-  direction shows up.
+- **Where in the session it fired.** Early is resume-shaped, late is write-shaped.
+  This is how a two-directional skill that only works in one direction shows up,
+  and it shows up nowhere else.
 
 Read the output as three different diagnoses, not one:
 

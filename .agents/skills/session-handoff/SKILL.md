@@ -8,11 +8,20 @@ description: Use for both ends of a work session. Ending — "continue next sess
 ## Purpose
 
 End a work session so a cold next session (or another agent) resumes with zero
-re-derivation. Trigger: "continue next session", "write up a handoff", or a long
-session whose state lives only in chat/scratchpad.
+re-derivation. Trigger: an explicit request — "continue next session", "write up
+a handoff", "write everything down". A long session is not itself a trigger, and
+neither is noticing that state lives only in chat/scratchpad; if that worries
+you, say so and offer, rather than writing.
 
 ## Workflow
 
+0. **Confirm you were asked.** Writing or replacing this block mutates a standing
+   document, and is exactly as unrequested as committing it would be — the
+   authorization gate in step 6 applies here too, not only to the commit. If the
+   existing block is merely *stale* because this session committed, branched, or
+   closed an item it lists, correct those specific lines, say which and why, and
+   stop; a stale line is a defect, but rewriting the block to fix one is not
+   maintenance and destroys a record the user did not ask you to touch.
 1. Write the handoff into a delimited block at the TOP of `PLAN.md`, directly
    below the title — **replace the block, never append a second one.** A handoff
    is single-valued: there is exactly one current answer to "where am I", and
@@ -77,6 +86,9 @@ of the work, that is `learn-project` — re-reading the handoff will not fix it.
 
 ## Anti-Patterns
 
+- Writing a handoff nobody asked for, or treating "this session got long" as the
+  request. The block is the user's record of their own state; refreshing it
+  uninvited overwrites it with yours.
 - Load-bearing results left only in session-temporary storage (scratchpad, chat).
 - A handoff that lists what was done but not what is next or what is a dead end.
 - Handoff entries that rely on invented labels from the chat, e.g. “continue
