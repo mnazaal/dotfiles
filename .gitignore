@@ -66,6 +66,9 @@ __pycache__/
 !.claude/skills
 .claude/settings.local.json
 
+# Standing plan — local working document, deliberately untracked
+PLAN.md
+
 # Assets
 .local/share/*
 
