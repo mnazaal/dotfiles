@@ -58,6 +58,12 @@ export CODEX_HOME="$XDG_CONFIG_HOME/codex"
 # read an empty workspace and reported nothing. Export it here so the CLI and
 # the proxy agree; renv uses ${VAR:-default} and inherits this value.
 export HEADROOM_WORKSPACE_DIR="$XDG_STATE_HOME/headroom"
+export HEADROOM_SAVINGS_PROFILE="general"
+export HEADROOM_MODE=cache
+export HEADROOM_TOOL_SEARCH=1
+export HEADROOM_PROTECT_READS=1
+export HEADROOM_DISABLE_KOMPRESS=1
+export HEADROOM_DISABLE_KOMPRESS_FALLBACK=1
 
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$CARGO_HOME/bin:$PATH"
