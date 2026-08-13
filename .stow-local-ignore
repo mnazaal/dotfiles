@@ -4,14 +4,9 @@
 .gitignore
 README.*
 .agent-shell
-skills-lock.json
 ^/\.config/zsh/\.zcompdump$
 Makefile
 PLAN\.md
 .claude/settings.local.json
-.claude/projects
 ^/\.config/codex/config\.toml$
-^/\.config/codex/tmp$
 ^tests$
-
-^/org$
