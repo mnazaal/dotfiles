@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render platform agent files from canonical role bodies and headers."""
+"""Render platform agent files from canonical role bodies, headers, and prompts."""
 from __future__ import annotations
 
 import argparse
@@ -12,6 +12,11 @@ PLATFORMS = {
     "opencode": (ROOT / ".config/opencode/agents", ROLES),
     "pi": (ROOT / ".config/pi/agent/agents", [role for role in ROLES if role not in {"build", "plan"}]),
 }
+# Canonical prompts live in .agents/prompts/ in Claude command format
+# (frontmatter + $ARGUMENTS); pi prompts strip both, and pi names
+# diff-review "review".
+PROMPTS = "commit-msg debug diff-review refactor security-check test-plan".split()
+PI_PROMPT_NAMES = {"diff-review": "review"}
 
 
 def rendered(platform: str, role: str) -> str:
@@ -20,23 +25,40 @@ def rendered(platform: str, role: str) -> str:
     return f"{header}\n\n{body}"
 
 
+def pi_prompt(text: str) -> str:
+    lines = text.splitlines()
+    if lines and lines[0] == "---":
+        lines = lines[lines.index("---", 1) + 1 :]
+    body = "\n".join(line for line in lines if line != "$ARGUMENTS")
+    return body.strip() + "\n"
+
+
+def targets() -> dict[Path, str]:
+    out: dict[Path, str] = {}
+    for platform, (directory, roles) in PLATFORMS.items():
+        for role in roles:
+            out[directory / f"{role}.md"] = rendered(platform, role)
+    for name in PROMPTS:
+        text = (ROOT / ".agents/prompts" / f"{name}.md").read_text()
+        out[ROOT / ".claude/commands" / f"{name}.md"] = text
+        out[ROOT / ".config/pi/agent/prompts" / f"{PI_PROMPT_NAMES.get(name, name)}.md"] = pi_prompt(text)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     drift = []
-    for platform, (directory, roles) in PLATFORMS.items():
-        for role in roles:
-            target = directory / f"{role}.md"
-            expected = rendered(platform, role)
-            if args.check:
-                if target.read_text() != expected:
-                    drift.append(target.relative_to(ROOT))
-            else:
-                target.write_text(expected)
+    for target, expected in targets().items():
+        if args.check:
+            if target.read_text() != expected:
+                drift.append(target.relative_to(ROOT))
+        else:
+            target.write_text(expected)
     if drift:
         for target in drift:
-            print(f"agent role drift: {target}")
+            print(f"agent file drift: {target}")
         return 1
     return 0
 
