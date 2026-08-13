@@ -26,7 +26,10 @@ export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
 export CARGO_HOME="$XDG_DATA_HOME/cargo"
 export PASSWORD_STORE_DIR="$XDG_DATA_HOME/pass"
 export PASSWORD_STORE_ENABLE_EXTENSIONS=true
-export PASSWORD_STORE_EXTENSIONS_DIR="$XDG_DATA_HOME/password-store/extensions"
+# Must match where the repo stows its extensions (.config/pass-extensions);
+# it previously pointed at an untracked ~/.local/share/password-store dir,
+# so the tracked obfs extension was never loadable.
+export PASSWORD_STORE_EXTENSIONS_DIR="$XDG_CONFIG_HOME/pass-extensions"
 export BASH_COMPLETION_USER_DIR="$XDG_DATA_HOME/bash-completion/completions"
 export PYTHON_HISTORY="$XDG_STATE_HOME/python_history"
 export PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/python"

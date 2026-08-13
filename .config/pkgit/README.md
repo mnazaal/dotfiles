@@ -29,7 +29,7 @@ Versioned source package names are normalized to pkgit-native package names:
 | Meson, Wayland stack (root-build cleanup, pinned checkouts, prefix pkgconfig) | `libdisplay-info`, `libdrm`, `mango`, `scenefx`, `wayland`, `wayland-protocols`, `wlroots`, `xkbcommon` |
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
 | Make + PREFIX | `dunst`, `keyd`, `pass-otp` |
-| Autotools | `emacs`, `isync-isync`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
+| Autotools | `emacs`, `isync-isync`, `msmtp`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
 | Custom | `fzf`, `gegl`, `goose`, `kitty`, `neovim`, `sioyek` |
 
 ## Verification

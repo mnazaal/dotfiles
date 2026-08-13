@@ -113,6 +113,9 @@ local repos = {
   -- the existing PANGO_WRAP_WORD_CHAR via a compiler define. Drop when the OS
   -- ships Pango >=1.56 (then the define would clash with the real enumerator).
   mango = { url = "https://github.com/mangowm/mango.git", targets = lib.meson({ clean_root_build = true, pkg_config_path = local_pkg_config, flags = { "-Dc_args=-DPANGO_WRAP_NONE=PANGO_WRAP_WORD_CHAR" } }) },
+  -- Outbound mail for rss2email (and anything else needing sendmail): the
+  -- tracked ~/.config/msmtp/config uses `eval` lines, which need msmtp >=1.8.20.
+  msmtp = { url = "https://git.marlam.de/git/msmtp.git", targets = lib.autotools({ autoreconf = true }) },
   -- The nautilus extension .so installs to an ABSOLUTE system dir
   -- (NAUTILUS_EXTENSION_DIR=/usr/lib/.../nautilus/extensions-4) → EACCES on a
   -- ~/.local install (srcup's plain `make install` failed here too). Redirect it

@@ -20,7 +20,11 @@
 #
 # For more information see the manual pages of crontab(5) and cron(8)
 #
+# Every job needs the relocated pass/gnupg homes exported: cron's bare /bin/sh
+# never reads ~/.config/zsh/.zshenv, so without these `pass` looks in the empty
+# default ~/.password-store ("<entry> is not in the password store") and gpg in
+# ~/.gnupg (pinentry "Inappropriate ioctl for device").
 # m h  dom mon dow   command
-*/10 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/ical2org.lock" -c "$HOME/.local/scripts/cal-sync-cron" >> "$HOME/.local/state/ical2org.log" 2>&1'
-*/5 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync -a && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
-0 7 * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/rss2email.lock" -c "$HOME/.local/scripts/rss2email-cron run" >> "$HOME/.local/state/rss2email.log" 2>&1'
+*/10 * * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/ical2org.lock" -c "$HOME/.local/scripts/cal-sync-cron" >> "$HOME/.local/state/ical2org.log" 2>&1'
+*/5 * * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync -a && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
+0 7 * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/rss2email.lock" -c "$HOME/.local/scripts/rss2email-cron run" >> "$HOME/.local/state/rss2email.log" 2>&1'
