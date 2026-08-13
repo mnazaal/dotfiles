@@ -1,6 +1,9 @@
 autoload -Uz vcs_info
 setopt PROMPT_SUBST
 
+precmd_functions=(${precmd_functions:#prompt_*})
+preexec_functions=(${preexec_functions:#prompt_*})
+
 zstyle ':vcs_info:*'     enable git
 zstyle ':vcs_info:git:*' check-for-changes false
 zstyle ':vcs_info:git:*' formats       ' on %F{blue}%b%f'
