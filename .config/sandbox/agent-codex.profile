@@ -3,6 +3,7 @@
 # Do not inherit the broad `agent` profile: Codex only needs shared policy,
 # its own runtime configuration, and hook receipt state.
 use dev
+use machinery-ro
 
 RO+=(
 	"$H/.agents"

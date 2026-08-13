@@ -4,6 +4,7 @@
 # control plane immutable during a managed run; only package/state locations
 # need writes.
 use dev
+use machinery-ro
 
 RO+=( "$H/.agents" "$H/.config/pi" )
 RO+=( "$H/dotfiles" )

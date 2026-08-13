@@ -4,6 +4,7 @@
 # inherit `agent`: OpenCode needs only its own control plane and state, not
 # every project or configuration directory in $HOME.
 use dev
+use machinery-ro
 
 RO+=( "$H/.agents" "$H/.config/opencode" )
 RO+=( "$H/dotfiles" )

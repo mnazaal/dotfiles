@@ -61,9 +61,10 @@ harnesses use the same profile namespace:
 | Profile | Where | Adds |
 |---------|-------|------|
 | `dev` | `~/.config/sandbox/` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
-| `agent` | `~/.config/sandbox/` | `use dev` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
-| `agent-claude` / `agent-opencode` / `agent-pi` | `~/.config/sandbox/` | `use agent` + that harness's state |
-| `agent-codex` | `~/.config/sandbox/` | `use dev` + shared policy (ro), Codex home (ro), live `config.toml` and hook state (rw) |
+| `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
+| `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
+| `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state |
+| `agent-codex` / `agent-opencode` / `agent-pi` / `agent-goose` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
 
 ## Coding agents (via renv)
 
@@ -99,9 +100,9 @@ Copy `~/.config/codex/config.toml.template` to the ignored local
 
 - `--network=host`: the agent shares the host network (localhost services, the
   internal network). Convenient for in-the-loop use; not network isolation.
-- `--env-host`: the whole environment is passed in. `renv` only *sets* the
-  specific keys the harness needs, but the transport is bulk — other exported
-  vars ride along.
+- Environment: only the `SANDBOX_ENV` allowlist crosses the boundary (a small
+  base set plus what the profile appends; pinned by `tests/sandbox-env-test.sh`).
+  Allowlisted secrets resolved by `renv` (API keys) do ride along by design.
 - Codex must see its login state to authenticate. Its `auth.json` is mounted
   read-only and blocked by the in-process guardrail, but is not a secret
   boundary against the Codex process itself.

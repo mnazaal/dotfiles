@@ -76,9 +76,9 @@ assert_profile agent-pi \
 	"$home/dotfiles:$home/dotfiles " \
 	"$home/projects:$home/projects"
 
-assert_mount_order() { # profile earlier-mount later-mount
-	local profile=$1 earlier=$2 later=$3 output rest
-	output=$(cd "$project" && HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+assert_mount_order() { # cwd profile earlier-mount later-mount
+	local dir=$1 profile=$2 earlier=$3 later=$4 output rest
+	output=$(cd "$dir" && HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
 		"$repo/.local/scripts/sandbox" --dry-run -p "$profile" -- /bin/true)
 	case "$output" in *"$earlier"*) ;; *)
 		printf '%s profile missing mount: %s\n' "$profile" "$earlier" >&2
@@ -97,6 +97,15 @@ assert_mount_order() { # profile earlier-mount later-mount
 # The guardrail source must be read-only AND bound after the writable dotfiles
 # bind that contains it. $HOME/.agents is stow symlinks into $HOME/dotfiles, so
 # the read-only bind there does not protect the targets.
-assert_mount_order agent-claude \
+assert_mount_order "$project" agent-claude \
 	"$home/dotfiles:$home/dotfiles" \
 	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
+
+# Launching with cwd inside ~/dotfiles auto-binds the repo read-write; the
+# machinery-ro fragment must still pin the guardrail sources read-only
+# afterwards — for EVERY harness profile, not just the ones composing `agent`.
+for profile in agent-claude agent-codex agent-opencode agent-pi; do
+	assert_mount_order "$home/dotfiles" "$profile" \
+		"$home/dotfiles:$home/dotfiles" \
+		"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
+done
