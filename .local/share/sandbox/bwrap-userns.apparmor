@@ -1,0 +1,23 @@
+# AppArmor profile: allow bubblewrap to create unprivileged user namespaces.
+#
+# Ubuntu (>= 23.10) sets kernel.apparmor_restrict_unprivileged_userns=1, which
+# blocks unprofiled, non-setuid binaries from writing /proc/self/uid_map — so
+# plain `bwrap` fails with "setting up uid map: Permission denied". This profile
+# grants the `userns` permission to bwrap while otherwise leaving it (and the
+# program it launches) unconfined, so `sandbox` can build its sandbox.
+#
+# Install: sandbox --init ubuntu   (deploys this to /etc/apparmor.d/bwrap)
+# Scope note: this grants userns to ALL uses of /usr/bin/bwrap on the host. To
+# scope it to only `sandbox`, copy bwrap to a private path and point both this
+# profile's attachment and the `sandbox` script at that copy.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  # Site-specific additions, if ever needed.
+  include if exists <local/bwrap>
+}

@@ -57,20 +57,26 @@ __pycache__/
 !.claude/CLAUDE.md
 !.claude/settings.json
 !.claude/keybindings.json
-!.claude/mcp-servers.json
 !.claude/install-mcp.sh
-!.claude/README.org
+!.claude/statusline-command.sh
 !.claude/agents/
 !.claude/commands/
 !.claude/hooks/
 !.claude/skills
-.claude/settings.local.json
 
-# Standing plan — local working document, deliberately untracked
+# Machine-local render of .config/codex/config.toml.template
+.config/codex/config.toml
+
+# Application-written window state
+.config/sioyek/auto.config
+
+# Standing plan and personal notes — local working documents, deliberately untracked
 PLAN.md
+wip.org
 
 # Assets
 .local/share/*
+!.local/share/sandbox/
 
 # Logs
 *.log
