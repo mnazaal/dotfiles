@@ -68,6 +68,8 @@
     "~/.config/codex/hooks.json",
     "~/.config/codex/config.toml.template",
     "~/dotfiles/.config/codex/config.toml.template",
+    "~/.config/goose",
+    "~/dotfiles/.config/goose",
     "~/.agents/guardrails",
     "~/dotfiles/.agents/guardrails"
   ]

@@ -104,7 +104,7 @@ assert_mount_order "$project" agent-claude \
 # Launching with cwd inside ~/dotfiles auto-binds the repo read-write; the
 # machinery-ro fragment must still pin the guardrail sources read-only
 # afterwards — for EVERY harness profile, not just the ones composing `agent`.
-for profile in agent-claude agent-codex agent-opencode agent-pi; do
+for profile in agent-claude agent-codex agent-goose agent-opencode agent-pi; do
 	assert_mount_order "$home/dotfiles" "$profile" \
 		"$home/dotfiles:$home/dotfiles" \
 		"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"

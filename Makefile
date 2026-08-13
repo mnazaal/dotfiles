@@ -81,6 +81,7 @@ test:
 	@bash tests/codex-skills-link-test.sh
 	@bash tests/renv-claude-test.sh
 	@bash tests/renv-codex-test.sh
+	@bash tests/renv-goose-test.sh
 	@bash tests/renv-guardrails-preflight-test.sh
 	@bash tests/renv-opencode-test.sh
 	@bash tests/sandbox-agent-profile-test.sh

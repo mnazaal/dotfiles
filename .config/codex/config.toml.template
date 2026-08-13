@@ -23,12 +23,12 @@ model_instructions_file = "~/.agents/AGENTS.md"
 approval_policy = "on-request"
 default_permissions = ":read-only"  # STEP B: flip to "guarded-workspace" only after verification in guardrails/README.md passes
 
-# Custom filesystem permission profile. Best-effort hand-maintained duplicate of
+# Custom filesystem permission profile. Hand-maintained duplicate of
 # ~/.agents/guardrails/sensitive-paths.json (credentials -> deny, machinery ->
-# read). NOT drift-checked (unlike Claude's settings.json deny): it is dormant on
-# hosts whose sandbox can't initialize — see guardrails/README.md "Native
-# permission layers". Kept for portability to sandbox-capable hosts; sync by hand
-# if you edit sensitive-paths.json.
+# read), drift-checked by `make check-guardrails-native-sync` (credentials and
+# machinery both). It is dormant on hosts whose sandbox can't initialize — see
+# guardrails/README.md "Native permission layers"; kept for portability to
+# sandbox-capable hosts.
 [permissions.guarded-workspace]
 extends = ":workspace"
 
@@ -88,6 +88,8 @@ extends = ":workspace"
 "~/.config/codex/hooks.json" = "read"
 "~/.config/codex/config.toml.template" = "read"
 "~/dotfiles/.config/codex/config.toml.template" = "read"
+"~/.config/goose" = "read"
+"~/dotfiles/.config/goose" = "read"
 "~/.agents/guardrails" = "read"
 "~/dotfiles/.agents/guardrails" = "read"
 
