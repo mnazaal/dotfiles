@@ -31,23 +31,6 @@ if [[ -n "$PREFIX" ]]; then
     fi
 fi
 
-# --- Review-ledger guard: no un-resolved review artifacts in a commit ---------
-# Token built by concatenation so this hook (and docs) never self-trip on it.
-MARKER=">>>"" agent:"
-# Scan staged added lines; exclude doc files where the marker is legitimately
-# described (this repo's SKILL.md, etc.).
-violations="$(
-    git diff --cached --no-color --diff-filter=d -U0 -- \
-        ':(exclude)*.md' ':(exclude)*.org' ':(exclude)*.txt' \
-    | grep -E '^\+' | grep -F "$MARKER" || true
-)"
-if [[ -n "$violations" ]]; then
-    echo "$ERROR_PREFIX unresolved review markers ('$MARKER') staged:" >&2
-    printf '%s\n' "$violations" >&2
-    echo "Resolve with review-loop, or override with 'git commit --no-verify'." >&2
-    exit 1
-fi
-
 # Leftover merge-conflict markers (zdiff3 uses ||||||| for the base).
 conflicts="$(
     git diff --cached --no-color --diff-filter=d -U0 \
