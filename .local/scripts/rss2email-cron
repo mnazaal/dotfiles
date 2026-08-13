@@ -20,6 +20,7 @@ ENVIRONMENT:
   RSS2EMAIL_CONFIG     Path to the tracked rss2email config with placeholders
   PRIMARY_EMAIL_ENTRY  pass entry for the base email address
   RSS_EMAIL_SUFFIX     Alias inserted before @ for rss mail
+  RSS2EMAIL_SENDMAIL   sendmail-compatible binary rendered into the config
 
 NOTES:
   PRIMARY_EMAIL_ENTRY defaults to `primary-gmail`.
@@ -35,6 +36,14 @@ R2E_BIN="${R2E_BIN:-$HOME/.local/bin/r2e}"
 RSS2EMAIL_CONFIG="${RSS2EMAIL_CONFIG:-$HOME/.config/rss2email.cfg}"
 PRIMARY_EMAIL_ENTRY="${PRIMARY_EMAIL_ENTRY:-primary-gmail}"
 RSS_EMAIL_SUFFIX="${RSS_EMAIL_SUFFIX:-rss}"
+# msmtp (pkgit-built) sends via the tracked ~/.config/msmtp/config; the
+# system /usr/sbin/sendmail has no configured MTA behind it on this host.
+RSS2EMAIL_SENDMAIL="${RSS2EMAIL_SENDMAIL:-$HOME/.local/bin/msmtp}"
+
+if [[ ! -x "$RSS2EMAIL_SENDMAIL" ]]; then
+	echo "rss2email-cron: sendmail binary not executable: $RSS2EMAIL_SENDMAIL" >&2
+	exit 1
+fi
 
 if [[ ! -x "$R2E_BIN" ]]; then
 	echo "rss2email-cron: r2e binary not executable: $R2E_BIN" >&2
@@ -56,6 +65,7 @@ rss=$(printf '%s\n' "$primary" | sed "s/@/+${RSS_EMAIL_SUFFIX}@/")
 sed \
 	-e "s|__RSS2EMAIL_PRIMARY_EMAIL__|$primary|g" \
 	-e "s|__RSS2EMAIL_RSS_EMAIL__|$rss|g" \
+	-e "s|__RSS2EMAIL_SENDMAIL__|$RSS2EMAIL_SENDMAIL|g" \
 	"$RSS2EMAIL_CONFIG" >"$tmp"
 
 if [[ $# -eq 0 ]]; then
