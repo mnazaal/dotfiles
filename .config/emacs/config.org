@@ -88,7 +88,8 @@ Sensible defaults.
   (setq plstore-cache-passphrase-for-symmetric-encryption t)
   (setq epa-file-cache-directory (expand-file-name "~/.cache/gnupg"))
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
-  (setq bib-file (expand-file-name "zotero.bib" bib-directory))
+  ;; pzi manages bibliography.bib; zotero.bib is the retired Zotero export.
+  (setq bib-file (expand-file-name "bibliography.bib" bib-directory))
   (setq select-enable-clipboard t)
   (setq frame-resize-pixelwise t)
   (setq-default indent-tabs-mode nil)

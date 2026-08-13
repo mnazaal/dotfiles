@@ -42,14 +42,14 @@
         "interval": 5,
         "format": "{icon0}{icon1}{icon2}{icon3}{icon4}{icon5}{icon6}{icon7}",
         "format-icons": [
-            "<span color='#69ff94'>▁</span>",
-            "<span color='#2aa9ff'>▂</span>",
-            "<span color='#f8f8f2'>▃</span>",
-            "<span color='#f8f8f2'>▄</span>",
-            "<span color='#ffffa5'>▅</span>",
-            "<span color='#ffffa5'>▆</span>",
-            "<span color='#ff9977'>▇</span>",
-            "<span color='#dd532e'>█</span>"
+            "<span color='#a6e3a1'>▁</span>",
+            "<span color='#89b4fa'>▂</span>",
+            "<span color='#cdd6f4'>▃</span>",
+            "<span color='#cdd6f4'>▄</span>",
+            "<span color='#f9e2af'>▅</span>",
+            "<span color='#f9e2af'>▆</span>",
+            "<span color='#fab387'>▇</span>",
+            "<span color='#f38ba8'>█</span>"
         ]
     },
 

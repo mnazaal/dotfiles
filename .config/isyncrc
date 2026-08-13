@@ -9,10 +9,14 @@ IMAPStore gmail-remote
 Account gmail
 
 MaildirStore gmail-local
-Subfolders Verbatim 
+Subfolders Verbatim
 Path ~/.local/share/mail/gmail/
 Inbox ~/.local/share/mail/gmail/inbox
 
+# The inbox channel predates the others and keeps its sync state in
+# ~/.local/state/mbsync/; the rest store state in the maildir (SyncState *).
+# Deliberately left split: relocating existing sync state makes mbsync treat
+# already-synced mail as new.
 Channel gmail-inbox
 Far ":gmail-remote:INBOX"
 Near ":gmail-local:inbox"

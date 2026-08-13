@@ -35,7 +35,7 @@
     max_icon_size = 48
 
     # Text
-    font = Iosevka Term Nerd Font 12
+    font = IosevkaTerm Nerd Font 12
     markup = full
     format = "<b>%s</b>\n%b"
     alignment = left
