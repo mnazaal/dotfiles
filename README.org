@@ -29,6 +29,17 @@ make clean
 A successful cleanup is silent. It does not remove unrelated symlinks or
 tracked source files.
 
+Processes that start (or run) during =make clean= / =make link= capture the
+half-deployed state and do not heal afterwards — relaunch them:
+- agent sessions: directories that hold only stow links (=~/.agents=,
+  =~/.claude/hooks=, …) are pruned and recreated with new inodes, so a sandbox
+  launched earlier keeps the orphaned old directory bound and sees it empty —
+  symptoms are "guardrail hook unavailable" permission asks and a system prompt
+  missing the AGENTS.md include;
+- shells: a zsh spawned in the gap misses =$ZDOTDIR/.zshrc= and keeps the stock
+  prompt for its lifetime (=ZDOTDIR= itself survives via the inherited
+  environment) — =exec zsh= restores it.
+
 * Sharp bits
 
 If SSH from Kitty prints =missing or unsuitable terminal: xterm-kitty=, the remote host lacks Kitty terminfo.
