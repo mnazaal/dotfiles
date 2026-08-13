@@ -5,9 +5,9 @@
  * shared with Claude, Codex, and pi. opencode auto-loads files in this plugins/ dir at
  * startup. A plugin can only block (throw) from tool.execute.before — it cannot
  * prompt — so any non-allow decision (deny OR ask) becomes a hard block here.
- * That makes opencode strictly enforced from the same JSONs; the hand-maintained
- * permission.read / permission.bash blocks in opencode.jsonc become redundant
- * once this is confirmed loading.
+ * That makes opencode strictly enforced from the same JSONs. The formerly
+ * hand-maintained permission.read / permission.bash blocks in opencode.jsonc
+ * were removed after this plugin was verified loading and blocking.
  */
 import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../.agents/guardrails/core.ts";
 
