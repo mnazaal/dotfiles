@@ -67,23 +67,33 @@ comm -13 \
 
 echo
 echo "=== 4. gate compliance ==="
-echo "sessions containing an event vs. those that also loaded the gating skill."
-echo "edit the pairs below to match the gates you want to check."
+echo "sessions where an event actually occurred vs. those that also loaded the"
+echo "gating skill. edit the pairs below to match the gates you want to check."
+# Anchor each pattern to the tool call that PERFORMED the event ("command":"…git
+# commit, "url":"…arxiv.org), never a bare string. Every skill description sits
+# in the system prompt, so a bare match counts every session that merely mentions
+# the event: 'git worktree' matches 557 of 588 sessions as text and 10 as a real
+# command. An unanchored denominator does not understate compliance, it reports
+# a number with no meaning.
 check_gate() {
-  local event="$1" skill="$2" total with
-  total=$(grep -rl "$event" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | wc -l)
+  local label="$1" pattern="$2" skill="$3" total with
+  total=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | wc -l)
   if [ "$total" -eq 0 ]; then
-    printf "  %-22s %-24s no sessions with this event\n" "$event" "$skill"
+    printf "  %-22s %-24s no sessions with this event\n" "$label" "$skill"
     return
   fi
-  with=$(grep -rl "$event" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null \
+  with=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null \
     | xargs grep -l "\"skill\":\"$skill\"" 2>/dev/null | wc -l)
-  printf "  %-22s %-24s %4d/%-4d  %3d%%\n" "$event" "$skill" "$with" "$total" \
+  printf "  %-22s %-24s %4d/%-4d  %3d%%\n" "$label" "$skill" "$with" "$total" \
     "$((100 * with / total))"
 }
 printf "  %-22s %-24s %-10s %s\n" "EVENT" "GATING SKILL" "LOADED" "RATE"
-check_gate 'git commit'           dev-git
-check_gate 'session-handoff:begin' session-handoff
+check_gate 'git commit'      '"command":"[^"]*git commit'    dev-git
+check_gate 'git push'        '"command":"[^"]*git push'      dev-git
+check_gate 'git rebase'      '"command":"[^"]*git rebase'    dev-git-rescue
+check_gate 'git worktree'    '"command":"[^"]*git worktree'  dev-worktree
+check_gate 'arxiv fetch'     '"url":"[^"]*arxiv\.org'        research-protocol
+check_gate 'handoff written' 'session-handoff:begin'         session-handoff
 
 echo
 echo "=== 5. where in the session each skill fires ==="

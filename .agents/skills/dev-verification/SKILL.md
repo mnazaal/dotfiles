@@ -21,6 +21,9 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Prevent oversubscription before it freezes an interactive machine: before a heavy local check (JAX/numpy/pytorch tests, probes, smoke runs), cap library thread pools (`OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS=1`, XLA single-thread) and never run two core-saturating jobs concurrently — library-threads × cores × stacked process pools can pin the whole workstation, not just slow the check.
 - To certify a numerical result is *correct* (not merely stable), check it against an independently-derived reference that shares no code path with the implementation (textbook formula in numpy/scipy, autodiff vs. analytic, a second library, brute-force enumeration) — and write that reference before reading the code's own tests, so their assertions don't anchor it. A test that asserts the code's own output proves stability, not correctness. A port may claim only “matches the reference implementation” from recorded replay/parity evidence; independent numerical correctness needs a separate oracle.
 - A passing correctness check certifies only the input regime it exercised. When the cheap gate runs at a benign scale (tiny values, short sequences, small deltas) but deployment runs orders of magnitude larger, add a check in the deployment-magnitude regime — sign/scale/overflow bugs hide where the gate never looks.
+- A repair is done when a review has looked at the repair, not when the code changes. The pass that writes a fix may only mark the finding repaired and pending review; clearing it needs a read by a pass that did not write it (a fresh subagent, or a later session reading it cold). A fix can introduce a worse defect than the one it removed, and the agent holding the fix in context is the worst-placed reader to notice — the same asymmetry that makes `session-handoff`'s cold-read check a separate step.
+- Re-review the code, not the finding list. Verifying only the items a reviewer raised certifies those lines and nothing else; a repair's new defect is by construction absent from the list that prompted it.
+- Verify a review claim before accepting it, and push back with evidence when feedback is stale, unsafe, or contradicts current requirements. Agreement is not a response.
 
 ## Gate
 
@@ -46,6 +49,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 | agent completed | inspect changed files/artifacts, then verify independently |
 | flag/option behaves as documented | resolved default read from source or a runtime probe — `--help` and docstrings go stale, and a default decides whether config is needed at all |
 | rename/repath complete | the OLD name has zero hits across every relevant file type (`.py` **and** `.md`/`.rst`/`.ipynb`/config), searched whitespace-tolerantly — a line-anchored `grep`/`sed` sweep reports false-clean on references wrapped across lines (docstrings, RST `:class:`/`:mod:` links) |
+| review finding resolved | the repair re-read by a pass that did not write it; the pass that wrote the fix may only mark it pending review |
 
 ## Anti-Patterns
 
@@ -59,6 +63,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Re-deriving a property of an existing run from *assumed* or *default* inputs and trusting the result — the run's own recorded config (`params.json`, resolved config, manifest) is the source of truth; recomputing with a guessed upstream parameter launders an assumption into apparent evidence.
 - Background watcher loops left running after the watched command exits (`pgrep -f "x"` self-matches its own argv and never terminates).
 - Recommending configuration from a truncated `--help`/docs read — dump the full option surface and read all of it before advising which flags to set.
+- Closing a finding you repaired in the same pass, or treating the reviewer's finding list as the scope of the re-review.
 
 ## Related Skills
 

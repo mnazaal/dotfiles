@@ -64,6 +64,6 @@ Every delegated task states:
 ## Related Skills
 
 - `dev-scout` for read-only codebase exploration.
-- `decide-review` and `critique-argument` for fresh-perspective review.
+- `critique-argument` for fresh-perspective review.
 - `research-protocol` for literature/citation checks.
 - `dev-verification` before trusting delegated completion claims.

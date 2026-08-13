@@ -46,8 +46,10 @@ you, say so and offer, rather than writing.
 3. Route durable content to its existing home rather than restating it: verdicts
    and load-bearing numbers → `LOG.md` (`research-run`); decisions, execution
    order, next actions → `PLAN.md` (`research-plan`); dead ends and what NOT to
-   re-pursue → `PLAN.md` risks. The handoff POINTS at these; it does not
-   re-narrate them.
+   re-pursue → `PLAN.md` risks; unresolved review findings, each with its
+   pending-review status and the file:line it was found at → `PLAN.md` risks
+   (`dev-verification`). The handoff POINTS at these; it does not re-narrate
+   them.
 4. Enumerate the scratchpad and decide each item explicitly, keep or discard.
    It is session-scoped and usually gone next session, so anything not promoted
    is lost — and which artifacts the next session needs cannot be predicted,
@@ -90,6 +92,9 @@ of the work, that is `learn-project` — re-reading the handoff will not fix it.
   request. The block is the user's record of their own state; refreshing it
   uninvited overwrites it with yours.
 - Load-bearing results left only in session-temporary storage (scratchpad, chat).
+- A subagent's findings left in the main agent's context. Read-only reviewers
+  write nothing, so their output is the most context-fragile artifact a session
+  produces, and an unrepaired finding that vanishes reads as a clean review.
 - A handoff that lists what was done but not what is next or what is a dead end.
 - Handoff entries that rely on invented labels from the chat, e.g. “continue
   with P1/T2”, instead of restating the concrete next action.

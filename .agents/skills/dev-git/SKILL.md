@@ -64,7 +64,7 @@ rejected-commit round-trip.
 
 1. Require `dev-verification` evidence for any completion/readiness claim.
 2. Summarize scope and risk. For a merge, dry-run it first: `git merge-tree $(git merge-base <target> <branch>) <target> <branch>` — inspect for conflict markers before recommending merge, without touching the working tree.
-3. If review was requested, pass through `decide-review` before proceeding.
+3. If review was requested, resolve its findings before proceeding. An unrepaired finding blocks integration, and a repair written in this pass is pending review, not resolved (`dev-verification`).
 4. Present options: PR, merge, continue, park, cleanup, abandon.
 5. Execute only chosen safe path.
 6. Report final state and next action.
@@ -79,6 +79,6 @@ rejected-commit round-trip.
 
 - `dev-verification` before committing non-trivial changes or making completion claims.
 - `dev-git-rescue` for history rewriting and recovery.
-- `decide-review` for review gate before integration.
+- `critique-argument` for a fresh-perspective review before integration.
 - `dev-worktree` when a suspected pre-existing failure needs cross-venv verification, not just a stash.
 - `dev-tdd` for what earns a characterization test before you touch it.
