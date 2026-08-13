@@ -82,10 +82,10 @@ else
 	warn "repo root not detected: $repo"
 fi
 
+# Only ~/.zshenv is a root stub: it sets ZDOTDIR, after which zsh reads the
+# ~/.config/zsh files directly (root .zshrc/.zprofile stubs were removed).
 for file in \
 	"$HOME/.zshenv" \
-	"$HOME/.zprofile" \
-	"$HOME/.zshrc" \
 	"$HOME/.config/zsh/.zshenv" \
 	"$HOME/.config/zsh/.zprofile" \
 	"$HOME/.config/zsh/.zshrc" \

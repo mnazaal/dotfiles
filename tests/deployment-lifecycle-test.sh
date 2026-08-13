@@ -14,8 +14,6 @@ make --no-print-directory -C "$repo" link HOME="$home" >/dev/null
 
 for path in \
 	".zshenv" \
-	".zprofile" \
-	".zshrc" \
 	".claude/hooks/guardrails.ts" \
 	".agents/guardrails/core.ts" \
 	".config/codex/skills/dev-scout"; do
@@ -33,8 +31,6 @@ clean_output=$(make --no-print-directory -C "$repo" clean HOME="$home")
 
 for path in \
 	".zshenv" \
-	".zprofile" \
-	".zshrc" \
 	".claude/hooks/guardrails.ts" \
 	".agents/guardrails/core.ts" \
 	".config/codex/skills/dev-scout"; do
