@@ -22,9 +22,9 @@ set -uo pipefail
 # only place a harness is named, and the first existing entry wins. Override with
 # argument 1 or AGENT_TRANSCRIPT_DIR to avoid touching this file at all.
 CANDIDATE_DIRS=(
-  "$HOME/.claude/projects"
-  "$HOME/.local/share/opencode/storage"
-  "$HOME/.config/agent/sessions"
+	"$HOME/.claude/projects"
+	"$HOME/.local/share/opencode/storage"
+	"$HOME/.config/agent/sessions"
 )
 
 SKILLS="${2:-$HOME/.agents/skills}"
@@ -32,16 +32,19 @@ MARKER='"skill":"[a-zA-Z0-9_-]*"'
 
 TRANSCRIPTS="${1:-${AGENT_TRANSCRIPT_DIR:-}}"
 if [ -z "$TRANSCRIPTS" ]; then
-  for d in "${CANDIDATE_DIRS[@]}"; do
-    [ -d "$d" ] && { TRANSCRIPTS="$d"; break; }
-  done
+	for d in "${CANDIDATE_DIRS[@]}"; do
+		[ -d "$d" ] && {
+			TRANSCRIPTS="$d"
+			break
+		}
+	done
 fi
 
 if [ -z "$TRANSCRIPTS" ] || [ ! -d "$TRANSCRIPTS" ]; then
-  echo "no transcript directory found${TRANSCRIPTS:+ at $TRANSCRIPTS}" >&2
-  echo "tried: ${CANDIDATE_DIRS[*]}" >&2
-  echo "pass one explicitly: ./audit.sh <transcript-dir> [skills-dir]" >&2
-  exit 1
+	echo "no transcript directory found${TRANSCRIPTS:+ at $TRANSCRIPTS}" >&2
+	echo "tried: ${CANDIDATE_DIRS[*]}" >&2
+	echo "pass one explicitly: ./audit.sh <transcript-dir> [skills-dir]" >&2
+	exit 1
 fi
 
 echo "transcripts: $TRANSCRIPTS"
@@ -49,21 +52,21 @@ echo "skills:      $SKILLS"
 
 echo
 echo "=== 1. counts per skill (how often each fired) ==="
-grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" \
-  | sed 's/.*://;s/"//g' | sort | uniq -c | sort -rn
+grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" |
+	sed 's/.*://;s/"//g' | sort | uniq -c | sort -rn
 
 echo
 echo "=== 2. never fired (exists but zero loads) ==="
 # Weight by age before concluding: a skill added last week cannot have fired yet.
 comm -23 \
-  <(ls -1 "$SKILLS" | sort) \
-  <(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
+	<(ls -1 "$SKILLS" | sort) \
+	<(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
 
 echo
 echo "=== 3. fired but no skill directory (built-ins, or renamed/removed) ==="
 comm -13 \
-  <(ls -1 "$SKILLS" | sort) \
-  <(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
+	<(ls -1 "$SKILLS" | sort) \
+	<(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
 
 echo
 echo "=== 4. gate compliance ==="
@@ -76,41 +79,41 @@ echo "gating skill. edit the pairs below to match the gates you want to check."
 # command. An unanchored denominator does not understate compliance, it reports
 # a number with no meaning.
 check_gate() {
-  local label="$1" pattern="$2" skill="$3" total with
-  total=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | wc -l)
-  if [ "$total" -eq 0 ]; then
-    printf "  %-22s %-24s no sessions with this event\n" "$label" "$skill"
-    return
-  fi
-  with=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null \
-    | xargs grep -l "\"skill\":\"$skill\"" 2>/dev/null | wc -l)
-  printf "  %-22s %-24s %4d/%-4d  %3d%%\n" "$label" "$skill" "$with" "$total" \
-    "$((100 * with / total))"
+	local label="$1" pattern="$2" skill="$3" total with
+	total=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | wc -l)
+	if [ "$total" -eq 0 ]; then
+		printf "  %-22s %-24s no sessions with this event\n" "$label" "$skill"
+		return
+	fi
+	with=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null |
+		xargs grep -l "\"skill\":\"$skill\"" 2>/dev/null | wc -l)
+	printf "  %-22s %-24s %4d/%-4d  %3d%%\n" "$label" "$skill" "$with" "$total" \
+		"$((100 * with / total))"
 }
 printf "  %-22s %-24s %-10s %s\n" "EVENT" "GATING SKILL" "LOADED" "RATE"
-check_gate 'git commit'      '"command":"[^"]*git commit'    dev-git
-check_gate 'git push'        '"command":"[^"]*git push'      dev-git
-check_gate 'git rebase'      '"command":"[^"]*git rebase'    dev-git-rescue
-check_gate 'git worktree'    '"command":"[^"]*git worktree'  dev-worktree
-check_gate 'arxiv fetch'     '"url":"[^"]*arxiv\.org'        research-protocol
-check_gate 'handoff written' 'session-handoff:begin'         session-handoff
+check_gate 'git commit' '"command":"[^"]*git commit' dev-git
+check_gate 'git push' '"command":"[^"]*git push' dev-git
+check_gate 'git rebase' '"command":"[^"]*git rebase' dev-git-rescue
+check_gate 'git worktree' '"command":"[^"]*git worktree' dev-worktree
+check_gate 'arxiv fetch' '"name":"WebFetch","input":\{"url":"[^"]*arxiv\.org' research-protocol
+check_gate 'handoff written' 'session-handoff:begin' session-handoff
 
 echo
 echo "=== 5. where in the session each skill fires ==="
 echo "median position, and the early/late split. Early is resume-shaped, late is"
 echo "write-shaped; a two-directional skill working in only one direction shows"
 echo "up here and nowhere else."
-for skill in $(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" \
-                 | sed 's/.*://;s/"//g' | sort -u); do
-  grep -rl "\"skill\":\"$skill\"" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null \
-    | while read -r f; do
-        tot=$(wc -l < "$f")
-        [ "$tot" -gt 0 ] || continue
-        ln=$(grep -n "\"skill\":\"$skill\"" "$f" | head -1 | cut -d: -f1)
-        echo $((100 * ln / tot))
-      done \
-    | sort -n \
-    | awk -v s="$skill" 'NR>0{a[NR]=$1}
+for skill in $(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" |
+	sed 's/.*://;s/"//g' | sort -u); do
+	grep -rl "\"skill\":\"$skill\"" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null |
+		while read -r f; do
+			tot=$(wc -l <"$f")
+			[ "$tot" -gt 0 ] || continue
+			ln=$(grep -n "\"skill\":\"$skill\"" "$f" | head -1 | cut -d: -f1)
+			echo $((100 * ln / tot))
+		done |
+		sort -n |
+		awk -v s="$skill" 'NR>0{a[NR]=$1}
         END {
           if (NR == 0) exit
           early = late = 0
