@@ -1,15 +1,15 @@
 /**
  * Characterization of the guardrail command-severity tier.
  *
- * Every command rule currently resolves to `ask` — core.ts hardcodes
- * `{ decision: "ask" }` for any dangerReason hit, so there is no way to express
- * "deny" for a command. Emptying the ask tier means reclassifying each row below
- * to `deny` (never legitimate, should be silent) or `allow` (already contained
- * by the sandbox).
+ * Every danger category resolves through the per-agent severity map in
+ * dangerous-commands.json (core.ts severityOf): `deny` (never legitimate,
+ * silent), `ask` (prompt where the harness can prompt, hard block where it
+ * cannot), or `allow` (already contained by the sandbox and recoverable via
+ * agent-checkpoint).
  *
- * This table is pinned FIRST so that reclassification cannot happen silently:
- * changing behavior must show up as an edit to an expectation here, one row at a
- * time, rather than as a diff buried in core.ts.
+ * This table pins the whole map so that reclassification cannot happen
+ * silently: changing behavior must show up as an edit to an expectation here,
+ * one row at a time, rather than as a diff buried in the JSON.
  *
  * Command severity is evaluated before skill gates (core.ts: evaluate returns
  * early on any non-allow guard result), so gated commands such as `git commit`
@@ -22,10 +22,10 @@ import { createGuardrails } from "../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
 
-// Severity comes from shared data, so it must hold for every harness — the
-// adapters differ in how they RENDER a decision (codex denies on any non-allow,
-// opencode throws), but the core's classification is one policy. A row that
-// passes for claude and fails for pi means the data has drifted per-agent.
+// Severity comes from shared data — the adapters differ only in how they
+// RENDER a decision (codex denies on any non-allow, opencode throws). Rows may
+// declare a deliberate per-agent split; anything off-table failing for one
+// agent but not another means the data has drifted.
 const AGENTS = ["claude", "codex", "pi", "opencode"] as const;
 
 // Treat every gated skill as already loaded. Command severity short-circuits

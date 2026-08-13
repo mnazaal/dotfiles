@@ -7,7 +7,12 @@ Canonical deployment from repository root - creates symlinks in relevant directo
 make link
 #+end_src
 
-Run repository checks with:
+Run the isolated repository behavior tests with:
+#+begin_src bash
+make test
+#+end_src
+
+Run the full repository checks (tests, drift checks, doctor, linters) with:
 #+begin_src bash
 make check
 #+end_src
@@ -47,7 +52,10 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
 
 * Notes on helper scripts
 
-- =.local/scripts/srcup= dispatches per-package source update scripts from =.config/srcup/=; from any directory containing a source checkout, run =srcup <package>= to update =./<package>/=, e.g. from =~/.local/src= run =srcup neovim=
+- source packages: =pkgit= installs from the recipes in =.config/pkgit/= (see
+  its README); =.local/scripts/srcup= remains the update mechanism for existing
+  checkouts (dispatching =.config/srcup/= scripts) until pkgit gains a working
+  in-place update
 - =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=
   (=renv codex= launches Codex in the dedicated filesystem sandbox; bare
   =codex= retains its local conservative defaults)
