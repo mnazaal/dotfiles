@@ -192,11 +192,13 @@ else
 	warn "$HOME/org/agenda missing or not writable"
 fi
 
+# warn, not fail: these are Wayland-desktop deps, and make test asserts a zero
+# doctor exit from a temp home — a headless host is not a broken deployment.
 for cmd in grim slurp wl-copy; do
 	if command -v "$cmd" >/dev/null 2>&1; then
 		ok "screenshot dependency installed: $cmd"
 	else
-		fail "screenshot dependency missing: $cmd"
+		warn "screenshot dependency missing: $cmd"
 	fi
 done
 
