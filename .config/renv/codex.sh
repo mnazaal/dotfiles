@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Codex CLI environment variables. Loaded by `renv codex`.
 
 # Shared Git hooks restrict this session to codex/* branches.

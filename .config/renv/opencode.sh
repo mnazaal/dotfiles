@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Opencode coding agent environment variables
 # Loaded by renv before running `opencode`
 EDITOR="nvim"

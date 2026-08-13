@@ -71,12 +71,12 @@ init_ubuntu() {
 	[ -f "$src" ] || die "apparmor asset not found: $src"
 	if [ "$(id -u)" -ne 0 ]; then
 		cat >&2 <<-'WARN'
-		sandbox: --init ubuntu installs an AppArmor profile that re-enables
-		         unprivileged user namespaces SYSTEM-WIDE, undoing Ubuntu's
-		         apparmor_restrict_unprivileged_userns hardening. This widens a
-		         known local-privilege-escalation surface for ALL processes, not
-		         just sandbox. The podman/gvisor backends do NOT need this —
-		         prefer them unless you specifically need the bwrap backend.
+			sandbox: --init ubuntu installs an AppArmor profile that re-enables
+			         unprivileged user namespaces SYSTEM-WIDE, undoing Ubuntu's
+			         apparmor_restrict_unprivileged_userns hardening. This widens a
+			         known local-privilege-escalation surface for ALL processes, not
+			         just sandbox. The podman/gvisor backends do NOT need this —
+			         prefer them unless you specifically need the bwrap backend.
 		WARN
 		printf 'sandbox: elevating with sudo to install %s …\n' "$dest" >&2
 		exec sudo "$(readlink -f "$0")" --init ubuntu "$src"
@@ -193,6 +193,7 @@ run_podman() {
 		[ -n "${!d+x}" ] && p+=(--env "$d=${!d}")
 	done
 	# Give commands normal scratch space without exposing the host's /tmp.
+	# shellcheck disable=SC2054  # commas are mount options within one element
 	p+=(--tmpfs /tmp:rw,nosuid,nodev,mode=1777)
 	if [ -n "$PODMAN_RUNTIME" ]; then
 		# gvisor (runsc): select the runtime and tell it to ignore cgroups (it
@@ -258,7 +259,7 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	-p | --profile)
 		load_profile_arg "$2"
-		[ -z "$PROFILE_NAME" ] && PROFILE_NAME="${2##*/}"  # first -p sets the name
+		[ -z "$PROFILE_NAME" ] && PROFILE_NAME="${2##*/}" # first -p sets the name
 		shift 2
 		;;
 	--rw)

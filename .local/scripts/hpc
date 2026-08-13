@@ -98,49 +98,85 @@ dir_override=""
 runs_dir_override=""
 name_override=""
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --dirty) allow_dirty=true; shift ;;
-    --host) host_override="$2"; shift 2 ;;
-    --host=*) host_override="${1#--host=}"; shift ;;
-    --remote) remote_override="$2"; shift 2 ;;
-    --remote=*) remote_override="${1#--remote=}"; shift ;;
-    --dir) dir_override="$2"; shift 2 ;;
-    --dir=*) dir_override="${1#--dir=}"; shift ;;
-    --runs-dir) runs_dir_override="$2"; shift 2 ;;
-    --runs-dir=*) runs_dir_override="${1#--runs-dir=}"; shift ;;
-    --name) name_override="$2"; shift 2 ;;
-    --name=*) name_override="${1#--name=}"; shift ;;
-    --) shift; break ;;
-    *) break ;;
-  esac
+	case "$1" in
+	--dirty)
+		allow_dirty=true
+		shift
+		;;
+	--host)
+		host_override="$2"
+		shift 2
+		;;
+	--host=*)
+		host_override="${1#--host=}"
+		shift
+		;;
+	--remote)
+		remote_override="$2"
+		shift 2
+		;;
+	--remote=*)
+		remote_override="${1#--remote=}"
+		shift
+		;;
+	--dir)
+		dir_override="$2"
+		shift 2
+		;;
+	--dir=*)
+		dir_override="${1#--dir=}"
+		shift
+		;;
+	--runs-dir)
+		runs_dir_override="$2"
+		shift 2
+		;;
+	--runs-dir=*)
+		runs_dir_override="${1#--runs-dir=}"
+		shift
+		;;
+	--name)
+		name_override="$2"
+		shift 2
+		;;
+	--name=*)
+		name_override="${1#--name=}"
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
+	*) break ;;
+	esac
 done
 if [[ $# -eq 0 ]]; then
-  echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] <command...>" >&2
-  exit 1
+	echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] <command...>" >&2
+	exit 1
 fi
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
-  echo "hpc: not inside a git repo" >&2
-  exit 1
+	echo "hpc: not inside a git repo" >&2
+	exit 1
 }
 reponame=$(basename "$repo_root")
 branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
 
 if [[ "$allow_dirty" == false ]] && [[ -n $(git -C "$repo_root" status --porcelain --untracked-files=no) ]]; then
-  echo "hpc: working tree has uncommitted changes to tracked files -- commit them first, or pass --dirty to push only what's already committed (the remote will still refuse to run anything not pushed)." >&2
-  exit 1
+	echo "hpc: working tree has uncommitted changes to tracked files -- commit them first, or pass --dirty to push only what's already committed (the remote will still refuse to run anything not pushed)." >&2
+	exit 1
 fi
 
 remote="${remote_override:-${HPC_REMOTE:-origin}}"
 git -C "$repo_root" remote get-url "$remote" >/dev/null 2>&1 || {
-  echo "hpc: no '$remote' remote in $repo_root -- set one up first (e.g. GitHub, or a bare repo on the cluster)." >&2
-  exit 1
+	echo "hpc: no '$remote' remote in $repo_root -- set one up first (e.g. GitHub, or a bare repo on the cluster)." >&2
+	exit 1
 }
 
 host="${host_override:-${HPC_HOST:-}}"
 if [[ -z "$host" ]]; then
-  echo "hpc: no host specified -- pass --host <alias> or set HPC_HOST (e.g. a ~/.ssh/config entry for a pinned login node)." >&2
-  exit 1
+	echo "hpc: no host specified -- pass --host <alias> or set HPC_HOST (e.g. a ~/.ssh/config entry for a pinned login node)." >&2
+	exit 1
 fi
 dir="${dir_override:-${HPC_DIR:-projects/$reponame}}"
 runs_dir="${runs_dir_override:-${HPC_RUNS_DIR:-results/hpc}}"
@@ -151,7 +187,9 @@ cmd=$(printf '%q ' "$@")
 echo "hpc: pushing $branch -> $remote" >&2
 git -C "$repo_root" push -u "$remote" "$branch"
 
-disp_dir="$dir"; [[ "$dir" == /* ]] || disp_dir="~/$dir"
+disp_dir="$dir"
+# shellcheck disable=SC2088  # display string for the remote path, not expanded locally
+[[ "$dir" == /* ]] || disp_dir="~/$dir"
 echo "hpc: syncing $reponame@$branch into $disp_dir on $host, launching '$name' (timeout $timeout_dur)" >&2
 
 # ssh does NOT preserve argv boundaries for a remote command: it joins every
@@ -211,9 +249,9 @@ echo "hpc: launched (pid $(cat "$pidfile"))."
 REMOTE
 
 case "$runs_dir" in
-  /*) display_runs="$runs_dir" ;;
-  ~/*) display_runs="$runs_dir" ;;
-  *) display_runs="$disp_dir/$runs_dir" ;;
+/*) display_runs="$runs_dir" ;;
+~/*) display_runs="$runs_dir" ;;
+*) display_runs="$disp_dir/$runs_dir" ;;
 esac
 echo "hpc: log    : ssh $host tail -f $display_runs/$name.log"
 echo "hpc: status : ssh $host \"kill -0 \\\$(cat $display_runs/$name.pid) 2>/dev/null && echo running || echo done\""

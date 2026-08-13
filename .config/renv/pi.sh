@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Pi coding agent environment variables
 # Loaded by renv before running `pi`
 

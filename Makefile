@@ -48,7 +48,7 @@ _clean-codex-skills:
 
 check: test check-agent-role-sync check-guardrails-native-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
-	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
+	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions .config/renv .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
 		head -n 1 "$$file" | grep -Eq '^#!.*(sh|bash)' && printf '%s\n' "$$file"; \
 	done | sort)"; \

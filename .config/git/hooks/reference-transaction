@@ -8,15 +8,15 @@ PREFIX="${AGENT_BRANCH_PREFIX:-}"
 [[ -n "$PREFIX" && "$1" == "prepared" ]] || exit 0
 
 while read -r old new ref; do
-    [[ "$ref" == refs/heads/* ]] || continue
-    branch="${ref#refs/heads/}"
-    # `claude -w <name>` hardcodes worktree branches as worktree-<name> (no way
-    # to configure that prefix), so also allow worktree-$PREFIX* as long as the
-    # worktree name itself starts with the agent prefix (e.g. -w claude-feat).
-    if [[ "$branch" != "$PREFIX"/* && "$branch" != worktree-"$PREFIX"* && "$old" != "$new" ]]; then
-      echo "$ERROR_PREFIX $PREFIX agent may only create, delete, or modify $PREFIX/* (or worktree-$PREFIX*) branches" >&2
-        exit 1
-    fi
+	[[ "$ref" == refs/heads/* ]] || continue
+	branch="${ref#refs/heads/}"
+	# `claude -w <name>` hardcodes worktree branches as worktree-<name> (no way
+	# to configure that prefix), so also allow worktree-$PREFIX* as long as the
+	# worktree name itself starts with the agent prefix (e.g. -w claude-feat).
+	if [[ "$branch" != "$PREFIX"/* && "$branch" != worktree-"$PREFIX"* && "$old" != "$new" ]]; then
+		echo "$ERROR_PREFIX $PREFIX agent may only create, delete, or modify $PREFIX/* (or worktree-$PREFIX*) branches" >&2
+		exit 1
+	fi
 done
 
 exit 0

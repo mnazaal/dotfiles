@@ -20,10 +20,10 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
 idx=$(mktemp -u 2>/dev/null) || exit 0
 tree=$(
-      export GIT_INDEX_FILE="$idx"
-      git read-tree HEAD 2>/dev/null || exit 1
-      git add -A 2>/dev/null || exit 1
-      git write-tree 2>/dev/null || exit 1
+	export GIT_INDEX_FILE="$idx"
+	git read-tree HEAD 2>/dev/null || exit 1
+	git add -A 2>/dev/null || exit 1
+	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
 [ -n "$tree" ] || exit 0
@@ -32,8 +32,8 @@ sha=$(git commit-tree "$tree" -p HEAD -m "agent checkpoint $(date -u +%FT%TZ)" 2
 [ -n "$sha" ] || exit 0
 
 git update-ref \
-      "refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}/$(date +%s)" \
-      "$sha" 2>/dev/null || exit 0
+	"refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}/$(date +%s)" \
+	"$sha" 2>/dev/null || exit 0
 
 printf 'checkpoint %s\n' "$sha"
 exit 0

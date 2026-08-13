@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Claude Code environment variables
 # # Loaded by renv before running `claude`
 
