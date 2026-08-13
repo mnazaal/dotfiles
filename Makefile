@@ -8,7 +8,7 @@ help:
 		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)'
 
 link:
-	stow --target="$(HOME)" --no-folding --ignore='^\.config/codex/skills($$|/)' .
+	stow --target="$(HOME)" --no-folding .
 	$(MAKE) _link-codex-skills
 
 _link-codex-skills:
@@ -26,8 +26,10 @@ _link-codex-skills:
 		ln -s "$$source" "$$target"; \
 	done
 
+# The $HOME symlink sweep also removes codex skill links (they resolve into
+# .agents/skills), so clean does not need _clean-codex-skills; the target is
+# kept for tests/codex-skills-link-test.sh.
 clean:
-	@$(MAKE) --no-print-directory _clean-codex-skills
 	@DOTFILES="$(CURDIR)" find "$(HOME)" \
 		-path "$(HOME)/.local/share/containers" -prune -o \
 		-path "$(CURDIR)" -prune -o \
@@ -46,7 +48,7 @@ _clean-codex-skills:
 
 check: test check-agent-role-sync check-guardrails-native-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
-	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
+	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm -111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
 		head -n 1 "$$file" | grep -Eq '^#!.*(sh|bash)' && printf '%s\n' "$$file"; \
 	done | sort)"; \
@@ -102,6 +104,11 @@ check-guardrails-native-sync:
 	status=0; \
 	credentials="$$(awk '/"credentials": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
 	machinery="$$(awk '/"machinery": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
+	if [ -z "$$credentials" ] || [ -z "$$machinery" ]; then \
+		printf 'native-sync: extracted no %s paths from %s — the awk extraction depends on the current JSON formatting\n' \
+			"$$([ -z "$$credentials" ] && echo credential || echo machinery)" "$$paths_file" >&2; \
+		exit 1; \
+	fi; \
 	for p in $$credentials; do \
 		grep -qF "$$p" "$(CURDIR)/.claude/settings.json" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".claude/settings.json" >&2; status=1; }; \
 		grep -qF "$$p" "$(CURDIR)/.config/codex/config.toml.template" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".config/codex/config.toml.template" >&2; status=1; }; \

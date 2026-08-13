@@ -15,7 +15,7 @@
 # precisely the agent-authored work most at risk.
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 script="$repo/.local/scripts/agent-checkpoint"
 tmp=$(mktemp -d)
 trap 'chmod -R u+w "$tmp" 2>/dev/null || true; rm -r "$tmp" 2>/dev/null || true' EXIT

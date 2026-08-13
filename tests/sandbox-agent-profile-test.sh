@@ -2,9 +2,10 @@
 # The agent profile confines writes to the project you launched in: ~/projects
 # and ~/dotfiles are readable but not writable, and only the auto-bound cwd is
 # read-write.
+# shellcheck disable=SC2088  # error messages name paths as ~/... prose, not for expansion
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 home="$tmp/home"

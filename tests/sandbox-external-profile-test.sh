@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -38,13 +38,15 @@ assert_profile() { # profile required mounts... -- forbidden mount fragments...
 		case "$output" in *"$value"*) ;; *)
 			printf '%s profile missing mount: %s\n' "$profile" "$value" >&2
 			exit 1
-			;; esac
+			;;
+		esac
 	done
 	for value in "${forbidden[@]}"; do
 		case "$output" in *"$value"*)
 			printf '%s profile exposes forbidden mount: %s\n' "$profile" "$value" >&2
 			exit 1
-			;; esac
+			;;
+		esac
 	done
 }
 
@@ -81,13 +83,15 @@ assert_mount_order() { # profile earlier-mount later-mount
 	case "$output" in *"$earlier"*) ;; *)
 		printf '%s profile missing mount: %s\n' "$profile" "$earlier" >&2
 		exit 1
-		;; esac
+		;;
+	esac
 	rest=${output#*"$earlier"}
 	case "$rest" in *"$later"*) ;; *)
 		printf '%s profile binds %s before %s; the writable bind would win\n' \
 			"$profile" "$later" "$earlier" >&2
 		exit 1
-		;; esac
+		;;
+	esac
 }
 
 # The guardrail source must be read-only AND bound after the writable dotfiles

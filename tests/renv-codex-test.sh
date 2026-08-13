@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -39,7 +39,8 @@ env -u CODEX_HOME \
 	RENV_CAPTURE="$capture" \
 	"$repo/.local/scripts/renv" codex --version
 
-expected=$(cat <<EOF
+expected=$(
+	cat <<EOF
 prefix=codex
 asta=test-asta-key
 codex_home=$config/codex

@@ -7,7 +7,7 @@
 # read-only, which destroys the recoverability the bypass depends on.
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

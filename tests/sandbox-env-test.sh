@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -26,8 +26,8 @@ chmod +x "$bin/podman"
 (
 	cd "$project"
 	HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$profiles" \
-	SANDBOX_CAPTURE="$capture" SAFE_VALUE=visible UNRELATED_SECRET=must-not-reach-container \
-	"$repo/.local/scripts/sandbox" --backend podman -p scoped -- /bin/true
+		SANDBOX_CAPTURE="$capture" SAFE_VALUE=visible UNRELATED_SECRET=must-not-reach-container \
+		"$repo/.local/scripts/sandbox" --backend podman -p scoped -- /bin/true
 )
 
 args=$(<"$capture")
@@ -54,7 +54,7 @@ esac
 assert_profile_env() { # profile expected names... -- forbidden names...
 	local profile=$1
 	shift
-	local expected=() forbidden=() name= seen_separator=0
+	local expected=() forbidden=() name='' seen_separator=0
 	for name in "$@"; do
 		if [ "$name" = -- ]; then
 			seen_separator=1
@@ -66,13 +66,13 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	(
 		cd "$project"
 		HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
-		SANDBOX_CAPTURE="$capture" AGENT_BRANCH_PREFIX="test-agent" \
-		ASTA_MCP_API_KEY=asta-key OPENROUTER_API_KEY=openrouter-key \
-		CODEX_HOME="$home/.config/codex" HEADROOM_PORT=8787 \
-		HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
-		ANTHROPIC_BASE_URL=http://127.0.0.1:8787 ENABLE_TOOL_SEARCH=false \
-		DISABLE_AUTOUPDATER=1 EDITOR=nvim UNRELATED_SECRET=must-not-reach-container \
-		"$repo/.local/scripts/sandbox" --backend podman -p "$profile" -- /bin/true
+			SANDBOX_CAPTURE="$capture" AGENT_BRANCH_PREFIX="test-agent" \
+			ASTA_MCP_API_KEY=asta-key OPENROUTER_API_KEY=openrouter-key \
+			CODEX_HOME="$home/.config/codex" HEADROOM_PORT=8787 \
+			HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
+			ANTHROPIC_BASE_URL=http://127.0.0.1:8787 ENABLE_TOOL_SEARCH=false \
+			DISABLE_AUTOUPDATER=1 EDITOR=nvim UNRELATED_SECRET=must-not-reach-container \
+			"$repo/.local/scripts/sandbox" --backend podman -p "$profile" -- /bin/true
 	)
 
 	args=$(<"$capture")
@@ -80,13 +80,15 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 		case "$args" in *"$name="*) ;; *)
 			printf '%s profile did not forward %s\n' "$profile" "$name" >&2
 			exit 1
-			;; esac
+			;;
+		esac
 	done
 	for name in "${forbidden[@]}"; do
 		case "$args" in *"$name="*)
 			printf '%s profile forwarded forbidden %s\n' "$profile" "$name" >&2
 			exit 1
-			;; esac
+			;;
+		esac
 	done
 }
 

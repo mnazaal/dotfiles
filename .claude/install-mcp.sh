@@ -20,7 +20,7 @@ reset() { claude mcp remove --scope user "$1" >/dev/null 2>&1 || true; }
 # Single quotes keep ${ASTA_MCP_API_KEY} literal so Claude expands it at connect time.
 reset asta-mcp
 claude mcp add --scope user --transport http asta-mcp \
-  https://asta-tools.allen.ai/mcp/v1 \
-  --header 'x-api-key: ${ASTA_MCP_API_KEY}'
+	https://asta-tools.allen.ai/mcp/v1 \
+	--header 'x-api-key: ${ASTA_MCP_API_KEY}'
 
 echo "Done. Verify with: claude mcp list  (run via 'renv claude' for asta auth)"
