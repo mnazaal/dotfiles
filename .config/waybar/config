@@ -112,7 +112,7 @@
 
     "custom/lock": {
         "tooltip": false,
-        "on-click": "flock -n \"${XDG_RUNTIME_DIR:-/tmp}/swaylock.lock\" sh -c 'sleep 0.5; exec \"$HOME/.local/bin/swaylock\" -f'",
+        "on-click": "$HOME/.local/scripts/lock-screen",
         "format": "\udb80\udf43 "
     },
 

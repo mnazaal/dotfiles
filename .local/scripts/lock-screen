@@ -1,0 +1,8 @@
+#!/bin/sh
+# Single owner of the swaylock incantation (previously copy-pasted in mango
+# bindings, the waybar lock button, and swayidle's lock handler).
+# flock -n: at most one locker; a second trigger while locked is a no-op.
+# sleep 0.5: let the key release reach the compositor before grabbing input,
+# otherwise the held modifier leaks into the lock screen's password field.
+exec flock -n "${XDG_RUNTIME_DIR:-/tmp}/swaylock.lock" \
+	sh -c 'sleep 0.5; exec "$HOME/.local/bin/swaylock" -f'
