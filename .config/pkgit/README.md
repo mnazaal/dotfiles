@@ -24,13 +24,13 @@ Versioned source package names are normalized to pkgit-native package names:
 
 | Group | Packages |
 |-------|----------|
-| Meson | `babl`, `gimp`, `grim`, `libinput`, `pixman`, `rofi`, `slurp`, `swaybg`, `wireplumber` |
-| Meson + cleanup | `mango`, `scenefx`, `wlroots` |
-| Meson + flags | `swayidle`, `swaylock`, `waybar`, `wayland`, `wayland-protocols`, `pwvucontrol` |
+| Meson | `babl`, `grim`, `libinput`, `pixman`, `rofi`, `slurp`, `swaybg`, `wireplumber` |
+| Meson + flags/env | `gimp`, `pwvucontrol`, `swayidle`, `swaylock`, `waybar` |
+| Meson, Wayland stack (root-build cleanup, pinned checkouts, prefix pkgconfig) | `libdisplay-info`, `libdrm`, `mango`, `scenefx`, `wayland`, `wayland-protocols`, `wlroots`, `xkbcommon` |
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
 | Make + PREFIX | `dunst`, `keyd`, `pass-otp` |
-| Autotools | `isync-isync`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow`, `emacs` |
-| Custom | `fzf`, `goose`, `kitty`, `neovim`, `sioyek`, `gegl` |
+| Autotools | `emacs`, `isync-isync`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
+| Custom | `fzf`, `gegl`, `goose`, `kitty`, `neovim`, `sioyek` |
 
 ## Verification
 

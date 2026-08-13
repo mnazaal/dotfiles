@@ -93,26 +93,6 @@ function M.target(t)
   return { default = t, quiet = t }
 end
 
-function M.with_env(env, cmd)
-  local vars = {}
-  for key, value in pairs(env or {}) do
-    table.insert(vars, key .. "=" .. M.q(value))
-  end
-  return M.join(vars) .. " " .. cmd
-end
-
-function M.prepend_path_var(var, dirs)
-  local current = os.getenv(var) or ""
-  local seen = {}
-  for item in current:gmatch("[^:]+") do seen[item] = true end
-  local out = {}
-  for _, dir in ipairs(dirs or {}) do
-    if dir and dir ~= "" and not seen[dir] then table.insert(out, dir) end
-  end
-  if current ~= "" then table.insert(out, current) end
-  return table.concat(out, ":")
-end
-
 function M.clean_root_ninja_build()
   return M.sh("if [ -f build/.ninja_deps ] && [ \"$(stat -c %U build/.ninja_deps)\" = root ]; then rm -rf build; fi")
 end

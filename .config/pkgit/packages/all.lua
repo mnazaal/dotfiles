@@ -14,7 +14,7 @@ local repos = {
   },
   dunst = { url = "https://github.com/dunst-project/dunst.git", targets = lib.make_prefix() },
   emacs = {
-    url = "git://git.git.savannah.gnu.org/emacs.git",
+    url = "https://git.savannah.gnu.org/git/emacs.git",
     targets = lib.autotools({
       autogen = true,
       parallel = true,
@@ -44,19 +44,21 @@ local repos = {
       install = function() return lib.install_bin("bin/fzf", "fzf") end,
     }),
   },
-  gegl = {
-    url = "https://gitlab.gnome.org/GNOME/gegl.git",
-    targets = lib.target({
-      build = function()
-        local env = "cc_triplet=$(cc -dumpmachine 2>/dev/null || true); " ..
-          "PKG_CONFIG_PATH=" .. lib.q(prefix .. "/share/pkgconfig:" .. prefix .. "/lib/pkgconfig") .. ":${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet/pkgconfig:}${PKG_CONFIG_PATH:-}; " ..
-          "LD_LIBRARY_PATH=${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet:}" .. lib.q(prefix .. "/lib") .. ":${LD_LIBRARY_PATH:-}; " ..
-          "export PKG_CONFIG_PATH LD_LIBRARY_PATH; "
-        return lib.sh(env .. "meson setup build --prefix=" .. lib.q(prefix) .. " --reconfigure && ninja -C build")
-      end,
-      install = function() return lib.sh("ninja -C build install") end,
-    }),
-  },
+  gegl = (function()
+    local env = "cc_triplet=$(cc -dumpmachine 2>/dev/null || true); " ..
+      "PKG_CONFIG_PATH=" .. lib.q(prefix .. "/share/pkgconfig:" .. prefix .. "/lib/pkgconfig") .. ":${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet/pkgconfig:}${PKG_CONFIG_PATH:-}; " ..
+      "LD_LIBRARY_PATH=${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet:}" .. lib.q(prefix .. "/lib") .. ":${LD_LIBRARY_PATH:-}; " ..
+      "export PKG_CONFIG_PATH LD_LIBRARY_PATH; "
+    return {
+      url = "https://gitlab.gnome.org/GNOME/gegl.git",
+      targets = lib.target({
+        build = function()
+          return lib.sh(env .. "meson setup build --prefix=" .. lib.q(prefix) .. " --reconfigure && ninja -C build")
+        end,
+        install = function() return lib.sh(env .. "ninja -C build install") end,
+      }),
+    }
+  end)(),
   -- gimp master is painful on a ~/.local stack under a minimal session (mango):
   --  (1) -Dvala=disabled: vapigen resolves Vala bindings via vapi/GIR dirs (from
   --      XDG_DATA_DIRS, which lacks ~/.local/share), not pkg-config, so it can't
