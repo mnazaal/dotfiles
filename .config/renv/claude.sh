@@ -31,7 +31,7 @@ export HEADROOM_WORKSPACE_DIR HEADROOM_MEMORY_DB_PATH
 if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	mkdir -p "${HEADROOM_WORKSPACE_DIR}"
 	nohup headroom proxy --port "$HEADROOM_PORT" --mode "${HEADROOM_MODE:-cache}" \
-		--code-aware --intercept-tool-results \
+		--lossless --intercept-tool-results \
 		>"${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log" 2>&1 &
 	sleep 2
 fi
