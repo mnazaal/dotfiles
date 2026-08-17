@@ -31,7 +31,8 @@ fi
 
 NOTMUCH_BASE_CONFIG="${NOTMUCH_BASE_CONFIG:-$HOME/.config/notmuch/default/config}"
 NOTMUCH_EMAIL_ENTRY="${NOTMUCH_EMAIL_ENTRY:-primary-gmail}"
-REAL_NOTMUCH=$(which -a notmuch | grep -Fvx "$HOME/.local/scripts/notmuch-cron" | head -1)
+REAL_NOTMUCH=$(which -a notmuch | grep -Fvx "$HOME/.local/scripts/notmuch-cron" | head -1 || true)
+[ -n "$REAL_NOTMUCH" ] || REAL_NOTMUCH="$HOME/.local/bin/notmuch"
 
 { [ -z "$REAL_NOTMUCH" ] || [ ! -x "$REAL_NOTMUCH" ]; } && {
 	echo "notmuch: command not found" >&2
