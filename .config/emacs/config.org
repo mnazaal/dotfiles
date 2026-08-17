@@ -1068,7 +1068,9 @@ Show flymake diagnostics at point. Helpful to show LSP errors and warnings.
 (use-package flymake-popon
   :vc (:url "https://codeberg.org/akib/emacs-flymake-popon" :branch "master")
   :hook
-  (prog-mode . flymake-popon-mode))
+  (prog-mode . flymake-popon-mode)
+  ;; LaTeX diagnostics come from auctex-cont-latexmk, which is Flymake-backed.
+  (LaTeX-mode . flymake-popon-mode))
 #+end_src
 
 ** cape                                                          :completion:
@@ -1525,46 +1527,21 @@ Spell checking. Requires =libenchant-2-dev= to be installed on the system.
   ([remap ispell-word] . jinx-correct)) ;; z =
 #+end_src
 
-** pdf-tools                                                 :reading:writing:
-In-Emacs PDF viewing, backed by a =poppler=-based helper binary (=epdfinfo=)
-that =pdf-tools-install= compiles on first run. Building it needs the
-=poppler-glib= development headers (=libpoppler-glib-dev=) plus =libpng= and
-=zlib=; =dotfiles-doctor= warns when the built binary is absent.
-
-This is what makes the source-left/PDF-right split work: the PDF is an ordinary
-Emacs window, so =ace-window=, =popper= and the =evil-collection= PDF bindings
-all apply to it, and SyncTeX can jump in both directions (see [[*tex][tex]]).
-
-=global-auto-revert-mode= (enabled under [[*emacs][emacs]], 1s interval) is what refreshes
-the PDF buffer after a recompile.
-
-#+begin_src emacs-lisp
-(use-package pdf-tools
-  :magic ("%PDF" . pdf-view-mode)
-  :custom
-  (pdf-view-display-size 'fit-page)
-  (pdf-view-use-scaling t) ;; Render at display resolution, for HiDPI
-  (pdf-view-resize-factor 1.1)
-  (pdf-annot-activate-created-annotations t)
-  :config
-  ;; `org-babel-load-file' evaluates this file top-to-bottom and this block sits
-  ;; above tex/reftex/markdown/nov/notmuch, so a failed epdfinfo build must not
-  ;; escape and take all of those down with it.
-  (ignore-errors (pdf-tools-install :no-query)))
-#+end_src
-
 ** tex                                                        :writing:latex:
-AUCTeX. The workflow is: edit the source on the left, view the compiled PDF on
-the right, and recompile with =latexmk=. On a graphical frame the PDF is an
-Emacs window ([[*pdf-tools][pdf-tools]]); in a terminal frame it is a sioyek window placed by
-the compositor. SyncTeX works in both directions either way.
+AUCTeX. The workflow is: edit the source in terminal Emacs, view the compiled
+PDF in a sioyek window tiled beside it, and recompile with =latexmk=. sioyek
+polls the open PDF's mtime every 200ms and reloads once the file is stable, so
+the view stays live without anything driving it from Emacs.
 
 Commands worth remembering:
 - =C-c C-c= run the default command (=LaTeXMk=), =C-c C-a= run every command needed.
 - =C-c C-v= forward search: jump the viewer to the position of point.
 - =C-c C-l= show the compilation log, =C-c `= step through errors.
-- =C-c C-p C-d= preview the buffer with formatted mathematics.
-- In the PDF window, =C-c C-g= (or a mouse click) jumps back to the source line.
+- =C-c k= toggle continuous compile-on-save (see [[*auctex-cont-latexmk][auctex-cont-latexmk]]).
+Note =preview-latex= (=C-c C-p C-d=) is not usable here: it renders images and so
+needs a graphical frame.
+- In sioyek, a mouse click jumps back to the corresponding source line (its
+  =--inverse-search= calls =emacsclient=, so the [[*server][server]] must be running).
 
 More AUCTeX shortcuts are listed [[https://tex.stackexchange.com/questions/20843/useful-shortcuts-or-key-bindings-or-predefined-commands-for-emacsauctex/21026#21026][here]].
 
@@ -1578,6 +1555,12 @@ Notes on the settings:
   packages. =TeX-auto-save= caches that parse between sessions.
 - =TeX-source-correlate-mode= is what passes =--synctex=1= through to the
   engine; without it neither forward nor backward search works.
+- sioyek needs to be new enough: commit =5a262027= (2026-07-22) introduced a
+  regression that segfaulted it whenever an open PDF was rewritten — exactly the
+  live-reload case — fixed upstream by =fe698ba=. Build it through
+  =srcup sioyek=, never =./build_linux.sh= directly: the recipe pins the Qt 6.8
+  qmake, and the script's fallback silently picks the system Qt 5, which fails
+  to compile.
 
 #+begin_src emacs-lisp
 (use-package tex
@@ -1591,19 +1574,12 @@ Notes on the settings:
   (TeX-source-correlate-start-server t) ;; Don't ask before starting the Emacs server
   (TeX-electric-math '("$" . "$"))
   (LaTeX-electric-left-right-brace t)
-  ;; pdf-tools renders pages as images, so it only works on a graphical frame;
-  ;; in a terminal frame it shows the raw PDF bytes. Pick the viewer per frame
-  ;; instead: AUCTeX evaluates these predicate forms at view time, so the same
-  ;; session does the right thing in a GUI frame and under tmux.
-  (TeX-view-predicate-list '((graphical-frame (display-graphic-p))))
-  (TeX-view-program-selection '(((output-pdf graphical-frame) "PDF Tools")
-                                (output-pdf "Sioyek")))
-  ;; sioyek already polls the open PDF's mtime every 200ms and reloads it once
-  ;; the file is stable, so a recompile refreshes the window on its own. What
-  ;; breaks that is =should_launch_new_window 1= in prefs_user.config: without
-  ;; --reuse-window every view spawns a fresh window and strands the one being
-  ;; watched. Override AUCTeX's built-in Sioyek entry rather than flipping the
-  ;; global pref, which is wanted when reading papers through citar.
+  (TeX-view-program-selection '((output-pdf "Sioyek")))
+  ;; AUCTeX's built-in Sioyek entry does not pass --reuse-window, and
+  ;; prefs_user.config sets =should_launch_new_window 1=, so every view would
+  ;; spawn a fresh window and strand the one being watched. Override the entry
+  ;; rather than flipping the global pref, which is wanted when reading papers
+  ;; through citar.
   (TeX-view-program-list
    '(("Sioyek"
       ("sioyek --reuse-window %o"
@@ -1613,12 +1589,12 @@ Notes on the settings:
   (ConTeXt-Mark-version "IV")
   :hook
   (LaTeX-mode . TeX-source-correlate-mode)
-  (LaTeX-mode . TeX-fold-mode)
-  (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
+  (LaTeX-mode . TeX-fold-mode))
 #+end_src
 
-For a continuously rebuilding PDF, run =latexmk -pvc= on the file in a terminal
-and let =global-auto-revert-mode= refresh the [[*pdf-tools][pdf-tools]] buffer.
+For a continuously rebuilding PDF, run =latexmk -pvc= on the file in a terminal;
+sioyek picks up each rebuild on its own. [[*auctex-cont-latexmk][auctex-cont-latexmk]] does the same from
+inside Emacs and additionally reports errors through Flymake.
 
 ** reftex                                                     :writing:latex:
 Built-in cross-referencing for LaTeX: label and reference completion that reads
@@ -1638,6 +1614,42 @@ the actual labels in the document, plus a jumpable table of contents.
   (reftex-plug-into-AUCTeX t)
   (reftex-toc-split-windows-fraction 0.3)
   (reftex-default-bibliography (list bib-file)))
+#+end_src
+
+** auctex-cont-latexmk                                        :writing:latex:
+Compile-on-save, from GNU ELPA rather than hand-rolled. =latexmk -pvc= runs in
+the background and rebuilds on every save, so there is no compile keystroke and
+no minibuffer command prompt; Evince picks up each rebuild on its own. Unlike
+running =latexmk -pvc= in a terminal, errors come back through Flymake, so the
+existing =]d= / =[d= bindings (see [[*evil-collection][evil-collection]]) navigate LaTeX errors too.
+
+=M-x auctex-cont-latexmk-toggle= (=C-c k=) turns it on per buffer.
+
+Sharp bits:
+- =auctex-cont-latexmk-command= hardcodes =pdflatex= and does *not* read
+  =TeX-engine=, so it is overridden below to use =xelatex=, mirroring what
+  AUCTeX's own =LaTeXMk= command expands =TeX-engine= to. Without this the
+  document silently compiles with the wrong engine.
+- Diagnostics refresh only once latexmk reaches its "watching for changes" state
+  *and* the buffer has no unsaved changes, so they lag a few seconds behind a
+  save rather than updating as you type.
+- Raw compiler output goes to a buffer named =*pvc-<filename>*=.
+- Avoid parentheses in file names; AUCTeX's error parser mishandles them.
+
+#+begin_src emacs-lisp
+(use-package auctex-cont-latexmk
+  :after latex
+  :custom
+  ;; Two overrides in one =-e= payload. The engine, because the default
+  ;; hardcodes pdflatex. And =$sleep_time=, because latexmk's =-pvc= default is
+  ;; *2 seconds* between checks for file changes with no CLI flag to change it —
+  ;; pure dead time between saving and the compile even starting.
+  (auctex-cont-latexmk-command
+   '("latexmk -pvc -pdf -view=none -e "
+     ("$pdflatex=q/xelatex %O -synctex=1 -file-line-error -interaction=nonstopmode %S/; $sleep_time=0.3;")))
+  :bind
+  (:map LaTeX-mode-map
+        ("C-c k" . auctex-cont-latexmk-toggle)))
 #+end_src
 
 ** markdown-mode                                                    :writing:
