@@ -42,11 +42,6 @@ IMAP_PASSWORD_ENTRY="${IMAP_PASSWORD_ENTRY:-primary-gmail-secret}"
 # system /usr/sbin/sendmail has no configured MTA behind it on this host.
 RSS2EMAIL_SENDMAIL="${RSS2EMAIL_SENDMAIL:-$HOME/.local/bin/msmtp}"
 
-if [[ ! -x "$RSS2EMAIL_SENDMAIL" ]]; then
-	echo "rss2email-cron: sendmail binary not executable: $RSS2EMAIL_SENDMAIL" >&2
-	exit 1
-fi
-
 if [[ ! -x "$R2E_BIN" ]]; then
 	echo "rss2email-cron: r2e binary not executable: $R2E_BIN" >&2
 	exit 1
@@ -69,7 +64,7 @@ sed \
 	-e "s|__RSS2EMAIL_PRIMARY_EMAIL__|$primary|g" \
 	-e "s|__RSS2EMAIL_RSS_EMAIL__|$rss|g" \
 	-e "s|__RSS2EMAIL_SENDMAIL__|$RSS2EMAIL_SENDMAIL|g" \
-  -e "s|__RSS2EMAIL_IMAP_PASSWORD__|$imap_password|g" \
+	-e "s|__RSS2EMAIL_IMAP_PASSWORD__|$imap_password|g" \
 	"$RSS2EMAIL_CONFIG" >"$tmp"
 
 if [[ $# -eq 0 ]]; then
