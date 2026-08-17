@@ -557,11 +557,12 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
                  ("" "xcolor")))
     (add-to-list 'org-latex-packages-alist pkg))
   :custom
+  ;; One latexmk call rather than a fixed xelatex/biber/xelatex/xelatex chain:
+  ;; latexmk decides how many passes are actually needed (usually one or two)
+  ;; and runs biber only when the =.bcf= changed. It also means Org export and
+  ;; =C-c C-c= drive the same tool, so they cannot disagree about the engine.
   (org-latex-pdf-process
-   '("xelatex -interaction nonstopmode -output-directory %o %f"
-     "biber %b"
-     "xelatex -interaction nonstopmode -output-directory %o %f"
-     "xelatex -interaction nonstopmode -output-directory %o %f"))
+   '("latexmk -pdf -interaction=nonstopmode -output-directory=%o %f"))
   (org-latex-logfiles-extensions
    '("lof" "lot" "tex~" "aux" "idx"
      "log" "out" "toc" "nav" "snm"
@@ -1547,9 +1548,16 @@ More AUCTeX shortcuts are listed [[https://tex.stackexchange.com/questions/20843
 
 Notes on the settings:
 - =LaTeXMk= is a built-in entry of AUCTeX's =TeX-command-list=; its
-  =%(latexmk-out)= expander reads =TeX-engine=, so =xetex= becomes
-  =-pdf -pdflatex=xelatex=. latexmk drives the xelatex/biber/xelatex chain
-  itself, so no separate =auctex-latexmk= package is needed.
+  =%(latexmk-out)= expander reads =TeX-engine=, which is left at its default
+  (pdfTeX), so it expands to plain =-pdf= and latexmk uses its own =$pdflatex=.
+  latexmk drives the pdflatex/biber/pdflatex chain itself, so no separate
+  =auctex-latexmk= package is needed.
+- The engine is pdflatex, not xelatex. Nothing here needs xetex — the Org
+  exporter emits =inputenc= + =[T1]{fontenc}= and no =fontspec= — and measured
+  on a representative preamble pdflatex is ~25% faster (1007ms vs 1334ms).
+  This *requires* the =cm-super= package (=tlmgr install cm-super=): without it
+  =[T1]{fontenc}= has no Type1 fonts, pdflatex silently falls back to generating
+  bitmap fonts, and it becomes the slower engine instead of the faster one.
 - =TeX-parse-self= makes AUCTeX read the document's own preamble, so completion
   and folding know about macros and environments defined in it or by its
   packages. =TeX-auto-save= caches that parse between sessions.
@@ -1569,7 +1577,6 @@ Notes on the settings:
   (TeX-save-query nil) ;; No need for the save command before compilation is completed
   (TeX-parse-self t)
   (TeX-auto-save t)
-  (TeX-engine 'xetex)
   (TeX-command-default "LaTeXMk")
   (TeX-source-correlate-start-server t) ;; Don't ask before starting the Emacs server
   (TeX-electric-math '("$" . "$"))
@@ -1626,10 +1633,10 @@ existing =]d= / =[d= bindings (see [[*evil-collection][evil-collection]]) naviga
 =M-x auctex-cont-latexmk-toggle= (=C-c k=) turns it on per buffer.
 
 Sharp bits:
-- =auctex-cont-latexmk-command= hardcodes =pdflatex= and does *not* read
-  =TeX-engine=, so it is overridden below to use =xelatex=, mirroring what
-  AUCTeX's own =LaTeXMk= command expands =TeX-engine= to. Without this the
-  document silently compiles with the wrong engine.
+- =auctex-cont-latexmk-command= is the *whole* command definition and does not
+  read =TeX-engine=, so it is restated below. Keep the =-synctex=1= and
+  =-file-line-error= flags in the =-e= payload: SyncTeX and Flymake's error
+  parsing respectively depend on them.
 - Diagnostics refresh only once latexmk reaches its "watching for changes" state
   *and* the buffer has no unsaved changes, so they lag a few seconds behind a
   save rather than updating as you type.
@@ -1640,13 +1647,13 @@ Sharp bits:
 (use-package auctex-cont-latexmk
   :after latex
   :custom
-  ;; Two overrides in one =-e= payload. The engine, because the default
-  ;; hardcodes pdflatex. And =$sleep_time=, because latexmk's =-pvc= default is
-  ;; *2 seconds* between checks for file changes with no CLI flag to change it —
-  ;; pure dead time between saving and the compile even starting.
+  ;; Restates the package default (which is already pdflatex) and adds
+  ;; =$sleep_time=, because latexmk's =-pvc= default is *2 seconds* between
+  ;; checks for file changes, with no CLI flag to change it — pure dead time
+  ;; between saving and the compile even starting.
   (auctex-cont-latexmk-command
    '("latexmk -pvc -pdf -view=none -e "
-     ("$pdflatex=q/xelatex %O -synctex=1 -file-line-error -interaction=nonstopmode %S/; $sleep_time=0.3;")))
+     ("$pdflatex=q/pdflatex %O -synctex=1 -file-line-error -interaction=nonstopmode %S/; $sleep_time=0.3;")))
   :bind
   (:map LaTeX-mode-map
         ("C-c k" . auctex-cont-latexmk-toggle)))
