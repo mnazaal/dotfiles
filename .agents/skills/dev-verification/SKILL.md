@@ -50,6 +50,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 | flag/option behaves as documented | resolved default read from source or a runtime probe — `--help` and docstrings go stale, and a default decides whether config is needed at all |
 | rename/repath complete | the OLD name has zero hits across every relevant file type (`.py` **and** `.md`/`.rst`/`.ipynb`/config), searched whitespace-tolerantly — a line-anchored `grep`/`sed` sweep reports false-clean on references wrapped across lines (docstrings, RST `:class:`/`:mod:` links) |
 | review finding resolved | the repair re-read by a pass that did not write it; the pass that wrote the fix may only mark it pending review |
+| A is faster than B | both timings from one interleaved run (separate runs drift), best-of-N, and every timed run asserted to have produced its expected artifact — a run that failed early is the fastest run. A difference smaller than the spread between repeats of the *same* input is noise, not a result |
 
 ## Anti-Patterns
 
@@ -64,6 +65,8 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Background watcher loops left running after the watched command exits (`pgrep -f "x"` self-matches its own argv and never terminates).
 - Recommending configuration from a truncated `--help`/docs read — dump the full option surface and read all of it before advising which flags to set.
 - Closing a finding you repaired in the same pass, or treating the reviewer's finding list as the scope of the re-review.
+- Timing a command without asserting it did the work — a broken run is the fastest run, so a surprisingly fast variant is a failure until proven otherwise.
+- Treating an impossible measurement (removing work made it *slower*) as a result rather than as a readout of your noise floor.
 
 ## Related Skills
 
