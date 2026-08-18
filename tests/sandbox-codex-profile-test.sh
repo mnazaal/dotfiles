@@ -47,8 +47,7 @@ for machinery in \
 	"$home/dotfiles/.config/codex/hooks" \
 	"$home/dotfiles/.config/codex/hooks.json" \
 	"$home/dotfiles/.config/codex/config.toml.template" \
-	"$home/dotfiles/.agents/guardrails" \
-	"$home/dotfiles/.agents/skills"; do
+	"$home/dotfiles/.agents/guardrails"; do
 	case "$output" in
 	*"$machinery:$machinery:ro"*) ;;
 	*)
@@ -57,6 +56,17 @@ for machinery in \
 		;;
 	esac
 done
+
+# Skills are deliberately NOT machinery-pinned (unpinned 2026-08-18, reversing
+# 4de2847): the user chose skill iteration speed over the self-modification
+# pin; review happens at commit time instead. Assert the unpin holds so a
+# future profile edit cannot silently re-pin them.
+case "$output" in
+*"$home/dotfiles/.agents/skills:$home/dotfiles/.agents/skills:ro"*)
+	printf 'skills are pinned read-only; sessions must be able to edit them\n' >&2
+	exit 1
+	;;
+esac
 case "$output" in
 *"$home/.config/codex/config.toml:$home/.config/codex/config.toml"*) ;;
 *)

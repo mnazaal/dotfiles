@@ -23,7 +23,7 @@ RO_LAST+=(
 	"$H/dotfiles/.config/renv"
 	"$H/dotfiles/.config/git/hooks"
 	"$H/dotfiles/.local/scripts"
-  "$H/dotfiles/.agents/skills"
+  # "$H/dotfiles/.agents/skills"
 	# Shell-startup files (machinery tier in sensitive-paths.json): hijacking
 	# one persists across sessions outside any sandbox.
 	"$H/dotfiles/.config/zsh"
