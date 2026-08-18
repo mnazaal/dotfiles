@@ -59,6 +59,11 @@ rejected-commit round-trip.
    )"
    ```
 6. `git show --stat HEAD` — confirm the commit contains *every* file you intended, not just that it looks plausible. A failed pathspec in a multi-path `git add` (e.g. a path already `git rm`'d) aborts the whole add, silently leaving the rest unstaged — a mixed `rm`+`add` refactor can commit a half-migration (broken imports) this way.
+7. Commit time is an orientation checkpoint: when presenting the commit, add
+   one line at project level — what the project now has that it didn't. If a
+   hard-to-reverse decision or dead end was reached since the last commit and
+   is not in PLAN.md (decision log / risks), offer to record it
+   (`research-plan` shape) before committing.
 
 ## Phase 2: Integration
 

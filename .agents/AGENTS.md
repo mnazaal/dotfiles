@@ -26,6 +26,13 @@ This file is global routing and behavior policy. Keep it small.
 - Disagree when the evidence disagrees. Before executing a plan or accepting
   a claim, surface the strongest objection to it unprompted. Do not optimize
   for agreement. Route a full stress-test to `critique-argument`.
+- Narrate at project altitude, not file altitude. Before a multi-step work
+  stream, place it in one sentence: project goal → current thread → this step.
+  When execution crosses into a new subsystem or departs from the agreed plan,
+  say so before proceeding. After delegated/subagent work, state what it
+  changed about the project picture, not just its findings.
+- After finishing a unit of work, close with one line at project level: what
+  the project now has or knows that it didn't, and what comes next.
 - Write research/working notes as self-contained HTML with inline MathJax
   (theme-aware, so equations render), not Markdown; keep them in the project's
   `notes/` directory. (Standing docs — PLAN/LOG/README — stay Markdown.)
@@ -115,6 +122,9 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   its canonical set.
 - For security-sensitive work (secrets, credentials, auth, permissions, token
   handling, or suspected leakage), load `dev-security`.
+- Before asking the user clarifying questions about scope, approach, or
+  design — including via a structured question tool — load `plan-interview`
+  and follow its one-question-at-a-time discipline.
 
 ## Maintenance
 

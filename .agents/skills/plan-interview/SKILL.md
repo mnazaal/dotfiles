@@ -1,6 +1,6 @@
 ---
 name: plan-interview
-description: Use when a plan, design, implementation approach, research direction, or workflow change needs structured questioning before execution; also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
+description: Load BEFORE asking the user any clarifying question about scope, approach, requirements, or design — including before every structured question tool call (e.g. AskUserQuestion) on a plan, implementation approach, research direction, or workflow change; also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
 ---
 
 # Skill: Plan Interview
@@ -15,6 +15,9 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 
 - Ask exactly one focused question at a time.
 - Include a recommended/default answer with each question.
+- A harness's structured question tool (e.g. AskUserQuestion) is a delivery
+  mechanism, not a substitute for this skill: still one decision per ask,
+  with the recommended default marked as such.
 - If a question times out (user away), record your recommendation as the
   provisional answer, post the remaining question queue with recommendations,
   and stop; confirm provisional answers when the user returns.

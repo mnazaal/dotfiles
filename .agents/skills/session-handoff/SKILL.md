@@ -80,7 +80,11 @@ Read what this skill writes BEFORE acting:
 4. Verify live state before trusting any of it: `git branch --show-current`,
    uncommitted/unmerged work, and any experiments still running (cluster jobs,
    background tasks).
-5. Confirm the next action with the user, then route.
+5. Reconstruct for the user, not just yourself: open with ≤3 lines of frame —
+   what problem the project solves, the current thread, and where the next
+   action sits in it — before the entry-point details. Resuming agent state
+   without restating the frame starts the session with the user already lost.
+6. Confirm the next action with the user, then route.
 
 No handoff artifact / generic "catch me up" → `research-session` Session Start.
 If the artifact reconstructs agent state but the user has lost their own grasp
