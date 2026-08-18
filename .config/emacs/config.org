@@ -46,8 +46,7 @@ Sensible defaults.
   (scroll-bar-mode nil)
   (blink-cursor-mode nil)
   (read-file-name-completion-ignore-case t)
-  (completion-ignore-case t)
-  (use-package-compute-statistics t)
+(use-package-compute-statistics t)
   (column-number-mode nil)
   (large-file-warning-threshold (* 64 1024 1024)) ;; 64 MB
   (read-process-output-max (* 1 1024 1024)) ;; 1 MB
@@ -86,7 +85,6 @@ Sensible defaults.
           (start-process "xdg-open" nil "setsid" "-f" "xdg-open" url)
           t))
   (setq plstore-cache-passphrase-for-symmetric-encryption t)
-  (setq epa-file-cache-directory (expand-file-name "~/.cache/gnupg"))
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
   ;; pzi manages bibliography.bib; zotero.bib is the retired Zotero export.
   (setq bib-file (expand-file-name "bibliography.bib" bib-directory))
@@ -430,7 +428,6 @@ To add multiple tags, add =:= after current tag.
   (org-agenda-prefix-format '((dashboard-agenda . " %i %-12:c %s ")
                               (agenda . "○  %-12t %s")
                               (todo . "○ %s")))
-  (org-done-archive-file (expand-file-name "agenda/inbox.org_archive" org-directory))
   (org-archive-mark-done t)
   (org-agenda-window-setup 'only-window)
   (org-agenda-sorting-strategy '((agenda time-up)
@@ -502,7 +499,6 @@ Perform encryption on org headings with the =crypt= tag.
       :if-new (file+head "%<%Y%m%d%H%M%S>-${citar-citekey}.org" "#+title: ${citar-title} - ${citar-date}\n")
       :unnarrowed t)))
   :bind
-  ("C-c n f" . org-roam-node-find)
   ("C-c n l" . org-roam-buffer-toggle)
   (:map org-mode-map
         ("C-c n i" . org-roam-node-insert))
@@ -768,7 +764,7 @@ Some tips and tricks of using TRAMP is detailed in [[https://willschenk.com/arti
 (use-package tramp
   :ensure nil
   :config
-  (with-eval-after-load 'tramp (setenv "SHELL" "/bin/zsh"))
+  (setenv "SHELL" "/bin/zsh")
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
   (add-to-list 'tramp-remote-path "~/.local/bin")
   (tramp-set-completion-function "ssh"
@@ -807,7 +803,6 @@ Important note, the fontifying org-cite links takes a lot of time, so manually r
   (org-cite-activate-processor 'citar)
   (citar-notes-paths (list (expand-file-name "data" org-directory)))
   (citar-symbol-separator "  ")
-  ;; (citar-org-activation-functions ((lambda (&rest _args) nil))) ;; *Significant* speedup when using org-citar with large .bib files
   (citar-org-activation-functions '(ignore))
   (citar-bibliography org-cite-global-bibliography)
   (org-cite-csl-styles-dir (expand-file-name "csl" bib-directory))
@@ -874,9 +869,7 @@ Keybindings are based on suggestions from the =consult= documentation.
   :config
   (dolist (regexp sensitive-file-regexps)
     (add-to-list 'consult-preview-excluded-files regexp))
-  ;; (add-to-list 'consult-preview-excluded-files "[.]\\(gpg\\|GPG\\)$")
   (setq consult-ripgrep-args (concat consult-ripgrep-args " --hidden --ignore-vcs -g !.git/"))
-  ;; (setq consult-find-args "find . -not ( -path '*/.git*' -prune )")
   (setq consult-fd-args "fd --full-path --hidden --exclude .git --color=never")
   :bind
   ([remap isearch-forward]      . consult-line)           ;; C-s
@@ -1104,7 +1097,7 @@ Template expansion layered on top of CAPF completion.
   ((prog-mode org-mode) . tempel-setup-capf)
   :bind
   ("M-+" . tempel-complete) ;; Alternative tempel-expand
-  ("M->" . tempel-insert) ;; M->
+  ("M->" . tempel-insert)
   (:map tempel-map
         ("RET" . tempel-next)))
 #+end_src
@@ -1257,8 +1250,6 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
                '((markdown-mode org-mode latex-mode LaTeX-mode) . ("harper-ls" "--stdio")))
   :custom
   (eglot-prefer-plaintext t) ;; TODO Fix HTML artefacts in eldoc-doc-buffer
-  (eglot-log-events nil)
-  (eglot-events-buffer-size 2000)
   :bind
   ([remap pop-tag-mark] . xref-go-back) ;; C-t
   ("M-<"                . xref-go-forward)
@@ -1292,13 +1283,8 @@ Python debugger via Debug Adapter Protocol. Requires =debugpy=.
   (dape-key-prefix (kbd "C-c d"))
   :bind
   (:map dape-global-map
-        ("d" . dape)
-        ("b" . dape-breakpoint-toggle)
-        ("n" . dape-next)
-        ("i" . dape-step-in)
-        ("o" . dape-step-out)
-        ("c" . dape-continue)
-        ("q" . dape-quit)))
+        ;; Overrides dape-info on "i"; the rest of dape-global-map is left at its defaults.
+        ("i" . dape-step-in)))
 #+end_src
 
 ** rainbow-delimiters                                           :text:visual:
@@ -1424,7 +1410,6 @@ conflicts (so the =e= then =A=/=B= merge workflow above still applies).
   :custom
   (diff-hl-update-async t)
   :hook
-  ;; (after-init . global-diff-hl-mode)
   ((prog-mode text-mode conf-mode) . diff-hl-mode)
   (diff-hl-mode . diff-hl-flydiff-mode)
   (vc-dir-mode . turn-on-diff-hl-mode))
@@ -1487,7 +1472,6 @@ Manage multiple =vterm= buffers.
   :custom
   (popper-reference-buffers '("^\\*vterm.*\\*$"
                               "^\\*eldoc.*\\*$"
-                              "^\\*ChatGPT.*\\*$"
                               "^\\*Gemini.*\\*$"
                               "^\\*Claude.*\\*$"
                               "^\\*TeX Help\\*$"
@@ -1679,11 +1663,6 @@ For reading EPUB files.
   :mode ("\\.epub\\'" . nov-mode)
   :custom
   (nov-variable-pitch nil))
-#+end_src
-
-** sqlite3                                                            :notes:
-#+begin_src emacs-lisp
-(use-package sqlite3)
 #+end_src
 
 ** ledger-mode                                          :personal_management:
