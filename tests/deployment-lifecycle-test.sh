@@ -45,6 +45,36 @@ done
 	exit 1
 }
 
+# --no-folding deploys real directories, so unstowing alone leaves them behind;
+# an emptied skill directory reads as a skill with no SKILL.md to anything
+# enumerating that tree.
+[ ! -d "$home/.agents/skills/dev-git" ] || {
+	printf 'make clean left an emptied deployed directory behind\n' >&2
+	exit 1
+}
+
+# Renaming repository content strands the links deployed under the old name:
+# stow no longer knows about them, so only the DEEP sweep can see them.
+renamed_home="$tmp/renamed-home"
+renamed_repo="$tmp/renamed-repo"
+mkdir -p "$renamed_home"
+cp -a "$repo" "$renamed_repo"
+
+make --no-print-directory -C "$renamed_repo" link HOME="$renamed_home" >/dev/null
+mv "$renamed_repo/.agents/skills/dev-scout" "$renamed_repo/.agents/skills/dev-scout-renamed"
+
+make --no-print-directory -C "$renamed_repo" clean HOME="$renamed_home" >/dev/null
+[ -L "$renamed_home/.agents/skills/dev-scout/SKILL.md" ] || {
+	printf 'expected the stale link to survive plain clean (test premise is wrong)\n' >&2
+	exit 1
+}
+
+make --no-print-directory -C "$renamed_repo" clean DEEP=1 HOME="$renamed_home" >/dev/null
+[ ! -L "$renamed_home/.agents/skills/dev-scout/SKILL.md" ] || {
+	printf 'make clean DEEP=1 left a stale link behind\n' >&2
+	exit 1
+}
+
 # The checkout commonly lives beneath $HOME.  Cleanup must not mistake its
 # internal links for deployed links merely because they point back into it.
 nested_home="$tmp/nested-home"

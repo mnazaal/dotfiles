@@ -1,50 +1,48 @@
-.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync _link-codex-skills _clean-codex-skills
+.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync
 
 help:
 	@printf '%s\n' \
 		'link   - stow repository files and link Codex skills' \
-		'clean  - silently remove only repository-owned links from HOME' \
+		'clean  - silently remove links this repository deployed (DEEP=1 also sweeps $$HOME for links left by renames)' \
 		'test   - run isolated repository behavior tests' \
 		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)'
 
+# Codex reads its own skills directory, and writes its bundled `.system` skills
+# into it — so that directory cannot be one symlink to .agents/skills. Codex
+# also skips a skill whose SKILL.md is itself a symlink (openai/codex#17344),
+# which rules out pointing at the stowed ~/.agents/skills (stow --no-folding
+# makes every SKILL.md a link). Stowing the skills package with folding gives
+# one directory symlink per skill, each resolving to a real repository
+# directory holding a real SKILL.md. The `cd /` escapes this repo's .stowrc,
+# which sets --no-folding globally and has no positive counterpart to override
+# it; GNU Stow reads .stowrc from the working directory.
 link:
 	stow --target="$(HOME)" --no-folding .
-	$(MAKE) _link-codex-skills
+	@mkdir -p "$(HOME)/.config/codex/skills"
+	cd / && stow --dir="$(CURDIR)/.agents" --target="$(HOME)/.config/codex/skills" skills
 
-_link-codex-skills:
-	@set -eu; \
-	mkdir -p "$(HOME)/.config/codex/skills"; \
-	for d in "$(CURDIR)"/.agents/skills/*; do \
-		name="$$(basename "$$d")"; \
-		source="$$(readlink -f "$$d")"; \
-		target="$(HOME)/.config/codex/skills/$$name"; \
-		if [ -e "$$target" ] && [ ! -L "$$target" ]; then \
-			printf 'refusing to replace non-symlink Codex skill target: %s\n' "$$target" >&2; \
-			exit 1; \
-		fi; \
-		if [ -L "$$target" ]; then rm "$$target"; fi; \
-		ln -s "$$source" "$$target"; \
-	done
-
-# The $HOME symlink sweep also removes codex skill links (they resolve into
-# .agents/skills), so clean does not need _clean-codex-skills; the target is
-# kept for tests/codex-skills-link-test.sh.
+# Undo what link deployed, driven by the repository tree rather than by a walk
+# of $HOME: stow removes its own links, the codex package removes its own, and
+# the rmdir pass clears directories --no-folding left behind.
+#
+# DEEP=1 adds a full sweep of $HOME for any link resolving into the repository.
+# It walks every inode under $HOME, so it is not the everyday path; it catches
+# the one case the steps above cannot see — links left behind when repository
+# content is renamed or removed, which no longer correspond to anything stow
+# knows about.
 clean:
-	@DOTFILES="$(CURDIR)" find "$(HOME)" \
-		-path "$(HOME)/.local/share/containers" -prune -o \
-		-path "$(CURDIR)" -prune -o \
-		-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +
-
-_clean-codex-skills:
-	@set -eu; \
-	for d in "$(CURDIR)"/.agents/skills/*; do \
-		name="$$(basename "$$d")"; \
-		source="$$(readlink -f "$$d")"; \
-		target="$(HOME)/.config/codex/skills/$$name"; \
-		if [ -L "$$target" ] && [ "$$(readlink -f "$$target")" = "$$source" ]; then \
-			rm "$$target"; \
-		fi; \
-	done
+	@stow --target="$(HOME)" --no-folding -D .
+	@if [ -d "$(HOME)/.config/codex/skills" ]; then \
+		cd / && stow --dir="$(CURDIR)/.agents" --target="$(HOME)/.config/codex/skills" -D skills; \
+	fi
+	@cd "$(CURDIR)" && find . -mindepth 1 -depth -type d | sed 's|^\./||' | \
+		while IFS= read -r dir; do rmdir "$(HOME)/$$dir" 2>/dev/null || true; done
+	@if [ -n "$(DEEP)" ]; then \
+		DOTFILES="$(CURDIR)" find "$(HOME)" \
+			-path "$(HOME)/.local/share/containers" -prune -o \
+			-path "$(CURDIR)" -prune -o \
+			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
+	fi
 
 check: test check-agent-role-sync check-guardrails-native-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
