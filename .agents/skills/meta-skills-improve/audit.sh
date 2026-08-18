@@ -27,7 +27,12 @@ CANDIDATE_DIRS=(
 	"$HOME/.config/agent/sessions"
 )
 
-SKILLS="${2:-$HOME/.agents/skills}"
+# Default is the deployed Claude skills path. If the skills dir is missing,
+# sections 2 and 3 emit `ls: cannot access` and report every skill as "fired
+# but no directory" — a broken audit that still prints plausibly (observed
+# 2026-08-18 when the previous ~/.agents/skills default was transiently absent;
+# both paths resolve to the repo tree when deployed).
+SKILLS="${2:-$HOME/.claude/skills}"
 MARKER='"skill":"[a-zA-Z0-9_-]*"'
 
 TRANSCRIPTS="${1:-${AGENT_TRANSCRIPT_DIR:-}}"
