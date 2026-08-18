@@ -7,7 +7,6 @@ local function plugin_specs()
     { src = "https://github.com/williamboman/mason.nvim", name = "mason.nvim" },
     { src = "https://github.com/neovim/nvim-lspconfig", name = "nvim-lspconfig" },
     { src = "https://github.com/stevearc/conform.nvim", name = "conform.nvim" },
-    { src = "https://github.com/nvim-lua/plenary.nvim", name = "plenary.nvim" },
     { src = "https://github.com/ibhagwan/fzf-lua", name = "fzf-lua" },
     { src = "https://github.com/stevearc/oil.nvim", name = "oil.nvim" },
     { src = "https://github.com/folke/which-key.nvim", name = "which-key.nvim" },
@@ -18,32 +17,6 @@ local function plugin_specs()
   }
 end
 
-local function ensure_final_newline(path)
-  local file = io.open(path, "r")
-  if not file then
-    return
-  end
-
-  local content = file:read("*a")
-  file:close()
-
-  if content == "" or content:sub(-1) == "\n" then
-    return
-  end
-
-  file = io.open(path, "a")
-  if not file then
-    return
-  end
-
-  file:write("\n")
-  file:close()
-end
-
-local function normalize_pack_lock()
-  ensure_final_newline(vim.fn.stdpath("config") .. "/nvim-pack-lock.json")
-end
-
 local function install_and_load(specs)
   local ok, err = pcall(vim.pack.add, specs, { load = true })
 
@@ -52,8 +25,6 @@ local function install_and_load(specs)
       vim.notify(tostring(err), vim.log.levels.ERROR)
     end)
   end
-
-  normalize_pack_lock()
 
   return ok
 end

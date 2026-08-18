@@ -1,5 +1,3 @@
--- Completion: blink.cmp
-
 local M = {}
 
 local function options()
@@ -12,22 +10,10 @@ local function options()
       ["<C-k>"] = { "select_prev", "fallback" },
       ["<Esc>"] = { "hide", "fallback" },
     },
-    appearance = {
-      nerd_font_variant = "mono",
-    },
-    completion = {
-      menu = {
-        auto_show = true,
-      },
-      documentation = {
-        auto_show = false,
-      },
-    },
+    -- Drops "snippets" from blink's default source list, matching
+    -- snippetSupport = false in lsp.lua.
     sources = {
       default = { "lsp", "path", "buffer" },
-    },
-    fuzzy = {
-      implementation = "prefer_rust_with_warning",
     },
   }
 end

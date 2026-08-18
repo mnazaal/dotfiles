@@ -1,14 +1,9 @@
--- LSP: Mason + built-in config/enable flow
-
 local M = {}
 
 local function configure_diagnostics()
   vim.diagnostic.config({
     virtual_text = true,
-    underline = true,
-    update_in_insert = false,
     severity_sort = true,
-    signs = true,
   })
 end
 
@@ -219,9 +214,6 @@ local function configure_lsp_attach()
 
       map("gd", vim.lsp.buf.definition, "Go to definition")
       map("gD", vim.lsp.buf.declaration, "Go to declaration")
-      map("gr", vim.lsp.buf.references, "Find references")
-      map("gi", vim.lsp.buf.implementation, "Go to implementation")
-      map("K", vim.lsp.buf.hover, "Hover documentation")
       map("<leader>rn", vim.lsp.buf.rename, "Rename symbol")
       map("<leader>ca", vim.lsp.buf.code_action, "Code actions")
     end,
@@ -229,8 +221,6 @@ local function configure_lsp_attach()
 end
 
 local function configure_diagnostic_keymaps()
-  vim.keymap.set("n", "]d", function() vim.diagnostic.jump({ count = 1, float = true }) end, { desc = "Next diagnostic" })
-  vim.keymap.set("n", "[d", function() vim.diagnostic.jump({ count = -1, float = true }) end, { desc = "Prev diagnostic" })
   vim.keymap.set("n", "<leader>dl", vim.diagnostic.open_float, { desc = "Diagnostic list" })
   vim.keymap.set("n", "<leader>dq", vim.diagnostic.setloclist, { desc = "Diagnostic quickfix" })
 end

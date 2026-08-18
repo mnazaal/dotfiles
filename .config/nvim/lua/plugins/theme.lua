@@ -4,10 +4,8 @@ local function options()
   return {
     flavour = "mocha",
     transparent_background = true,
+    -- fzf and gitsigns are on by default; which_key is not.
     integrations = {
-      fzf = true,
-      gitsigns = true,
-      treesitter = true,
       which_key = true,
     },
   }

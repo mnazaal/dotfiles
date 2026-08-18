@@ -1,5 +1,3 @@
--- ACP (Agent Client Protocol) integration.
-
 local M = {}
 
 local default_provider = "opencode-acp"

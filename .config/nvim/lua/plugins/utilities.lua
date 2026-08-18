@@ -1,5 +1,3 @@
--- Utilities: fzf-lua, Oil, which-key, gitsigns, and leap.
-
 local M = {}
 
 local function fzf_lua_options()
@@ -14,9 +12,7 @@ end
 
 local function oil_options()
   return {
-    default_file_explorer = true,
     columns = { "icon" },
-    keep_old_floats = true,
     float_options = {
       border = "rounded",
       winblend = 0,

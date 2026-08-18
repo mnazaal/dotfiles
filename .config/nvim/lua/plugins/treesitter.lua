@@ -1,5 +1,3 @@
--- Treesitter: syntax highlighting and folding
-
 local M = {}
 
 local function parsers()

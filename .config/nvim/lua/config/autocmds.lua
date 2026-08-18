@@ -1,5 +1,3 @@
--- Autocommands.
-
 local augroup = vim.api.nvim_create_augroup("UserConfig", {})
 local agentic_filetypes = { "AgenticInput", "AgenticChat", "AgenticFiles", "AgenticDiff" }
 
