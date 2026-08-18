@@ -57,12 +57,12 @@ Code runs, loss changes, logs look plausible, but the experiment is wrong.
 - Owns diagnosis of a run that completed and is wrong: the ladder, the probes, the conventions.
 - Anything that crashes or errors has a symptom to reproduce — `debug-root-cause`. A failed *statistical* assertion (recovery threshold, calibration bound, metric bar) is not that: it reproduces trivially, and the open question is whether the asserted number was ever right. That is this skill — routing it to `debug-root-cause` burns the run budget re-observing a number nobody has justified.
 - A run that is valid and merely disappointing is not broken; `research-run` decides what it means.
-- Building the data path is `dev-ml-data`; this skill is what you reach for once a data bug already reached a run.
+- Building the data path is `dev-ml-infra` (its data rules); this skill is what you reach for once a data bug already reached a run.
 - Writing these checks as standing tests before the failure is `dev-tdd`.
 
 ## Related Skills
 
 - `debug-root-cause` for crash-type bugs.
-- `dev-ml-data` for building the data handling whose failures this skill diagnoses.
-- `dev-jax` / `dev-pytorch` for framework-specific fixes.
+- `dev-ml-infra` for building the data handling whose failures this skill diagnoses.
+- `dev-jax` for framework-specific fixes.
 - `research-run` for interpreting completed runs.

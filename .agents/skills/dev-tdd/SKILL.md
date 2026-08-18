@@ -41,7 +41,7 @@ silently critical, because that is the class where nothing fails loudly:
 
 - Losses, log-probs, samplers, transforms and their Jacobians, custom gradients,
   normalizations, numerical kernels.
-- Data and eval paths that could leak or misalign labels (`dev-ml-data`).
+- Data and eval paths that could leak or misalign labels (`dev-ml-infra`).
 - Public API, CLI, and serialization — anything defining an external contract or
   able to silently corrupt stored data.
 

@@ -44,6 +44,6 @@ description: Use for minimal software solutions: YAGNI, simplest correct code, s
 
 ## Related Skills
 
-- `dev-python`, `dev-jax`, or `dev-pytorch` for framework-specific implementation.
+- `dev-python` or `dev-jax` for framework-specific implementation.
 - `dev-tdd` for behavior-first changes.
 - `decide-priority` when questioning whether work should happen.

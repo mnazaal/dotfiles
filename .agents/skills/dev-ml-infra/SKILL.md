@@ -1,6 +1,6 @@
 ---
 name: dev-ml-infra
-description: Use for ML experiment infrastructure: hydra-zen configs, config management, experiment tracking, MLflow, wandb, tracker seams, progress bars, tqdm, long-run log output, training-pipeline smoke tests.
+description: Use for ML experiment infrastructure and data handling: train/val/test splits, grouped and temporal splitting, preprocessing statistics and caches, dataloader determinism, data leakage prevention, hydra-zen configs, config management, experiment tracking, MLflow, wandb, tracker seams, progress bars, tqdm, long-run log output, training-pipeline smoke tests.
 ---
 
 # Skill: Dev ML Infra
@@ -126,16 +126,18 @@ python -m project_name.run method=my_method data=synthetic seed=0
 ## Boundary
 
 - Owns the experiment scaffolding: repo layout, hydra-zen config, tracker seam, progress output, the smoke run, the one entry point.
-- What goes inside `data/` — provenance, splits, preprocessing statistics — is `dev-ml-data`.
-- The model and numerics behind the entry point are `dev-jax` / `dev-pytorch`.
+- What goes inside `data/`: fit preprocessing on train only — fit-then-split
+  is the most common silent leak; split on the grouping unit, not the row;
+  persist seeded splits as ID lists; cache keys cover the preprocessing code
+  version; seed loader workers, not just the model.
+- The model and numerics behind the entry point are `dev-jax`.
 - Getting these configs onto a cluster, and everything about submission, is `dev-hpc`.
 - Interpreting what the runs produced is `research-run`; this skill only ensures they are comparable and reproducible.
 
 ## Related Skills
 
 - `dev-python` for project/env conventions.
-- `dev-ml-data` for what goes in `data/`: provenance, splits, preprocessing statistics, caches.
-- `dev-jax` / `dev-pytorch` for the model code itself.
+- `dev-jax` for the model code itself.
 - `dev-tdd` and `dev-verification` for the e2e-evidence discipline.
 - `research-run` for interpreting the runs this infra produces.
 - `debug-ml-research` when a run is plausible but wrong.

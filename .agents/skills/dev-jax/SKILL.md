@@ -1,6 +1,6 @@
 ---
 name: dev-jax
-description: Use for JAX code: jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML.
+description: Use for JAX code, porting a reference ML implementation (PyTorch/NumPy/SciPy) to JAX with parity testing, reading PyTorch reference code, and slow or OOMing ML jobs (profiling, step timing, memory): jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML.
 ---
 
 # Skill: Dev JAX
@@ -71,14 +71,30 @@ arr = arr.at[i].set(val)
 ## Boundary
 
 - Owns JAX idioms: transformations, PRNG discipline, pytrees, jit/vmap/scan, and the library choices above.
-- A slow or OOMing job is not a JAX question until the bottleneck is named — `dev-ml-perf` first, then come back.
+- A slow or OOMing job: name the bottleneck before tuning. Sync before timing
+  (`block_until_ready`) and discard compile steps from averages; ask in order —
+  is the GPU busy at all → input-bound → retracing → only then optimize
+  compute. For OOM, measure what actually allocates before shrinking anything;
+  batch size is the last knob, not the first.
 - A run that completes and is wrong is `debug-ml-research`, not a transformation bug.
-- Matching another implementation's numbers is `dev-jax-port`; this skill assumes JAX is the source of truth, that one assumes it is not.
+- Matching another implementation's numbers: Porting & Reference Reading below; the rest of this skill assumes JAX is the source of truth, a port assumes it is not.
+
+## Porting & Reference Reading
+
+- Parity, not plausibility: never claim a port correct because the code "looks
+  equivalent" — verify layer by layer, bottom-up, against recorded reference
+  inputs/outputs. Replay the reference's recorded stochastic decisions
+  (sampled actions, dropout masks); never re-sample and eyeball distributions.
+- float64-agrees / float32-disagrees is conditioning, not a port bug.
+  Finite-difference the gradients when autodiff parity is in doubt.
+- Reading PyTorch reference code: inventory every RNG site (init order,
+  DataLoader workers, augmentation); weight layout is convention (`nn.Linear`
+  stores W^T) — record layouts at the conversion boundary; harness hooks
+  (Lightning) hide the real train step — find it before porting; train/eval
+  mode silently changes the numbers you compare against.
 
 ## Related Skills
 
 - `dev-python` for Python project/tooling conventions.
-- `dev-pytorch` when the task involves reading or running PyTorch code, even if the target is JAX — load it alongside this skill rather than inferring torch idioms.
 - `debug-ml-research` for silent experiment failures.
-- `dev-ml-perf` when the job is slow or OOMs — name the bottleneck before tuning here.
 - `dev-verification` before completion claims.
