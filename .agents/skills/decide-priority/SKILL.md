@@ -24,5 +24,5 @@ description: Use to choose next action under uncertainty: prioritize tasks, purs
 
 ## Related Skills
 
-- `research-protocol` for research idea decisions.
+- `research-session` for research idea decisions (pursue/refine/park/kill).
 - `debug-*` when uncertainty is caused by unknown root cause.
