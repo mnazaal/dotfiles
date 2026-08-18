@@ -21,6 +21,12 @@ description: Use for git history rewriting and recovery: interactive rebase, squ
    block it — hand this step to the user rather than trying to work around the hook.
 7. Before running `git rebase --abort`, check `git log` first — the branch may already be
    at the correct new state, and abort will discard it.
+8. Verify a rewrite by comparing **tree hashes**, not by reading the log:
+   `git rev-parse <old>^{tree}` equal to `git rev-parse <new>^{tree}` proves no content
+   moved. A linear-looking log says nothing about whether a commit was silently dropped.
+9. Treat the pre-rewrite backup as a ref you only ever *read*. `git rebase <backup>`
+   fast-forwards the branch back onto the old tip, silently reinstating the state the
+   rewrite was escaping — and the result looks like the rewrite simply never happened.
 
 ## Recovery
 

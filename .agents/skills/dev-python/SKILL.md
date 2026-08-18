@@ -21,6 +21,8 @@ description: Use for Python code/projects: pyproject.toml, virtual environments,
 - For greenfield ML research repo layout, follow `dev-ml-infra`'s Research Project Layout.
 - When promoting/moving code that already has many existing importers (e.g. test-helper logic being promoted to a real package location), a thin re-export shim (`from new.location import (names)` + matching `__all__`) is allowed only as a temporary migration tactic in the same change or a user-approved follow-up. Otherwise update importers and delete the old surface (`dev-ponytail`).
 - Hand-editing `pyproject.toml` dependencies does NOT update the lockfile (only `uv add`/`uv remove` do) — run `uv lock` and commit the refreshed lock in the *same* change. A stale committed lock isn't merely out of date: the next `uv sync` on any other machine (CI, a teammate, the cluster) re-resolves it into a *different* lock, so environments silently diverge.
+- A **library** does not cap its dependencies. An upper bound propagates to every downstream user and collides with other libraries' caps; when an incompatibility appears, fix it at your own boundary (lazy import, narrower surface) rather than freezing the user's stack — and check which package actually broke first, since capping the one that merely *changed* aims at the wrong dependency. Applications may pin; libraries constrain.
+- Keep heavy or optional third-party imports inside the function that uses them. A module-scope import puts that dependency and its whole transitive tree on the import path of the entire package, so an upstream break anywhere in that tree makes `import yourpackage` fail for every user — including those who never touch the feature. Verify with `sys.modules` before and after the top-level import.
 
 ## Workflow
 
@@ -61,7 +63,7 @@ ty check                 # greenfield default; fall back to pyright/mypy where t
 
 ## Related Skills
 
-- `dev-jax` and `dev-pytorch` for framework-specific code.
+- `dev-jax` for framework-specific code.
 - `dev-ml-infra` for experiment config/tracking/progress conventions.
 - `dev-tdd` for test-first behavior.
 - `dev-verification` before completion claims.
