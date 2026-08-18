@@ -42,10 +42,14 @@ Use when evaluating a research idea, direction, or hunch ("should we try X", "is
 - Separate novelty, feasibility, payoff, and fit.
 
 1. Restate idea and target contribution.
-2. Generate plausible framings and alternatives.
-3. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, use `agent-orchestration` to spawn a constrained critique subagent.
-4. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
-5. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above.
+2. Match it against the project's recorded dead ends and ruled-out directions
+   (PLAN.md risks and decision log) by concept, not keyword — "night theme"
+   matches a dark-mode rejection. On a hit, surface the recorded reason and
+   ask whether it still holds before any fresh evaluation.
+3. Generate plausible framings and alternatives.
+4. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, use `agent-orchestration` to spawn a constrained critique subagent.
+5. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
+6. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above.
 
 ## Framing
 

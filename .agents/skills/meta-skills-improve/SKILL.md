@@ -18,6 +18,7 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - Keep skills short, operational, and action-oriented.
 - Prefer sharper gates over longer prose.
 - Test each new line with the no-op test: does it change behavior versus the model's default? If not, cut the whole sentence, not just trim it.
+- Prompt the positive: steering by prohibition drags the forbidden behavior into context. State the behavior to do; reserve "never X" for hard safety gates.
 - When collapsing duplication, prefer one strong term reused in body and description (a leading word) over deleting the extra copy and leaving the idea unanchored.
 - Whenever editing a skill, scan its existing body for sediment — content that no longer reflects current behavior — and propose removing it alongside the new addition.
 - Audit firing, not just content — see Firing Audit below. Reading a skill tells you whether it is good; only the transcripts tell you whether it runs.
@@ -56,7 +57,12 @@ What the sections are for:
 Read the output as three different diagnoses, not one:
 
 1. **Never fires** — wrong trigger words, or the skill is genuinely unwanted.
-   Only this one is fixed by editing a description.
+   Only this one is fixed by editing a description. The description is a
+   pointer, and its wording — not its target — decides firing: event-shaped
+   triggers ("when committing", "before any clarifying question") fire, while
+   judgment-shaped ones ("when work needs structured questioning") require the
+   model to admit a state it defaults out of. A must-have behavior behind a
+   weakly worded pointer is a variance bug, not a content problem.
 2. **Fires, but too late to matter** — the trigger describes the aftermath
    rather than the moment the advice would have changed something.
 3. **Fires, but the result is not what the user wanted** — the trigger is fine
