@@ -18,7 +18,9 @@ This file is global routing and behavior policy. Keep it small.
   keep using the name with the label, e.g. “compile-log check (Check 1)”, not
   “C1” alone.
 - Later references must be self-contained. Do not refer back to “the above
-  P1/T2” without restating the object in words.
+  P1/T2” without restating the object in words. A label from an external
+  artifact (review item, batch, ticket) is not exempt: restate it in words on
+  first use in each run — “item 323 (the bind-host allegation)”.
 - Headings and bullets should carry semantic content. Use “Next: verify LaTeX
   build” rather than “P1”, “Step 2”, or “Task B” when the item may be referenced
   later.
@@ -30,7 +32,9 @@ This file is global routing and behavior policy. Keep it small.
   stream, place it in one sentence: project goal → current thread → this step.
   When execution crosses into a new subsystem or departs from the agreed plan,
   say so before proceeding. After delegated/subagent work, state what it
-  changed about the project picture, not just its findings.
+  changed about the project picture, not just its findings. If you have run
+  more than ~10 tool calls since the user last spoke, spend one line
+  re-anchoring: what the project now has, and where this step sits.
 - After finishing a unit of work, close with one line at project level: what
   the project now has or knows that it didn't, and what comes next.
 - Write research/working notes as self-contained HTML with inline MathJax
