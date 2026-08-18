@@ -28,6 +28,10 @@ to `research-session`; if decisions are unresolved, route to `plan-interview`.
   building first risks polishing a dead thesis.
 - Record each hard-to-reverse decision in the decision log, as the question a
   future reader would ask, with the rejected alternatives.
+- An execution-order item that tempts scope creep carries its anti-scope
+  inline ("extract the two helpers; do not add a state-machine layer") — the
+  non-goal travels with the task a future session will actually read, not only
+  in the decision log.
 - Pin upstream API surfaces exactly (module paths, function names); flag
   anything unverified as a scaffold-time task rather than guessing.
 - Name the load-bearing ablation: the experiment separating the claimed

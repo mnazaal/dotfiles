@@ -27,7 +27,11 @@ Every delegated task states:
 1. Goal and non-goals.
 2. Exact scope: paths, files, repos, query terms, or artifacts.
 3. Whether the subagent may edit files. Default: read-only.
-4. Required output shape: findings, file:line evidence, risks, and next action.
+4. Required output shape: findings, file:line evidence, risks, and next
+   action. State it as a contract on the final message — the last message IS
+   the result, so name its exact shape (fields; a small JSON shape when the
+   result is consumed mechanically) and treat a final message that does not
+   match as an incomplete task, not a result to salvage.
 5. Verification expected, if any.
 6. Naming constraint: use descriptive task names; no opaque shorthand such as
    `P0/P1`, `T1/T2`, or `H1/H2` unless defined by the parent prompt. Subagent

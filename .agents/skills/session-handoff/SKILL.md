@@ -41,6 +41,12 @@ you, say so and offer, rather than writing.
    quirks found this session, scratchpad artifacts promoted into the repo and
    where they landed, and the single **entry point** — which section to read
    first and what concrete action follows, in words, never chat-local shorthand.
+   Three more things a cold reader cannot re-derive: corrections — where this
+   session found PLAN.md's picture of reality stale (route the fix per step 3;
+   the handoff names the correction so the next reader distrusts the right
+   sections); deviations from the agreed plan, each attributed — user-directed
+   or agent-decided; and exit criteria as runnable commands — the command(s)
+   whose output confirms the state the handoff claims.
    It sits above the plan because a cold reader needs it first, and it stays
    short because everything durable lives below it.
 3. Route durable content to its existing home rather than restating it: verdicts
@@ -79,7 +85,8 @@ Read what this skill writes BEFORE acting:
 3. The rest of `PLAN.md`: execution order, open risks, decision log.
 4. Verify live state before trusting any of it: `git branch --show-current`,
    uncommitted/unmerged work, and any experiments still running (cluster jobs,
-   background tasks).
+   background tasks). If the handoff carries exit-criteria commands, run them —
+   verification is then a paste, not a judgment call.
 5. Reconstruct for the user, not just yourself: open with ≤3 lines of frame —
    what problem the project solves, the current thread, and where the next
    action sits in it — before the entry-point details. Resuming agent state

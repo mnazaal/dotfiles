@@ -28,6 +28,11 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 - Do not mutate Org files, reschedule tasks, mark TODOs done, or create daily
   notes.
 - Ask only for missing context that materially changes today's plan.
+- When the brief runs on a schedule rather than by request: key it to the
+  intended calendar date, not the run time; after a gap produce one current
+  brief, never one per missed day; skip if today's brief artifact already
+  exists; and record a skipped or caught-up day in the brief itself rather
+  than staying silent about it.
 
 ## Workflow
 
