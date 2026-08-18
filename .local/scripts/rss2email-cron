@@ -2,45 +2,16 @@
 
 set -euo pipefail
 
-show_help() {
-	cat <<'EOF'
-rss2email-cron - run rss2email with private email addresses from pass
-
-USAGE:
-  rss2email-cron [r2e args...]
-  rss2email-cron --help
-
-DESCRIPTION:
-  Reads a primary email address from pass, derives the +rss alias, renders a
-  temporary rss2email config from the tracked public config, and runs r2e with
-  that temporary config.
-
-ENVIRONMENT:
-  R2E_BIN              Path to the r2e binary
-  RSS2EMAIL_CONFIG     Path to the tracked rss2email config with placeholders
-  PRIMARY_EMAIL_ENTRY  pass entry for the base email address
-  RSS_EMAIL_SUFFIX     Alias inserted before @ for rss mail
-  RSS2EMAIL_SENDMAIL   sendmail-compatible binary rendered into the config
-  IMAP_PASSWORD_ENTRY  pass entry for the Gmail app password used for IMAP auth
-
-NOTES:
-  PRIMARY_EMAIL_ENTRY defaults to `primary-gmail`.
-EOF
-}
-
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-	show_help
-	exit 0
-fi
-
-R2E_BIN="${R2E_BIN:-$HOME/.local/bin/r2e}"
-RSS2EMAIL_CONFIG="${RSS2EMAIL_CONFIG:-$HOME/.config/rss2email.cfg}"
-PRIMARY_EMAIL_ENTRY="${PRIMARY_EMAIL_ENTRY:-primary-gmail}"
-RSS_EMAIL_SUFFIX="${RSS_EMAIL_SUFFIX:-rss}"
-IMAP_PASSWORD_ENTRY="${IMAP_PASSWORD_ENTRY:-primary-gmail-secret}"
+# Reads the primary address from pass, derives the +rss alias, renders the
+# tracked config's placeholders into a temporary file, and runs r2e on it.
+R2E_BIN="$HOME/.local/bin/r2e"
+RSS2EMAIL_CONFIG="$HOME/.config/rss2email.cfg"
+PRIMARY_EMAIL_ENTRY="primary-gmail"
+RSS_EMAIL_SUFFIX="rss"
+IMAP_PASSWORD_ENTRY="primary-gmail-secret"
 # msmtp (pkgit-built) sends via the tracked ~/.config/msmtp/config; the
 # system /usr/sbin/sendmail has no configured MTA behind it on this host.
-RSS2EMAIL_SENDMAIL="${RSS2EMAIL_SENDMAIL:-$HOME/.local/bin/msmtp}"
+RSS2EMAIL_SENDMAIL="$HOME/.local/bin/msmtp"
 
 if [[ ! -x "$R2E_BIN" ]]; then
 	echo "rss2email-cron: r2e binary not executable: $R2E_BIN" >&2

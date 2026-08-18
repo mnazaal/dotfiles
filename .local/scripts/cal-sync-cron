@@ -2,30 +2,9 @@
 
 set -euo pipefail
 
-show_help() {
-	cat <<'EOF'
-cal-sync-cron - sync external calendars into local org agenda files
-
-USAGE:
-  cal-sync-cron
-  cal-sync-cron --help
-
-DESCRIPTION:
-  Runs `ical2org` for each configured calendar mapping.
-  Calendars without a matching encrypted ICS URL file are skipped.
-
-ENVIRONMENT:
-  SYNC_SCRIPT        Path to the `ical2org` script
-  PASSWORD_STORE_DIR Directory containing encrypted ICS URL files
-EOF
-}
-
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-	show_help
-	exit 0
-fi
-
-SYNC_SCRIPT="${SYNC_SCRIPT:-$HOME/.local/scripts/ical2org}"
+# Runs ical2org per calendar mapping; calendars with no encrypted ICS URL
+# file are skipped. PASSWORD_STORE_DIR is exported by the cron entry.
+SYNC_SCRIPT="$HOME/.local/scripts/ical2org"
 PASSWORD_STORE_DIR="${PASSWORD_STORE_DIR:-$HOME/.local/share/pass}"
 
 if [ ! -x "$SYNC_SCRIPT" ]; then

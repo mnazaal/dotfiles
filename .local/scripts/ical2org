@@ -35,17 +35,16 @@ NOTES:
   - Imported calendar files are generated; do not edit them manually.
   - `cal-sync-cron` usually sets PASS_FILE and ORGFILE explicitly, so the
     calendar name is mainly a human-readable label in that flow.
-  - If no calendar name is given, a backward-compatible default is used.
+  - If no calendar name is given, `aalto-outlook` is used.
 EOF
 }
 
-# Show help when requested.
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 	show_help
 	exit 0
 fi
 
-CALENDAR_NAME="${1:-${ICAL2ORG_CALENDAR_NAME:-${ICAL2ORG_PROFILE:-aalto-outlook}}}"
+CALENDAR_NAME="${1:-aalto-outlook}"
 
 if [[ ! "$CALENDAR_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
 	echo "Error: invalid calendar name: $CALENDAR_NAME" >&2
@@ -53,15 +52,12 @@ if [[ ! "$CALENDAR_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
 	exit 1
 fi
 
-# Default configuration.
-WGET="${WGET:-wget}"
-ICS2ORG="${ICS2ORG:-$HOME/.local/bin/ical2orgpy}"
-GPG_HOMEDIR="${GPG_HOMEDIR:-$HOME/.local/share/gnupg}"
+ICS2ORG="$HOME/.local/bin/ical2orgpy"
+GPG_HOMEDIR="$HOME/.local/share/gnupg"
 PASS_FILE="${PASS_FILE:-$HOME/.local/share/pass/${CALENDAR_NAME}-ics.gpg}"
 ORGFILE="${ORGFILE:-$HOME/org/agenda/${CALENDAR_NAME}.org}"
-HSTS_FILE="${HSTS_FILE:-$HOME/.local/share/wget-hsts}"
+HSTS_FILE="$HOME/.local/share/wget-hsts"
 
-# Verify required tools and input files.
 if ! command -v "$ICS2ORG" >/dev/null 2>&1; then
 	echo "Error: ical2orgpy not found at $ICS2ORG" >&2
 	echo "Install with: uv tool install ical2orgpy" >&2
@@ -80,16 +76,15 @@ fi
 
 mkdir -p "$(dirname "$ORGFILE")"
 
-# Create temporary files.
 ICSFILE=$(mktemp)
 URLFILE=$(mktemp)
 trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
 
 # Decrypt the URL and download the calendar without exposing the URL in argv.
 gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty --decrypt "$PASS_FILE" >"$URLFILE"
-"$WGET" --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE"
+# -nv: cron runs this every 10 minutes; wget progress dots dominated the log.
+wget -nv --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE"
 
-# Convert the calendar to org format.
 "$ICS2ORG" "$ICSFILE" "$ORGFILE"
 
 echo "Synced calendar '$CALENDAR_NAME' to: $ORGFILE"

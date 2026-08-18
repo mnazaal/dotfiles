@@ -2,39 +2,13 @@
 
 set -euo pipefail
 
-show_help() {
-	cat <<'EOF'
-notmuch-cron - wrapper with private email address from pass
+# Renders a temporary notmuch config from the tracked public one with the
+# primary email injected from pass, then delegates to the real binary.
+NOTMUCH_BASE_CONFIG="$HOME/.config/notmuch/default/config"
+NOTMUCH_EMAIL_ENTRY="primary-gmail"
+REAL_NOTMUCH=$(command -v notmuch || echo "$HOME/.local/bin/notmuch")
 
-USAGE:
-  notmuch-cron [args...]
-  notmuch-cron --help-wrapper
-
-DESCRIPTION:
-  Looks up the real `notmuch` binary outside this wrapper, creates a temporary
-  config from the tracked public config, injects the primary email from `pass`,
-  and then delegates to the real command with `--config`.
-
-ENVIRONMENT:
-  NOTMUCH_BASE_CONFIG   Path to the tracked notmuch config
-  NOTMUCH_EMAIL_ENTRY   pass entry containing the primary email address
-
-NOTES:
-  NOTMUCH_EMAIL_ENTRY defaults to `primary-gmail`.
-EOF
-}
-
-if [[ "${1:-}" == "--help-wrapper" || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-	show_help
-	exit 0
-fi
-
-NOTMUCH_BASE_CONFIG="${NOTMUCH_BASE_CONFIG:-$HOME/.config/notmuch/default/config}"
-NOTMUCH_EMAIL_ENTRY="${NOTMUCH_EMAIL_ENTRY:-primary-gmail}"
-REAL_NOTMUCH=$(which -a notmuch | grep -Fvx "$HOME/.local/scripts/notmuch-cron" | head -1 || true)
-[ -n "$REAL_NOTMUCH" ] || REAL_NOTMUCH="$HOME/.local/bin/notmuch"
-
-{ [ -z "$REAL_NOTMUCH" ] || [ ! -x "$REAL_NOTMUCH" ]; } && {
+[ -x "$REAL_NOTMUCH" ] || {
 	echo "notmuch: command not found" >&2
 	exit 127
 }
