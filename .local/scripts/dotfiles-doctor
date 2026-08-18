@@ -118,9 +118,7 @@ if command -v ssh >/dev/null 2>&1; then
 		*) control_path="$HOME/$control_path" ;;
 		esac
 		control_parent="${control_path%/*}"
-		if [[ "$control_parent" == "$control_path" ]]; then
-			ok "ssh ControlPath has no parent directory"
-		elif [[ -d "$control_parent" ]]; then
+		if [[ -d "$control_parent" ]]; then
 			ok "ssh ControlPath parent exists: ${control_parent#$HOME/}"
 		else
 			fail "ssh ControlPath parent missing: $control_parent"

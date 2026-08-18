@@ -249,8 +249,7 @@ echo "hpc: launched (pid $(cat "$pidfile"))."
 REMOTE
 
 case "$runs_dir" in
-/*) display_runs="$runs_dir" ;;
-~/*) display_runs="$runs_dir" ;;
+/* | ~/*) display_runs="$runs_dir" ;;
 *) display_runs="$disp_dir/$runs_dir" ;;
 esac
 echo "hpc: log    : ssh $host tail -f $display_runs/$name.log"
