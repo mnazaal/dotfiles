@@ -53,6 +53,6 @@ Treat the current directory as the workspace for this topic. Create files lazily
 - `plan-interview` when the learning goal itself needs interviewing.
 - `context-org` when source material comes from notes or protected stores.
 - `research-protocol` when the topic is academic-paper-shaped — route citations through it instead of ad hoc sourcing.
-- `learn-project` / `learn-codebase` when the subject is a specific project or
+- `understand-project` / `understand-codebase` when the subject is a specific project or
   codebase rather than a topic — those read the artifact itself as ground truth,
   where this skill requires an external source per lesson.

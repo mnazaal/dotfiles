@@ -58,7 +58,7 @@ you, say so and offer, rather than writing.
    this session's context, and name what you would still have to re-derive. Fix
    those gaps. This step is explicit because the writer holds maximum context
    and is therefore the worst-placed reader to notice what is missing — that is
-   precisely how a record ends up complete and unusable (`learn-project`).
+   precisely how a record ends up complete and unusable (`understand-project`).
 6. Offer to commit the durable changes (`dev-git`); commit only with explicit
    user authorization. The block is written BEFORE its own commit lands, so it
    cannot claim a clean tree: describe the repo as it will be after that commit
@@ -88,7 +88,7 @@ Read what this skill writes BEFORE acting:
 
 No handoff artifact / generic "catch me up" → `research-session` Session Start.
 If the artifact reconstructs agent state but the user has lost their own grasp
-of the work, that is `learn-project` — re-reading the handoff will not fix it.
+of the work, that is `understand-project` — re-reading the handoff will not fix it.
 
 ## Anti-Patterns
 
@@ -118,6 +118,6 @@ of the work, that is `learn-project` — re-reading the handoff will not fix it.
 - `research-run` for the per-result verdict blocks a session summary cites.
 - `research-session` for generic orientation ("catch me up") when there is no
   handoff artifact to resume from.
-- `learn-project` when resuming reveals the user no longer understands the work
+- `understand-project` when resuming reveals the user no longer understands the work
   the handoff assumes — reconstructing agent state does not reconstruct theirs.
 - `dev-git` for the commit.

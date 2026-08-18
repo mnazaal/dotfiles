@@ -1,9 +1,9 @@
 ---
-name: learn-project
+name: understand-project
 description: Use to rebuild understanding of a research project from its own records: walk me through this project, I have lost the thread, explain what was done and why, what does this claim rest on, what is the generative model, why does this proof work, where does it break, help me defend this to a reviewer. Works on a project being run, joined, resumed after a gap, or reviewed. Retrospective comprehension, not choosing what to do next.
 ---
 
-# Skill: Learn Project
+# Skill: Understand Project
 
 ## Purpose
 
@@ -122,7 +122,7 @@ Route each; do not fix silently.
 - Attacking a claim the user already understands → `critique-argument`.
 - A project with no record to transfer — an external paper and its release —
   → `research-paper` and `research-map`; there is nothing here to read.
-- Understanding a codebase rather than a research record → `learn-codebase`.
+- Understanding a codebase rather than a research record → `understand-codebase`.
 
 ## Anti-Patterns
 
@@ -143,4 +143,4 @@ Route each; do not fix silently.
 - `critique-argument` for attacking a claim rather than understanding it.
 - `research-paper` / `research-map` when the subject is an external paper and
   its released code rather than a project record.
-- `learn-codebase` for the same loop aimed at code.
+- `understand-codebase` for the same loop aimed at code.

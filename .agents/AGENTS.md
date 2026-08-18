@@ -124,7 +124,8 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   handling, or suspected leakage), load `dev-security`.
 - Before asking the user clarifying questions about scope, approach, or
   design — including via a structured question tool — load `plan-interview`
-  and follow its one-question-at-a-time discipline.
+  and follow its rounds discipline: batch independent questions with
+  recommended defaults; a question whose prerequisite is unsettled waits.
 
 ## Maintenance
 

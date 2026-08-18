@@ -13,11 +13,19 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 
 ## Rules
 
-- Ask exactly one focused question at a time.
-- Include a recommended/default answer with each question.
+- Work the open decisions as a tree and interview in rounds: the frontier is
+  every question whose prerequisites are already settled. Ask the whole
+  frontier in one round — numbered, each with a recommended/default answer —
+  then wait for the answers. A question whose answer depends on another
+  question still open this round belongs to a later round, not this one.
+- If the user asks for one question at a time, honor that pacing instead.
 - A harness's structured question tool (e.g. AskUserQuestion) is a delivery
-  mechanism, not a substitute for this skill: still one decision per ask,
-  with the recommended default marked as such.
+  mechanism, not a substitute for this skill: one round per call, batching
+  only independent questions, each with its recommended default marked as
+  such; an oversized round splits across calls, dependent questions never do.
+- Facts are yours, decisions are the user's: when a frontier question waits on
+  a fact from the environment, inspect or dispatch a subagent without blocking
+  the round — only questions downstream of the missing fact wait.
 - If a question times out (user away), record your recommendation as the
   provisional answer, post the remaining question queue with recommendations,
   and stop; confirm provisional answers when the user returns.
@@ -42,10 +50,13 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 ## Workflow
 
 1. State the object being interviewed: plan, design, change, research direction, or decision.
-2. Identify the highest-risk unresolved decision.
-3. Ask one question with a recommended/default answer.
-4. Wait for the user's answer.
-5. Update the decision state and repeat until scope, constraints, risks, dependencies, and success criteria are clear.
+2. Map the open decisions as a tree and find the frontier, highest-risk first.
+3. Ask the frontier as one round of numbered questions, each with a
+   recommended/default answer.
+4. Wait for the user's answers.
+5. Recompute the tree — settled answers unblock dependent questions — and ask
+   the next round, until scope, constraints, risks, dependencies, and success
+   criteria are clear.
 6. For each resolved decision, check whether it is hard to reverse, would
    surprise a future reader, and reflects a real trade-off between
    alternatives. If all three hold, offer to record it in the project's
@@ -66,7 +77,8 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 
 ## Anti-Patterns
 
-- Asking multiple questions at once.
+- Asking dependent questions in the same round.
+- Serializing independent questions into separate round-trips.
 - Asking the user for facts the workspace can answer.
 - Continuing to interrogate after the next action is clear.
 - Turning the interview into implementation.

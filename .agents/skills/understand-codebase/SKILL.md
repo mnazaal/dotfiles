@@ -1,9 +1,9 @@
 ---
-name: learn-codebase
+name: understand-codebase
 description: Use to build a working understanding of a codebase for the human rather than the agent: walk me through this library, what is the public API, how does this actually work, what is this abstraction for, which parts are vendored or ported, what would break if I deleted this. Covers code written with agent help, inherited code, and third-party code being adapted, reproduced, or evaluated as a dependency.
 ---
 
-# Skill: Learn Codebase
+# Skill: Understand Codebase
 
 ## Purpose
 
@@ -89,7 +89,7 @@ Route each; do not fix silently.
 - Equation↔code mapping and paper divergences → `research-map`.
 - Reimplementing the traced behavior elsewhere rather than understanding it →
   `dev-jax-port`.
-- Understanding a research record rather than code → `learn-project`.
+- Understanding a research record rather than code → `understand-project`.
 
 ## Anti-Patterns
 
@@ -103,7 +103,7 @@ Route each; do not fix silently.
 ## Related Skills
 
 - `dev-scout` for the structural gathering this delivers on top of.
-- `learn-project` for the same loop aimed at a research record.
+- `understand-project` for the same loop aimed at a research record.
 - `research-map` for paper↔code mapping and divergences.
 - `dev-jax-port` when understanding a reference implementation is the prelude to
   porting it.
