@@ -12,25 +12,10 @@ PLATFORMS = {
     "opencode": (ROOT / ".config/opencode/agents", ROLES),
     "pi": (ROOT / ".config/pi/agent/agents", [role for role in ROLES if role not in {"build", "plan"}]),
 }
-# Canonical prompts live in .agents/prompts/ in Claude command format
-# (frontmatter + $ARGUMENTS); pi prompts strip both, and pi names
-# diff-review "review".
-PROMPTS = "commit-msg debug diff-review refactor security-check test-plan".split()
-PI_PROMPT_NAMES = {"diff-review": "review"}
-
-
 def rendered(platform: str, role: str) -> str:
     header = (ROOT / ".agents/role-headers" / platform / f"{role}.md").read_text().rstrip()
     body = (ROOT / ".agents/roles" / f"{role}.md").read_text().lstrip()
     return f"{header}\n\n{body}"
-
-
-def pi_prompt(text: str) -> str:
-    lines = text.splitlines()
-    if lines and lines[0] == "---":
-        lines = lines[lines.index("---", 1) + 1 :]
-    body = "\n".join(line for line in lines if line != "$ARGUMENTS")
-    return body.strip() + "\n"
 
 
 def targets() -> dict[Path, str]:
@@ -38,10 +23,6 @@ def targets() -> dict[Path, str]:
     for platform, (directory, roles) in PLATFORMS.items():
         for role in roles:
             out[directory / f"{role}.md"] = rendered(platform, role)
-    for name in PROMPTS:
-        text = (ROOT / ".agents/prompts" / f"{name}.md").read_text()
-        out[ROOT / ".claude/commands" / f"{name}.md"] = text
-        out[ROOT / ".config/pi/agent/prompts" / f"{PI_PROMPT_NAMES.get(name, name)}.md"] = pi_prompt(text)
     return out
 
 
