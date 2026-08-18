@@ -1,4 +1,3 @@
-*zcomp*
 .agent-shell
 .netrwhist
 .viminfo
@@ -60,15 +59,12 @@ __pycache__/
 !.claude/install-mcp.sh
 !.claude/statusline-command.sh
 !.claude/agents/
-!.claude/commands/
 !.claude/hooks/
 !.claude/skills
 
 # Machine-local render of .config/codex/config.toml.template
 .config/codex/config.toml
 
-# Application-written window state
-.config/sioyek/auto.config
 
 # Standing plan and personal notes — local working documents, deliberately untracked
 PLAN.md

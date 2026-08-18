@@ -3,7 +3,6 @@
     "position": "top",
     "height": 32,
     "spacing": 5,
-    "modules-left": [],
     "modules-center": ["clock"],
     "modules-right": [
         "tray", "custom/separator",
