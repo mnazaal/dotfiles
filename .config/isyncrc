@@ -59,3 +59,15 @@ Channel gmail-drafts
 Channel gmail-sent
 Channel gmail-archive
 Channel gmail-trash
+
+# Cadence split. All Mail is ~58k messages; polling it every 5 minutes along
+# with the small boxes throttles the account's IMAP access (mbsync socket
+# timeouts, and rss2email's appends stretched a 17-message run to 19 minutes).
+# The small boxes stay on the 5-minute cron; gmail-archive gets its own hourly
+# job. Note that `mbsync -a` now walks the overlapping groups twice, so both
+# cron jobs name what they sync instead.
+Group gmail-fast
+Channel gmail-inbox
+Channel gmail-drafts
+Channel gmail-sent
+Channel gmail-trash

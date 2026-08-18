@@ -26,5 +26,9 @@
 # ~/.gnupg (pinentry "Inappropriate ioctl for device").
 # m h  dom mon dow   command
 */10 * * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/ical2org.lock" -c "$HOME/.local/scripts/cal-sync-cron" >> "$HOME/.local/state/ical2org.log" 2>&1'
-*/5 * * * * /bin/sh -c 'export PATH="$HOME/.local/bin:$PATH" PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync -a && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
+# The two mbsync jobs share one lock so they never write the maildir or the
+# notmuch database concurrently; the hourly one uses -xn too, so it skips
+# rather than queues if the 5-minute job is mid-sync, and retries next hour.
+*/5 * * * * /bin/sh -c 'export PATH="$HOME/.local/bin:$PATH" PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync gmail-fast && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
+23 * * * * /bin/sh -c 'export PATH="$HOME/.local/bin:$PATH" PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync gmail-archive && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
 0 7 * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/rss2email.lock" -c "$HOME/.local/scripts/rss2email-cron run" >> "$HOME/.local/state/rss2email.log" 2>&1'
