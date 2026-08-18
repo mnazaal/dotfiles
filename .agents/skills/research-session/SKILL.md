@@ -84,6 +84,8 @@ framing + decisions to the plan via `research-plan`.
 
 ## Related Skills
 
+- `plan-day` for day-level planning rather than research-thread orientation.
+
 - `research-protocol` before any citation/literature content this produces.
 - `critique-argument` for the stress-test in idea triage (step 3) and framing.
 - `research-plan` to persist a settled framing into PLAN.md.

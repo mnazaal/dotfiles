@@ -1,6 +1,6 @@
 ---
 name: dev-jax
-description: Use for JAX code, porting a reference ML implementation (PyTorch/NumPy/SciPy) to JAX with parity testing, reading PyTorch reference code, and slow or OOMing ML jobs (profiling, step timing, memory): jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML.
+description: Use for JAX code, reading PyTorch reference code, and slow or OOMing ML jobs (profiling, step timing, memory): jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML.
 ---
 
 # Skill: Dev JAX
@@ -77,16 +77,12 @@ arr = arr.at[i].set(val)
   compute. For OOM, measure what actually allocates before shrinking anything;
   batch size is the last knob, not the first.
 - A run that completes and is wrong is `debug-ml-research`, not a transformation bug.
-- Matching another implementation's numbers: Porting & Reference Reading below; the rest of this skill assumes JAX is the source of truth, a port assumes it is not.
+- Matching another implementation's numbers is `dev-jax-port`; this skill assumes JAX is the source of truth, that one assumes it is not. Reference Reading below covers the PyTorch-side reading that precedes a port.
 
-## Porting & Reference Reading
+## Reference Reading
 
-- Parity, not plausibility: never claim a port correct because the code "looks
-  equivalent" — verify layer by layer, bottom-up, against recorded reference
-  inputs/outputs. Replay the reference's recorded stochastic decisions
-  (sampled actions, dropout masks); never re-sample and eyeball distributions.
-- float64-agrees / float32-disagrees is conditioning, not a port bug.
-  Finite-difference the gradients when autodiff parity is in doubt.
+- The porting workflow itself (parity testing, replay, layer-by-layer
+  verification) is `dev-jax-port`; load it for any port.
 - Reading PyTorch reference code: inventory every RNG site (init order,
   DataLoader workers, augmentation); weight layout is convention (`nn.Linear`
   stores W^T) — record layouts at the conversion boundary; harness hooks

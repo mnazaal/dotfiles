@@ -76,7 +76,7 @@ Route each; do not fix silently.
 - A README or docstring claim the code does not honor → `context-project-docs`,
   which treats doc/code mismatch as a top-tier gap.
 - Vendored or ported code with no recorded reference version or parity evidence
-  → `dev-jax` (Porting & Reference Reading).
+  → `dev-jax-port`.
 - Code implementing a paper equation that has drifted from it → `research-map`.
 
 ## Boundary
@@ -88,7 +88,7 @@ Route each; do not fix silently.
   call it; this one is the interactive human-facing layer above it.
 - Equation↔code mapping and paper divergences → `research-map`.
 - Reimplementing the traced behavior elsewhere rather than understanding it →
-  `dev-jax` (Porting & Reference Reading).
+  `dev-jax-port`.
 - Understanding a research record rather than code → `understand-project`.
 
 ## Anti-Patterns
@@ -105,7 +105,7 @@ Route each; do not fix silently.
 - `dev-scout` for the structural gathering this delivers on top of.
 - `understand-project` for the same loop aimed at a research record.
 - `research-map` for paper↔code mapping and divergences.
-- `dev-jax` (Porting & Reference Reading) when understanding a reference implementation is the prelude to
+- `dev-jax-port` when understanding a reference implementation is the prelude to
   porting it.
 - `dev-ponytail` for the deletion call on an unjustifiable abstraction.
 - `dev-tdd` for covering an unenforced invariant.
