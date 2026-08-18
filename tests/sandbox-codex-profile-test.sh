@@ -8,16 +8,55 @@ home="$tmp/home"
 mkdir -p "$home/.agents" "$home/.config/codex" "$home/.local/state/codex"
 touch "$home/.config/codex/config.toml"
 
+# RO_LAST pins the repository copies, and the sandbox drops binds whose source
+# does not exist, so the checkout has to be present under this fake HOME for
+# those pins to appear at all.
+mkdir -p \
+	"$home/dotfiles/.config/codex/hooks" \
+	"$home/dotfiles/.agents/guardrails" \
+	"$home/dotfiles/.agents/skills"
+touch \
+	"$home/dotfiles/.config/codex/hooks.json" \
+	"$home/dotfiles/.config/codex/config.toml.template"
+
 output=$(HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
 	"$repo/.local/scripts/sandbox" --dry-run -p agent-codex -- /bin/true)
 
+# Codex writes its state DB (state_5.sqlite and the sqlite -wal/-shm files it
+# creates beside it) directly into CODEX_HOME, so that directory is writable.
+# The machinery inside it is protected at its repository source by RO_LAST
+# instead — asserted below.
 case "$output" in
-*"$home/.config/codex:$home/.config/codex:ro"*) ;;
-*)
-	printf 'Codex home is not read-only in the profile\n' >&2
+*"$home/.config/codex:$home/.config/codex:ro"*)
+	printf 'Codex home is read-only; Codex cannot create its state DB\n' >&2
 	exit 1
 	;;
 esac
+case "$output" in
+*"$home/.config/codex:$home/.config/codex"*) ;;
+*)
+	printf 'Codex home is not mounted writable in the profile\n' >&2
+	exit 1
+	;;
+esac
+
+# Machinery must stay immutable even though CODEX_HOME is writable: every path
+# below is reached through a stow symlink into the repository, so the pin has
+# to land on the repository target, not on the deployed link.
+for machinery in \
+	"$home/dotfiles/.config/codex/hooks" \
+	"$home/dotfiles/.config/codex/hooks.json" \
+	"$home/dotfiles/.config/codex/config.toml.template" \
+	"$home/dotfiles/.agents/guardrails" \
+	"$home/dotfiles/.agents/skills"; do
+	case "$output" in
+	*"$machinery:$machinery:ro"*) ;;
+	*)
+		printf 'machinery is not pinned read-only: %s\n' "$machinery" >&2
+		exit 1
+		;;
+	esac
+done
 case "$output" in
 *"$home/.config/codex/config.toml:$home/.config/codex/config.toml"*) ;;
 *)
