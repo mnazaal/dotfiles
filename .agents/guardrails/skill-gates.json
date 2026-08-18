@@ -48,12 +48,12 @@
       "message": "running tests inside a git worktree"
     },
     {
-      "skills": ["research-manuscript-sync"],
+      "skills": ["research-manuscript-workflow"],
       "trigger": { "type": "bash", "command": "git", "arg_contains": "overleaf" },
       "message": "running git against an Overleaf bridge remote"
     },
     {
-      "skills": ["research-manuscript-sync"],
+      "skills": ["research-manuscript-workflow"],
       "trigger": { "type": "bash", "command": "make", "arg_contains": "overleaf" },
       "message": "running an Overleaf sync target"
     },

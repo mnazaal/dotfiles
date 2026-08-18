@@ -174,7 +174,7 @@ test("arg_contains narrows a bash gate to matching arguments", () => {
     command: "git subtree push --prefix=manuscript overleaf main",
     cwd,
   });
-  expect(hit.skills).toEqual(["research-manuscript-sync"]);
+  expect(hit.skills).toEqual(["research-manuscript-workflow"]);
 
   const miss = rails.evaluate({
     tool: "bash",
@@ -184,7 +184,7 @@ test("arg_contains narrows a bash gate to matching arguments", () => {
   expect(miss.decision).toBe("allow");
 
   expect(rails.evaluate({ tool: "bash", command: "make overleaf-push", cwd }).skills)
-    .toEqual(["research-manuscript-sync"]);
+    .toEqual(["research-manuscript-workflow"]);
 });
 
 test("secret-bearing project files require dev-security", () => {
