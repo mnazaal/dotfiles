@@ -60,4 +60,3 @@ do not follow from general plotting sense.
 
 - `research-run` for interpreting plots/metrics, and for why the paired difference is the quantity to plot.
 - `research-manuscript-workflow` for the figure pipeline: generator placement, committed artifacts, byte-determinism.
-- `context-org` for org/LaTeX export conventions.

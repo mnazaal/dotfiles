@@ -111,9 +111,13 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Before producing academic-paper, literature, citation, related-work,
   bibliography, author-lookup, or field-survey content, load
   `research-protocol` and follow it.
-- For Org or personal note-store tasks, load `context-org` and follow the
-  active storage policy. Project standing docs and project `notes/` are governed
-  by `context-project-docs`.
+- `~/org` (the personal Org note store) is READ-ONLY for agents: never write
+  to it; propose Org edits as snippets the user applies in Emacs. The agenda is
+  a date view — items with no `SCHEDULED`/`DEADLINE` never appear in it, so
+  read `agenda/inbox.org` and `agenda/backlog.org` directly when surfacing
+  tasks. Generated calendars (`primary-gcal.org`, `aalto-outlook.org`) are the
+  reliable half of the store. Project standing docs and project `notes/` are
+  governed by `context-project-docs`.
 - When environment context shows a git worktree (e.g. a path under
   `.claude/worktrees/*` or an explicit "this is a git worktree" note), load
   `dev-worktree` before running tests/tools.

@@ -70,4 +70,4 @@ pzi delete smith2024graph
 - `research-protocol` before citing library entries in academic work.
 - `research-lit-search` for discovering new papers to capture.
 - `tool-cementic` for full-text semantic search over local papers.
-- `context-org` when saving exports as Org notes.
+- Org-note exports: propose as snippets — `~/org` is read-only for agents (AGENTS.md).

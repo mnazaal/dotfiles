@@ -23,7 +23,7 @@ description: Mandatory for academic papers, literature, citations, related work,
 - Before investing in BUILDING a new method/contribution (not just writing it up): run the novelty gate (`research-lit-search`) FIRST — "already done" is far cheaper to find before implementation than after.
 - Session orientation ("catch me up") or evaluating a research idea/direction: use `research-session`; `decide-priority` for general action ranking.
 - Experimental result interpretation: use `research-run`; if broken, hand off to `debug-ml-research`.
-- Note import/export mechanics: `context-org` or `context-pdf`.
+- Note import/export mechanics: `context-pdf`; Org notes are read-only for agents (AGENTS.md).
 
 ## Self-Check Before Answer
 

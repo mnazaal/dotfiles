@@ -89,6 +89,5 @@ framing + decisions to the plan via `research-plan`.
 - `research-plan` to persist a settled framing into PLAN.md.
 - `decide-priority` for scoring pursue/refine/park/kill.
 - `research-lit-search` / `research-paper` / `research-run` as routed targets.
-- `plan-day` for day-level planning rather than research-thread orientation.
 - `understand-project` when the user needs to rebuild their own understanding of the
   project, including its math, rather than choose the next action.

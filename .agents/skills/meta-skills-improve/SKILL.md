@@ -120,4 +120,3 @@ Create a new skill only if:
 - `dev-verification` before claiming skill updates are correct.
 - `debug-root-cause` when repeated agent failure needs diagnosis.
 - `decide-priority` when choosing which skill improvements matter.
-- `context-org` when lessons come from notes or protected stores.
