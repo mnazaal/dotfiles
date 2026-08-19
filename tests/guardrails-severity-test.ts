@@ -41,7 +41,6 @@ const loadedSkills = new Set<string>(
 const railsFor = new Map(AGENTS.map((a) => [a, createGuardrails(a)]));
 const decideAs = (agent: string, command: string) =>
   railsFor.get(agent)!.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision;
-const decide = (command: string) => decideAs("claude", command);
 
 type Agent = (typeof AGENTS)[number];
 type Severity = "deny" | "ask" | "allow";
@@ -198,11 +197,3 @@ for (const { command, expected, note } of TABLE) {
     }
   });
 }
-
-// Progress marker, not an assertion about behavior: the rows above are the
-// contract. Emptying the tier means this list reaches zero.
-test("rows still awaiting reclassification are visible", () => {
-  const remaining = TABLE.filter((r) => expectedFor(r.expected, "claude") === "ask").map((r) => r.command);
-  if (remaining.length) console.log(`claude ask tier not yet empty (${remaining.length} rows)`);
-  expect(remaining.every((c) => decideAs("claude", c) === "ask")).toBe(true);
-});

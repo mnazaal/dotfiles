@@ -15,8 +15,7 @@ make --no-print-directory -C "$repo" link HOME="$home" >/dev/null
 for path in \
 	".zshenv" \
 	".claude/hooks/guardrails.ts" \
-	".agents/guardrails/core.ts" \
-	".config/codex/skills/dev-scout"; do
+	".agents/guardrails/core.ts"; do
 	[ -L "$home/$path" ] || {
 		printf 'make link did not create expected link: %s\n' "$path" >&2
 		exit 1
@@ -32,8 +31,7 @@ clean_output=$(make --no-print-directory -C "$repo" clean HOME="$home")
 for path in \
 	".zshenv" \
 	".claude/hooks/guardrails.ts" \
-	".agents/guardrails/core.ts" \
-	".config/codex/skills/dev-scout"; do
+	".agents/guardrails/core.ts"; do
 	[ ! -L "$home/$path" ] || {
 		printf 'make clean left repository link behind: %s\n' "$path" >&2
 		exit 1

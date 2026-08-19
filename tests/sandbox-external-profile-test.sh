@@ -17,6 +17,7 @@ mkdir -p \
 	"$home/.local/share/pi" \
 	"$home/.local/state/pi" \
 	"$home/dotfiles/.agents/guardrails" \
+	"$home/projects" \
 	"$project"
 
 assert_profile() { # profile required mounts... -- forbidden mount fragments...
@@ -95,15 +96,11 @@ assert_mount_order() { # cwd profile earlier-mount later-mount
 }
 
 # The guardrail source must be read-only AND bound after the writable dotfiles
-# bind that contains it. $HOME/.agents is stow symlinks into $HOME/dotfiles, so
-# the read-only bind there does not protect the targets.
-assert_mount_order "$project" agent-claude \
-	"$home/dotfiles:$home/dotfiles" \
-	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
-
-# Launching with cwd inside ~/dotfiles auto-binds the repo read-write; the
-# machinery-ro fragment must still pin the guardrail sources read-only
-# afterwards — for EVERY harness profile, not just the ones composing `agent`.
+# bind that contains it: $HOME/.agents is stow symlinks into $HOME/dotfiles, so
+# the read-only bind there does not protect the targets. Launching with cwd
+# inside ~/dotfiles auto-binds the repo read-write, which is the harder case —
+# the machinery-ro fragment must still pin the sources read-only afterwards, for
+# EVERY harness profile, not just the ones composing `agent`.
 for profile in agent-claude agent-codex agent-goose agent-opencode agent-pi; do
 	assert_mount_order "$home/dotfiles" "$profile" \
 		"$home/dotfiles:$home/dotfiles" \

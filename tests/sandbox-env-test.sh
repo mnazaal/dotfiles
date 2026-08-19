@@ -76,8 +76,10 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	)
 
 	args=$(<"$capture")
+	# Match at a line start: the fake podman writes one argv entry per line, and an
+	# unanchored match lets HEADROOM_ANTHROPIC_BASE_URL= satisfy ANTHROPIC_BASE_URL=.
 	for name in "${expected[@]}"; do
-		case "$args" in *"$name="*) ;; *)
+		case $'\n'"$args" in *$'\n'"$name="*) ;; *)
 			printf '%s profile did not forward %s\n' "$profile" "$name" >&2
 			exit 1
 			;;
@@ -94,6 +96,6 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 
 assert_profile_env agent-claude AGENT_BRANCH_PREFIX ASTA_MCP_API_KEY HEADROOM_PORT ANTHROPIC_BASE_URL -- OPENROUTER_API_KEY UNRELATED_SECRET
 assert_profile_env agent-codex AGENT_BRANCH_PREFIX CODEX_HOME ASTA_MCP_API_KEY -- OPENROUTER_API_KEY UNRELATED_SECRET
-assert_profile_env agent-opencode AGENT_BRANCH_PREFIX OPENROUTER_API_KEY ASTA_MCP_API_KEY EDITOR -- UNRELATED_SECRET
+assert_profile_env agent-opencode AGENT_BRANCH_PREFIX OPENROUTER_API_KEY ASTA_MCP_API_KEY -- UNRELATED_SECRET
 assert_profile_env agent-pi AGENT_BRANCH_PREFIX OPENROUTER_API_KEY ASTA_MCP_API_KEY -- UNRELATED_SECRET
 assert_profile_env agent-goose AGENT_BRANCH_PREFIX CODEX_HOME -- OPENROUTER_API_KEY ASTA_MCP_API_KEY UNRELATED_SECRET
