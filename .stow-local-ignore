@@ -1,7 +1,7 @@
 .stowrc
 .git
 .gitignore
-README.*
+^/README.*
 .agent-shell
 Makefile
 PLAN\.md
