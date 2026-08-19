@@ -16,9 +16,14 @@ than the coordination cost.
 - Fresh-perspective review or critique of a concrete artifact.
 - Repetitive searches with distinct scopes that can run in parallel.
 - Research checks where independent evidence reduces bias.
+- To protect the context budget, not only for parallelism or fresh perspective:
+  route bulk payloads (full training logs, `sacct` dumps, long PDFs, whole-file
+  reads) to a subagent and take back a summary.
 
 Stay local for a single known file, a small edit, a narrow symbol lookup, or any
-task where the delegation prompt would be longer than doing the work.
+task where the delegation prompt would be longer than doing the work. A
+deterministic script also beats fan-out: if one pass over the inputs does the
+job, write and run it instead of spawning delegates to hand-apply it.
 
 ## Prompt Contract
 
@@ -42,6 +47,10 @@ Every delegated task states:
    readable. A delegated agent's quoted evidence and the artifact it leaves
    behind are not the same thing — a correct quote can sit beside a file that
    cannot support it.
+9. Timebox: a rough cap on the run, with the contract that on expiry the agent
+   returns partial findings and stops rather than running on.
+10. No resume-chaining. Directives decay across resumes, so re-issue a fresh
+    agent with consolidated scope instead of resuming one whose brief changed.
 
 ## Coordination Rules
 
@@ -55,13 +64,25 @@ Every delegated task states:
   Propagation is where an unchecked report stops being cheap to retract.
 - If agents disagree, resolve with the smallest direct check, not a tie-break by
   confidence or verbosity.
+- Adversarial signal comes from independent reviewers seeing the same artifact
+  and the same brief, not from assigned personas. Do not hand out roles.
+- Two reviewers raising a finding independently is the strong signal; a lone
+  finding is worth reading at lower confidence. This is not averaging — the
+  question and the artifact are fixed.
+- Fix the acceptance criteria before reading any reviewer output. They are the
+  adjudicator's tool, not the reviewers'.
+- Report what you dismissed and why alongside what you acted on. A silently
+  dropped objection to an experiment design is invisible to the user.
+- Reviewers pad to fill a review: an all-nits return is evidence the artifact is
+  fine, so say that instead of promoting one.
+- Wide divergence across agents means the brief was under-specified — re-frame
+  and re-ask rather than merging the spread. Factual disagreement still goes to
+  the smallest direct check.
+- When the object under review is an experiment design, its intent is in scope:
+  whether it tests the claim is the reviewable question.
 
 ## Anti-Patterns
 
-- Delegating because a task feels boring but is narrow.
-- Asking multiple agents the same vague question and averaging their answers.
-- Letting a subagent choose write scope without constraints.
-- Reporting delegated results without checking cited artifacts.
 - Using agents to bypass mandatory routing, security, citation, or verification
   gates.
 

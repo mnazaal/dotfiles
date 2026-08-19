@@ -55,6 +55,27 @@ cost of getting them wrong is the whole sweep.
 - **Estimate per-cell wall-clock before fanning out.** `dev-hpc` owns the
   cluster-side minimum and the batching that clears it.
 
+## Sustained Improvement Loop
+
+Driving one metric over many attempts, as opposed to designing one comparison.
+`Before Launching` still governs the first measurement; these govern the loop.
+
+- Freeze the eval path before the first attempt, and record the baseline plus a
+  green regression check. Prove the ruler separates contrasting workloads before
+  freezing it. Changing it mid-run invalidates every earlier number.
+- The stop predicate is a target AND a floor on attempts. A target alone lets a
+  lucky seed end the run. Never relax the predicate to declare victory, and do
+  not quit while cheap untried hypotheses remain.
+- One hypothesis per attempt, named as a mechanism rather than "try tuning
+  something". Keep it only if it clears noise with the check still green;
+  otherwise revert in full. A tweak that might help does not ride along.
+- Log every attempt, kept and reverted, outside the tree so it survives reverts,
+  and read the log before the next attempt so the search accumulates instead of
+  circling.
+- A plateau means pivot category or go more radical, not stop. Correctness and
+  simplicity outrank the number: revert a win that breaks behavior, keep a
+  simplification that holds it.
+
 ## Checklist
 
 - What changed?

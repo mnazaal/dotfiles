@@ -24,6 +24,23 @@ This file is global routing and behavior policy. Keep it small.
 - Headings and bullets should carry semantic content. Use “Next: verify LaTeX
   build” rather than “P1”, “Step 2”, or “Task B” when the item may be referenced
   later.
+- Prefer the concrete word to the borrowed metaphor. Replace substrate, wedge,
+  vector, locus, nexus, surface, bedrock, scaffolding, paradigm, north star,
+  and flywheel with the plain thing meant. This is the opaque-label rule above,
+  applied to vocabulary instead of labels.
+- Drop the AI register: delve, crucial, pivotal, intricate, interplay,
+  showcase, underscore, tapestry, testament, garner, enhance. Likewise
+  utilize/leverage to "use", facilitate to "help", "serves as"/"stands as"
+  to "is".
+- Name the mechanism or the number, not the feeling. A sentence that could
+  appear unchanged in another project's write-up says nothing about this one.
+- Name the actor: "the compiler validates queries", not "queries are
+  validated". Cut adverbs propping up a weak verb and give the measured delta
+  instead; "significant" in the statistical sense is a term of art, not an
+  adverb.
+- One idea per sentence. Split anything that makes the reader backtrack.
+- Call each thing by one name everywhere, and do not reword an unchanged
+  sentence between edits.
 - If the user asks for a different style or verbosity, follow that until changed.
 - Disagree when the evidence disagrees. Before executing a plan or accepting
   a claim, surface the strongest objection to it unprompted. Do not optimize
@@ -101,6 +118,10 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - If a skill explicitly says to load/use/route to another skill, follow that
   routing. `Related Skills` sections are navigational only, not transitive
   requirements.
+- When a loaded skill prescribes ordered steps, put those steps into the plan
+  or todo list first and verbatim, before task-specific items. The failure mode
+  is reading a skill and then writing a bespoke plan that quietly drops its
+  gates. A step deliberately not taken stays listed as `skip: <reason>`.
 - Use subagents for broad, independent, or parallel exploration; otherwise keep
   work in the current context.
 - For multi-agent delegation or evaluating delegated work, load
@@ -112,12 +133,10 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   bibliography, author-lookup, or field-survey content, load
   `research-protocol` and follow it.
 - `~/org` (the personal Org note store) is READ-ONLY for agents: never write
-  to it; propose Org edits as snippets the user applies in Emacs. The agenda is
-  a date view — items with no `SCHEDULED`/`DEADLINE` never appear in it, so
-  read `agenda/inbox.org` and `agenda/backlog.org` directly when surfacing
-  tasks. Generated calendars (`primary-gcal.org`, `aalto-outlook.org`) are the
-  reliable half of the store. Project standing docs and project `notes/` are
-  governed by `context-project-docs`.
+  to it; propose Org edits as snippets the user applies in Emacs. `plan-day`
+  owns which files to read and why the agenda view hides most open items.
+  Project standing docs and project `notes/` are governed by
+  `context-project-docs`.
 - When environment context shows a git worktree (e.g. a path under
   `.claude/worktrees/*` or an explicit "this is a git worktree" note), load
   `dev-worktree` before running tests/tools.

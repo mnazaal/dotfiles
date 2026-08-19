@@ -24,6 +24,9 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - A repair is done when a review has looked at the repair, not when the code changes. The pass that writes a fix may only mark the finding repaired and pending review; clearing it needs a read by a pass that did not write it (a fresh subagent, or a later session reading it cold). A fix can introduce a worse defect than the one it removed, and the agent holding the fix in context is the worst-placed reader to notice — the same asymmetry that makes `session-handoff`'s cold-read check a separate step.
 - Re-review the code, not the finding list. Verifying only the items a reviewer raised certifies those lines and nothing else; a repair's new defect is by construction absent from the list that prompted it.
 - Verify a review claim before accepting it, and push back with evidence when feedback is stale, unsafe, or contradicts current requirements. Agreement is not a response.
+- Before defending a change, name the single fact it is safe because of, then run something that fails loudly if that fact is false. Most changes that look risky are safe because of one fact; find it and the rest of the scary cases fall at once. A safety writeup reads convincing whether or not it is true.
+- Grade each safety fact and say where it stopped: asserted / cited at `file:line` / failure path walked and shown unreachable / executed against the real code / reproduced in a full run. Below "executed", report it as unproven rather than settled. Executed usually means one short script importing the same code the experiment imports and calling the exact function in doubt, not a suite pass.
+- Report what you checked and cleared separately from what you confirmed as a risk. A search that found nothing is a stated result, not silence.
 
 ## Gate
 
@@ -68,6 +71,7 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Closing a finding you repaired in the same pass, or treating the reviewer's finding list as the scope of the re-review.
 - Timing a command without asserting it did the work — a broken run is the fastest run, so a surprisingly fast variant is a failure until proven otherwise.
 - Treating an impossible measurement (removing work made it *slower*) as a result rather than as a readout of your noise floor.
+- Rounding a safety fact up a rung: writing up an argument that stopped at "the failure path looks unreachable" as though it had been executed.
 
 ## Related Skills
 

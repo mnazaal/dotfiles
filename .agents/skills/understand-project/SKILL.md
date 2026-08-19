@@ -126,11 +126,7 @@ Route each; do not fix silently.
 
 ## Anti-Patterns
 
-- Producing a summary instead of a diagnosis.
-- Reading the plan and log in full and exhausting context before the math.
 - Quizzing on trivia rather than on what is expensive to be wrong about.
-- Explaining the method from the conversation's own memory instead of the files.
-- Treating an unauthored scaffold as evidence the work was not done.
 - Writing `UNDERSTANDING.md`, `SUMMARY.md`, or a session recap doc.
 
 ## Related Skills

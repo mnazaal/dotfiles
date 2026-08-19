@@ -7,20 +7,32 @@ description: Use for good morning, start my day, plan my day, daily briefing, or
 
 ## Purpose
 
-Start the day by turning Org agenda and Emacs TODO context into a small, realistic plan.
+Start the day by turning the Org store into a small, realistic plan.
 
 Use when the user wants a morning brief, daily startup, daily plan, or next-action recommendation for today.
 
+## Sources
+
+Read `~/org/agenda/` directly. The Org agenda is a **date view**: it lists only
+what carries `SCHEDULED` or `DEADLINE`, so most open items never appear in it.
+Planning from the agenda alone reproduces that blind spot.
+
+| file | what it is | how to use it |
+|---|---|---|
+| `primary-gcal.org`, `aalto-outlook.org` | generated calendar exports, refreshed continuously | today's fixed commitments; the reliable half of the store |
+| `inbox.org` | captured TODOs, mostly undated | the candidate pool. Its header comment defines the `@tag` taxonomy (`@meeting`, `@research`, `@reading`, `@coursework`, `@admin`, `@errand`, `@leisure`) — group by those tags rather than inventing categories |
+| `inbox-recurring.org` | habits carrying Org repeaters, already tracked by Emacs' habit system | not candidate work. Name a habit only when its repeater has lapsed |
+| `backlog.org` | archive of items captured under a previous affiliation | skip for a daily brief; open it only when asked about dormant or historical items |
+| `gcal.org`, `schedule.org` | superseded by the two generated calendars | ignore |
+
+A capture file's own age is a reading: one untouched for months means nothing
+was captured, not that nothing is pending.
+
 ## Rules
 
-- Follow AGENTS.md's Org policy: `~/org` is read-only for agents. Never write
-  to `~/org`; propose changes as snippets the user yanks into Emacs.
-- **Read the undated backlog, not just the agenda.** The agenda is a date view,
-  so it shows commitments and hides everything captured without a `SCHEDULED`.
-  Read `agenda/inbox.org` and `agenda/backlog.org` directly — those items are
-  invisible in the agenda and are the ones that rot.
-- Read the generated calendars (`primary-gcal.org`, `aalto-outlook.org`) for
-  fixed commitments; they are the reliable half of the store.
+- Undated captures are the ones that rot. Age each from its capture timestamp
+  and say how long it has sat — an item nobody dated is one nobody decided
+  about.
 - Treat scheduled items, deadlines, and meetings as constraints, not
   automatically as highest priority.
 - Distinguish fixed commitments from optional work.
@@ -38,15 +50,15 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 
 1. Identify today's date, day phase, and available work window.
 2. Read today's fixed commitments from the generated calendars.
-3. Read the undated backlog (`inbox.org`, `backlog.org`) — anything with no
-   `SCHEDULED` or `DEADLINE`, plus how long it has sat there. Age is the signal:
-   a captured item nobody dated is one nobody decided about.
-4. Separate fixed commitments from candidate tasks; find conflicts and overload.
-5. Use `decide-priority` when ranking candidates requires explicit tradeoffs.
-6. Produce the brief, and close the loop: emit the proposed dates as an org
+3. Read `inbox.org` for candidates: each item's `@tag` and how long it has sat
+   undated.
+4. Check `inbox-recurring.org` only for repeaters that have lapsed.
+5. Separate fixed commitments from candidate tasks; find conflicts and overload.
+6. Use `decide-priority` when ranking candidates requires explicit tradeoffs.
+7. Produce the brief, and close the loop: emit the proposed dates as an org
    snippet the user can yank. Read-only means the processing step depends on
    them acting, so make acting a paste rather than a re-derivation.
-7. Route into the relevant execution skill only after the user confirms.
+8. Route into the relevant execution skill only after the user confirms.
 
 ## Output Shape
 
@@ -66,6 +78,9 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 
 ### Stale Captures (undated, invisible to the agenda)
 - <item> — captured <date>, <n> days undated
+
+### Lapsed Habits (omit when none)
+- <habit> — repeater due <date>
 
 ### Risks / Conflicts
 - ...
@@ -87,7 +102,6 @@ SCHEDULED: <YYYY-MM-DD day>
 
 ## Routing
 
-- AGENTS.md's Org policy covers agenda, TODOs, notes, and write safety.
 - Use `decide-priority` when choosing among competing tasks or tradeoffs.
 - Use `plan-interview` when today's constraints or goals are too ambiguous to plan directly.
 - Use `research-protocol` before academic-paper, literature, citation, related-work, bibliography, author-lookup, or field-survey content.
@@ -97,8 +111,4 @@ SCHEDULED: <YYYY-MM-DD day>
 
 ## Anti-Patterns
 
-- Dumping every TODO instead of selecting a realistic day plan.
-- Asking the user what is on the agenda before inspecting available Org context.
-- Treating due dates as the only priority signal.
-- Editing Org state during the morning brief without explicit permission.
 - Starting implementation before the day plan is confirmed.

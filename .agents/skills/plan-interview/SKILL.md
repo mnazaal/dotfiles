@@ -30,6 +30,12 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
   provisional answer, post the remaining question queue with recommendations,
   and stop; confirm provisional answers when the user returns.
 - If the answer can be discovered by inspecting files, code, docs, logs, or prior context, inspect instead of asking.
+- Inspecting is the floor, not the ceiling. If the answer is a fact you could
+  observe by RUNNING something — does this eval separate the arms, does the
+  sampler mix, what shape comes out, how long is one epoch — it is not the
+  user's to answer. Run the smallest throwaway probe in the scratchpad, then
+  report the observation instead of the question. Ask only for preference or
+  direction calls no probe can settle.
 - Resolve blocking assumptions before implementation details.
 - Prefer concrete decisions over open-ended brainstorming.
 - If the user reaches for a vague or overloaded term (e.g. "account" when
@@ -77,9 +83,5 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 
 ## Anti-Patterns
 
-- Asking dependent questions in the same round.
-- Serializing independent questions into separate round-trips.
-- Asking the user for facts the workspace can answer.
-- Continuing to interrogate after the next action is clear.
 - Turning the interview into implementation.
 - Ranking options without explicit criteria; route that to `decide-priority`.

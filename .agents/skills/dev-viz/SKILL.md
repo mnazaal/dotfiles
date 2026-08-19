@@ -47,15 +47,6 @@ do not follow from general plotting sense.
 4. Add labels, units, legend, and caption-ready context.
 5. Save/export in requested or project-appropriate format.
 
-## Anti-Patterns
-
-- Rainbow maps for ordered values.
-- Categories distinguished by color only.
-- Raster-only output for line art meant for papers.
-- Sizing a figure by scaling it in LaTeX, which silently changes its font size.
-- Two mean±std bands where the claim is about their difference.
-- An error bar with no stated n and no stated interval type.
-
 ## Related Skills
 
 - `research-run` for interpreting plots/metrics, and for why the paired difference is the quantity to plot.

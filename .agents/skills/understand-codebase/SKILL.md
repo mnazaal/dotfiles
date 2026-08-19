@@ -93,10 +93,7 @@ Route each; do not fix silently.
 
 ## Anti-Patterns
 
-- Touring the directory tree instead of tracing a real call.
-- Explaining internals before the user can say what the library is for.
 - Reporting an exhaustive inventory; `dev-scout` already refuses to do that.
-- Explaining the code from the conversation's memory instead of reading it.
 - Judging third-party code against conventions it never claimed to follow.
 - Writing `ARCHITECTURE.md` or a walkthrough doc.
 

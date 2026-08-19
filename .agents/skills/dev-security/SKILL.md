@@ -43,4 +43,3 @@ description: Use for security-sensitive work: secrets, credentials, auth, permis
 - `dev-git` for safe staging/committing once sensitive material is excluded.
 - `dev-git-rescue` for history repair after confirmed leakage.
 - `debug-root-cause` for auth/permission failures with a repro loop.
-- The personal Org store `~/org` is read-only for agents (AGENTS.md).

@@ -28,6 +28,11 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - Do not conflict with higher-priority system, developer, or global instructions.
 - Preserve safety, verification, citation, read/write, and protected-storage policies.
 - Ask before editing skill files unless the user explicitly requested edits.
+- Route a lesson only to a skill the session actually loaded. Text added to a skill that never opened changes nothing.
+- A skill that should have fired but did not is a description fix, not a body addition. Label every proposed change: description, body, or neither.
+- Read the target section before accepting a body edit. If the guidance is already there and was skipped past, the fix is placement or wording, never a second copy.
+- If only a hook or script could enforce a lesson, record that and stop: do not write prose that will be ignored, and do not build the mechanism unasked.
+- Codify a preference only after seeing it twice. Once, and contradicted once, is noise.
 
 ## Firing Audit
 
@@ -73,6 +78,27 @@ A skill at zero after real exposure is evidence to cut, not a prompt to
 advertise it harder (`dev-ponytail`). Retire it and fold anything durable into
 a skill that does fire.
 
+## Blinded Comparison
+
+The Firing Audit says whether a skill runs. This says whether an edit is an
+improvement. Run it before promoting a change you cannot judge by reading.
+
+- Run both variants blind. An agent that knows it is being evaluated behaves
+  differently.
+- No eval, test, judge, rubric, score, compare, benchmark, or candidate wording
+  in any path, file, or prompt the variant sees. Use project-shaped directory
+  names.
+- The task prompt reads as an organic request: state the goal, not the meta.
+- Never ask the variant which skills or rules it applied; that question inflates
+  citation behavior. Grade from the artifact it produced and the files it
+  actually opened.
+- Score both variants in ONE judging pass on one scale. Two passes drift in
+  calibration.
+- Read both outputs yourself before accepting a verdict. Disagreement with the
+  judge means the criteria were ambiguous, not that the judge was wrong.
+- Use content the variant has not seen before; a familiar task measures recall,
+  not the edit.
+
 ## Workflow
 
 1. Capture the reusable lesson from the session.
@@ -105,13 +131,8 @@ Create a new skill only if:
 
 ## Anti-Patterns
 
-- Creating a new skill for every session.
 - Adding generic advice like “be careful” or “think deeply.”
-- Making skills too long to follow.
-- Letting sediment accumulate: only ever adding, never checking existing content for staleness.
-- Adding a new heading for content that belongs under an existing one.
 - Encoding current project facts into personal skills.
-- Bypassing mandatory research, verification, or storage policies.
 - Editing dotfiles without explicit permission.
 
 ## Related Skills
