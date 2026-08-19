@@ -7,11 +7,7 @@
 AGENT_BRANCH_PREFIX="claude"
 RENV_REQUIRE_GUARDRAILS=1
 
-ASTA_MCP_API_KEY="$(pass show asta-mcp)" ||
-	{
-		printf 'claude.sh: failed to read asta-mcp from pass\n' >&2
-		return 1
-	}
+renv_secret ASTA_MCP_API_KEY asta-mcp
 
 # Route Claude Code through the local Headroom proxy. This is intentionally kept
 # in renv instead of `headroom wrap claude` so dotfiles remain the source of
@@ -41,13 +37,8 @@ ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
 # used unless tool search/deferral is explicitly enabled.
 ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
 
-export AGENT_BRANCH_PREFIX
-export RENV_REQUIRE_GUARDRAILS
-export ASTA_MCP_API_KEY
-export HEADROOM_PORT
-export HEADROOM_ANTHROPIC_BASE_URL
-export ANTHROPIC_BASE_URL
-export ENABLE_TOOL_SEARCH
+export AGENT_BRANCH_PREFIX RENV_REQUIRE_GUARDRAILS HEADROOM_PORT \
+	HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_SEARCH
 
 # --- Filesystem sandbox + permission mode -----------------------------------
 # Run this harness confined to an allowlist of dirs via `sandbox`, and let it

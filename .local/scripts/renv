@@ -10,6 +10,14 @@ die() {
 	exit "${2:-1}"
 }
 
+# For env files: a secret that cannot be read must stop the launch rather than
+# let the harness start without it.
+renv_secret() { # VAR pass-entry
+	local value
+	value=$(pass show "$2") || die "failed to read $2 from pass"
+	export "$1=$value"
+}
+
 verify_guardrails() {
 	local root="${HOME}/.agents/guardrails"
 	local required=(core.ts sensitive-paths.json dangerous-commands.json skill-gates.json)
