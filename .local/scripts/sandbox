@@ -94,8 +94,13 @@ run_podman() {
 	local pre=() # podman global flags (must precede `run`)
 	local name="${PROFILE_NAME:-sandbox}-$$"
 	local p=(run --rm --name "$name" --userns=keep-id --http-proxy=false -w "$PWD" --security-opt label=disable)
+	# Pass the NAME only: podman reads the value from this process's environment
+	# and sets it in the container just when it is set here. Emitting "$d=$value"
+	# instead would put every allowlisted secret into the podman argv, where it is
+	# world-readable via `ps` for the life of the container and printed verbatim
+	# by --dry-run.
 	for d in "${SANDBOX_ENV[@]}"; do
-		[ -n "${!d+x}" ] && p+=(--env "$d=${!d}")
+		[ -n "${!d+x}" ] && p+=(--env "$d")
 	done
 	# Give commands normal scratch space without exposing the host's /tmp.
 	# shellcheck disable=SC2054  # commas are mount options within one element
