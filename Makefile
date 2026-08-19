@@ -80,10 +80,8 @@ test:
 	@bash tests/guardrails-skill-state-test.sh
 	@bash tests/renv-claude-test.sh
 	@bash tests/renv-test.sh
-	@bash tests/sandbox-agent-profile-test.sh
-	@bash tests/sandbox-codex-profile-test.sh
 	@bash tests/sandbox-env-test.sh
-	@bash tests/sandbox-external-profile-test.sh
+	@bash tests/sandbox-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
 	@bun test ./.config/codex/hooks/guardrails.test.ts
