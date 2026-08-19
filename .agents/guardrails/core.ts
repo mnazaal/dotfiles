@@ -14,7 +14,7 @@
  *
  * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
-import { readFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { homedir } from "node:os";
 
@@ -774,4 +774,36 @@ export function skillReceipts(tool: string | undefined, input: Record<string, un
     if (match) receipts.add(match[1]);
   }
   return receipts;
+}
+
+/**
+ * Per-session skill-receipt store, at $XDG_STATE_HOME/<agent>/guardrails/<id>.json.
+ * Hook processes are short-lived — Codex spawns a fresh one per tool call — so
+ * receipts only survive through this file. The adapter derives `id` (a hash of
+ * the transcript path for Claude, the session id for Codex); `undefined` means
+ * the host offered nothing to key on, and then nothing is persisted.
+ */
+export function skillStateStore(agent: string, id: string | undefined) {
+  const root = process.env.XDG_STATE_HOME ?? resolve(HOME, ".local/state");
+  const path = id === undefined ? undefined : resolve(root, `${agent}/guardrails`, `${id}.json`);
+  return {
+    load(): Set<string> {
+      if (!path || !existsSync(path)) return new Set<string>();
+      try {
+        const parsed = JSON.parse(readFileSync(path, "utf8"));
+        return new Set<string>(Array.isArray(parsed.loadedSkills) ? parsed.loadedSkills : []);
+      } catch {
+        return new Set<string>();
+      }
+    },
+    save(loadedSkills: Set<string>) {
+      if (!path) return;
+      try {
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, JSON.stringify({ loadedSkills: [...loadedSkills].sort() }, null, 2));
+      } catch {
+        // A persistence failure makes later gates stricter rather than failing open.
+      }
+    },
+  };
 }
