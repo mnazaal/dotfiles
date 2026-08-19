@@ -73,6 +73,11 @@ wip.org
 # Assets
 .local/share/*
 !.local/share/sandbox/
+# gpg-agent cache TTLs: the setting that keeps tty-less cron jobs able to
+# decrypt. Nothing secret here; the keyring itself stays ignored.
+!.local/share/gnupg/
+.local/share/gnupg/*
+!.local/share/gnupg/gpg-agent.conf
 
 # Logs
 *.log
