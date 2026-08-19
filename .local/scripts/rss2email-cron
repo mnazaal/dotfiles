@@ -42,4 +42,6 @@ if [[ $# -eq 0 ]]; then
 	set -- run
 fi
 
-exec "$R2E_BIN" --config "$tmp" "$@"
+# Not exec: it replaces the shell and discards the EXIT trap, leaving the
+# rendered config — which contains the live IMAP password — in /tmp after every run.
+"$R2E_BIN" --config "$tmp" "$@"

@@ -32,4 +32,6 @@ primary=$(pass show "$NOTMUCH_EMAIL_ENTRY" | sed -n '1p')
 
 "$REAL_NOTMUCH" --config "$tmp" config set user.primary_email "$primary"
 
-exec "$REAL_NOTMUCH" --config "$tmp" "$@"
+# Not exec: it replaces the shell and discards the EXIT trap, leaving the
+# rendered config — which contains the primary email address — in /tmp after every run.
+"$REAL_NOTMUCH" --config "$tmp" "$@"
