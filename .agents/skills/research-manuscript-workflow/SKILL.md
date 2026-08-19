@@ -80,18 +80,6 @@ push` will ever fast-forward. The subsections below own that procedure, the
 recurring pull/push rules, and the post-push scope check that confirms no
 parent-repo paths crossed.
 
-## Purpose
-
-Move a `manuscript/` subdir of a monorepo to and from a hosted LaTeX git bridge
-without fighting the bridge or leaking the parent repo. Provider-specific
-troubleshooting — verify current provider behavior and repository state before
-any destructive recovery path.
-
-Depends on one rule owned by `research-manuscript-workflow`: a synced manuscript
-directory IS the artifact, so it must compile standalone, generators live
-outside it, and generated figures/tables are committed. Load that skill for the
-boundary itself; this one covers moving it across.
-
 ## Bridge Constraints
 
 Plan for a locked-down remote:
@@ -148,7 +136,6 @@ rejects anyway. Verify the tree; do not assume it.
   revert vs reset, scripted rewrites. Route there when the problem is the local
   history rather than the bridge.
 
-
 ## Project Layout Convention
 
 For research projects with code, experiments, notes, and results, prefer a
@@ -187,10 +174,8 @@ project/
 
 `manuscript/` is the publication-facing layer. It should consume outputs from
 code, experiments, notes, and bibliography tooling, not replace them. When it is
-externally synced or must be portable, apply the Core Rule above: generators move
-to the code layer (`scripts/`), generated artifacts are committed, and the claims
-ledger lives in the planning area (`notes/`) — so `manuscript/` holds only the
-compile-standalone artifact.
+externally synced or must be portable, the Core Rule above governs what may live
+here.
 
 Do not put the full paper under `docs/` unless the project already uses `docs/`
 as its publication area. `docs/` should usually remain for technical/internal
@@ -200,9 +185,7 @@ Do not split the manuscript into a separate repository unless collaboration,
 publisher requirements, or artifact submission constraints require it.
 
 The directory has one purpose: produce the paper artifact. Keep generated files
-clearly separated from human-authored ones. The claims/evidence ledger is
-deliberately absent from the tree — it is planning, not publishable source, so it
-lives in the project planning area (`notes/`), not a synced `manuscript/`.
+clearly separated from human-authored ones.
 
 ## Claims and Evidence Ledger
 
@@ -262,15 +245,8 @@ make arxiv
 make clean
 ```
 
-If the project uses `just`, equivalent commands are fine:
-
-A good `make paper` target should:
-
-- run LaTeX from `manuscript/`
-- use `latexmk`
-- enable SyncTeX when useful
-- fail loudly on build errors
-- avoid deleting generated paper artifacts accidentally
+`make paper` runs LaTeX from `manuscript/` via `latexmk`, with SyncTeX where it
+helps. `just` equivalents are fine if the project uses it.
 
 `make live` is for humans during active writing: a long-running continuous
 rebuild/watch mode, usually `latexmk -pdf -pvc -synctex=1 main.tex`. Agents
@@ -299,13 +275,6 @@ Do not fabricate citations. For literature search, related work, citation
 verification, or bibliography generation, follow the host's research/citation
 verification policy before producing paper-specific content.
 
-## Division of Labor
-
-- planning notes: claims, outlines, derivations, reviewer TODOs
-- LaTeX: final paper source
-- BibTeX/BibLaTeX: references
-- generated artifacts: figures/tables from scripts/results
-
 ## Agent Collaboration Pattern
 
 Given human-owned `.tex`, use agents as reviewers and research assistants, not
@@ -319,13 +288,6 @@ Good requests:
 - “Suggest better related-work positioning, with verified citations.”
 - “Check whether figures and tables support the abstract claims.”
 - “Draft proposed edits in a project `notes/` HTML working note, not in `.tex`.”
-
-Bad requests:
-
-- “Rewrite the introduction in place.”
-- “Edit all `.tex` files for clarity.”
-- “Fix the theorem statement directly.”
-- “Automatically update citations in the paper.”
 
 If asked for direct `.tex` edits, provide a human-applyable proposal instead.
 
