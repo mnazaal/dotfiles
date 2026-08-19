@@ -39,7 +39,6 @@ OPTIONS
       --ro-file FILE        add a read-only  file bind   (repeatable)
       --backend NAME        gvisor | podman (default) | bwrap; or $SANDBOX_BACKEND
       --net | --no-net      share (default) or unshare the network
-      --keep-home           do not hide $HOME behind a tmpfs (bwrap only)
   -n, --dry-run             print the backend command instead of running it
       --init PLATFORM       one-time host setup for bwrap (platforms: ubuntu)
   -h, --help                show this help
@@ -143,7 +142,9 @@ run_bwrap() {
 		[ -n "${!d+x}" ] && args+=(--setenv "$d" "${!d}")
 	done
 	args+=(--die-with-parent --proc /proc --dev /dev --tmpfs /tmp)
-	[ "$HOME_TMPFS" -eq 1 ] && args+=(--tmpfs "$H")
+	# The tmpfs is what makes $HOME invisible here; the binds below put back
+	# only the allowlist. Unconditional — nothing may widen this boundary.
+	args+=(--tmpfs "$H")
 	args+=(--chdir "$PWD")
 
 	for d in /usr /bin /sbin /lib /lib64 /lib32 /etc /opt /var/lib /run/systemd/resolve; do
@@ -246,8 +247,7 @@ declare -a RW=() RO=() RW_FILES=() RO_FILES=() RO_LAST=()
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
 declare -a SANDBOX_ENV=(HOME PWD PATH LANG LC_ALL LC_CTYPE TERM COLORTERM NO_COLOR EDITOR VISUAL XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_RUNTIME_DIR XDG_STATE_HOME WAYLAND_DISPLAY)
-NET=1        # 1 share network, 0 unshare
-HOME_TMPFS=1 # bwrap: hide $HOME behind tmpfs
+NET=1 # 1 share network, 0 unshare
 DRYRUN=0
 SANDBOX_PATH_PREPEND=""
 PODMAN_RUNTIME="" # gvisor backend sets this to the runsc path
@@ -288,10 +288,6 @@ while [ $# -gt 0 ]; do
 		;;
 	--net)
 		NET=1
-		shift
-		;;
-	--keep-home)
-		HOME_TMPFS=0
 		shift
 		;;
 	-n | --dry-run)
