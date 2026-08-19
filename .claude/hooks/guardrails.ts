@@ -59,7 +59,7 @@ console.log(JSON.stringify({
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
     permissionDecision: r.decision,
-    permissionDecisionReason: `${r.reason} — ${(event.command ?? event.path ?? event.paths?.[0] ?? event.url ?? event.urls?.[0] ?? "").slice(0, 80)}`,
+    permissionDecisionReason: `${r.reason} — ${(event.command ?? event.paths?.[0] ?? event.urls?.[0] ?? "").slice(0, 80)}`,
   },
 }));
 process.exit(0);

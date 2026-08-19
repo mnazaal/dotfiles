@@ -18,7 +18,7 @@ export default function (pi: ExtensionAPI) {
 
     // ask: prompt when there's a UI, else fail closed.
     if (!ctx.hasUI) return { block: true, reason: `Blocked ${event.toolName} (no UI): ${r.reason}` };
-    const shown = guardEvent.command ?? guardEvent.path ?? guardEvent.paths?.[0] ?? guardEvent.url ?? guardEvent.urls?.[0] ?? "";
+    const shown = guardEvent.command ?? guardEvent.paths?.[0] ?? guardEvent.urls?.[0] ?? "";
     const choice = await ctx.ui.select(`⚠️  ${r.reason}:\n\n  ${shown}\n\nAllow?`, ["Yes", "No"]);
     if (choice !== "Yes") return { block: true, reason: "Blocked by user" };
     return undefined;

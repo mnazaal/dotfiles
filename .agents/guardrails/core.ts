@@ -24,14 +24,11 @@ export type Decision = { decision: "deny" | "ask" | "allow"; reason?: string };
 export type Operation = "read" | "write" | "bash" | "fetch" | "unknown";
 export type ToolEvent = {
   command?: string;
-  path?: string;
   paths?: string[];
-  url?: string;
   urls?: string[];
   tool?: string;
   cwd?: string;
   operation?: Operation;
-  capabilities?: string[];
 };
 export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
 
@@ -58,9 +55,9 @@ function loadJson(name: string): any {
   throw new Error(`guardrails: missing ${name} (tried ${candidates.join(", ")})`);
 }
 
-function machineryOn(spec: unknown, agent: string): boolean {
-  if (spec && typeof spec === "object") return Boolean((spec as Record<string, unknown>)[agent] ?? true);
-  return spec === undefined || spec === null ? true : Boolean(spec);
+/** Policy value for this agent: either one value shared by all, or a per-agent map. */
+function perAgent(spec: unknown, agent: string): unknown {
+  return spec && typeof spec === "object" ? (spec as Record<string, unknown>)[agent] : spec;
 }
 
 // --- stateless string helpers (no config dependency) ------------------------
@@ -85,37 +82,27 @@ function splitSegments(cmd: string): string[] {
   return out;
 }
 
-/** Tokenize one segment, stripping quotes. */
-function tokenize(seg: string): string[] {
+/** Split into words on any char of `seps`, stripping quotes. */
+function splitWords(s: string, seps: string): string[] {
   const out: string[] = [];
   let cur = "", inSQ = false, inDQ = false;
-  for (const ch of seg) {
+  for (const ch of s) {
     if (inSQ) { if (ch === "'") inSQ = false; else cur += ch; continue; }
     if (inDQ) { if (ch === '"') inDQ = false; else cur += ch; continue; }
     if (ch === "'") { inSQ = true; continue; }
     if (ch === '"') { inDQ = true; continue; }
-    if (ch === " " || ch === "\t") { if (cur) { out.push(cur); cur = ""; } }
+    if (seps.includes(ch)) { if (cur) { out.push(cur); cur = ""; } }
     else cur += ch;
   }
   if (cur) out.push(cur);
   return out;
 }
 
+/** Tokenize one segment, stripping quotes. */
+const tokenize = (seg: string): string[] => splitWords(seg, " \t");
+
 /** Tokenize a whole command for path scanning (splits on separators too). */
-function pathTokenize(cmd: string): string[] {
-  const out: string[] = [];
-  let cur = "", inSQ = false, inDQ = false;
-  for (const ch of cmd) {
-    if (inSQ) { if (ch === "'") inSQ = false; else cur += ch; continue; }
-    if (inDQ) { if (ch === '"') inDQ = false; else cur += ch; continue; }
-    if (ch === "'") { inSQ = true; continue; }
-    if (ch === '"') { inDQ = true; continue; }
-    if (" \t\n;|&".includes(ch)) { if (cur) { out.push(cur); cur = ""; } }
-    else cur += ch;
-  }
-  if (cur) out.push(cur);
-  return out;
-}
+const pathTokenize = (cmd: string): string[] => splitWords(cmd, " \t\n;|&");
 
 function basename(word: string): string {
   const parts = word.split("/");
@@ -228,10 +215,10 @@ function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; 
 }
 
 /** First non-flag arg, skipping value-taking global options (e.g. git -C <dir>). */
-function subcommandOf(args: string[], valueOpts: Set<string>): string {
+function subcommandOf(args: string[], valueOpts?: Set<string>): string {
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (valueOpts.has(a)) { i++; continue; }
+    if (valueOpts?.has(a)) { i++; continue; }
     if (a === "--") continue;
     if (a.startsWith("-")) continue;
     return a;
@@ -297,7 +284,9 @@ export function createGuard(agent: string) {
 
   const credentials: string[] = [...(sp.credentials ?? [])];
   const protectedWriteGlobs: string[] = [...(sp.protected_write_globs ?? [])];
-  const machinery: string[] = machineryOn(sp.machinery_enabled, agent) ? [...(sp.machinery ?? [])] : [];
+  // Only an explicit `false` disables machinery protection: an absent or
+  // malformed setting must not read as an unprotected default.
+  const machinery: string[] = perAgent(sp.machinery_enabled, agent) !== false ? [...(sp.machinery ?? [])] : [];
   const segments = new Set<string>(sp.sensitive_segments ?? []);
 
   const ESCALATORS = new Set<string>(dc.escalators ?? []);
@@ -307,14 +296,11 @@ export function createGuard(agent: string) {
   const FIND_EXEC = new Set<string>(dc.find_exec_primaries ?? []);
   const GIT_REF_WRITE = new Set<string>(dc.git_ref_write_subcmds ?? []);
   const GIT_VALUE_OPTS = new Set<string>(dc.git_global_value_opts ?? []);
-  const findPolicy: string = (dc.find_policy ?? {})[agent] ?? "exec";
+  const findPolicy: string = (perAgent(dc.find_policy, agent) as string) ?? "exec";
 
   const SEVERITY: Record<string, unknown> = dc.severity ?? {};
   function severityOf(category: string): "deny" | "ask" | "allow" {
-    const spec = SEVERITY[category];
-    const value = typeof spec === "string"
-      ? spec
-      : (spec as Record<string, string> | undefined)?.[agent];
+    const value = perAgent(SEVERITY[category], agent) as string | undefined;
     return value === "deny" || value === "allow" ? value : "ask";
   }
 
@@ -491,7 +477,7 @@ export function createGuard(agent: string) {
     return { decision: "allow" };
   }
 
-  return { evaluate, _internals: { blocked, blockedCommand, dangerReason, resolveAny } };
+  return { evaluate };
 }
 
 // --- skill gate ---------------------------------------------------------------
@@ -540,7 +526,6 @@ export function createSkillGate() {
   const WRAPPERS = new Set<string>(dc.command_wrappers ?? []);
   const SHELL_RUNNERS = new Set<string>(dc.shell_runners ?? []);
   const GIT_VALUE_OPTS = new Set<string>(dc.git_global_value_opts ?? []);
-  const NO_OPTS = new Set<string>();
   const gates: Gate[] = sg.gates ?? [];
   const bashGates = gates.filter((g) => g.trigger?.type === "bash") as (Gate & { trigger: BashTrigger })[];
   const writeGates = gates.filter((g) => g.trigger?.type === "write") as (Gate & { trigger: WriteTrigger })[];
@@ -560,7 +545,7 @@ export function createSkillGate() {
         const t = g.trigger;
         if (parsed.command !== t.command) continue;
         if (t.subcommands?.length) {
-          const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : NO_OPTS);
+          const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : undefined);
           if (!t.subcommands.includes(sub)) continue;
         }
         if (t.arg_contains) {
@@ -623,7 +608,7 @@ export function createSkillGate() {
   }
 
   function capabilitiesOf(input: ToolEvent): Set<string> {
-    const capabilities = new Set(input.capabilities ?? []);
+    const capabilities = new Set<string>();
     const toolTokens = (input.tool ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     if (toolTokens.some((token) => ["paper", "papers", "citation", "citations", "author", "authors", "bibliography", "bibliographic"].includes(token))) {
       capabilities.add("academic-source");
@@ -646,8 +631,8 @@ export function createSkillGate() {
 
   /**
    * Match one tool event. `command` runs the bash gates; a write-capable tool
-   * (name contains "write"/"edit") with a `path` runs the write gates; a
-   * fetch tool (name contains "fetch"), or any event carrying a `url`, runs the
+   * (name contains "write"/"edit") with `paths` runs the write gates; a
+   * fetch tool (name contains "fetch"), or an untyped event, runs the
    * fetch gates. `tool` is the host's tool name (case-insensitive), so the
    * read-vs-write distinction is portable without hardcoding per-host names.
    */
@@ -657,16 +642,11 @@ export function createSkillGate() {
     if (input.command) hits.push(...bashHits(input.command));
     const tool = (input.tool ?? "").toLowerCase();
     const writes = input.operation === "write" || tool.includes("write") || tool.includes("edit") || tool.includes("apply_patch");
-    if (writes) for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) hits.push(...writeHits(path, cwd));
-    if (tool === "" || tool.includes("fetch")) for (const url of [...(input.url ? [input.url] : []), ...(input.urls ?? [])]) hits.push(...fetchHits(url));
+    if (writes) for (const path of input.paths ?? []) hits.push(...writeHits(path, cwd));
+    if (tool === "" || tool.includes("fetch")) for (const url of input.urls ?? []) hits.push(...fetchHits(url));
     hits.push(...capabilityHits(capabilitiesOf({ ...input, cwd })));
-    const seen = new Set<string>();
-    return hits.filter((candidate) => {
-      const key = `${candidate.skills.join("\u0000")}\u0000${candidate.message}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const byKey = new Map(hits.map((h) => [`${h.skills.join("\u0000")}\u0000${h.message}`, h]));
+    return [...byKey.values()];
   }
 
   return { requiredSkills };
@@ -694,14 +674,10 @@ export function pathsFromToolInput(tool: string | undefined, input: Record<strin
   return [...new Set(paths)];
 }
 
-export function urlsFromToolInput(input: Record<string, unknown> | undefined): string[] {
-  return stringValues(input, ["url"]).filter((s) => /^https?:/i.test(s));
-}
-
-export function inferOperation(tool: string | undefined, event: Pick<ToolEvent, "command" | "url" | "urls"> = {}): Operation {
+export function inferOperation(tool: string | undefined, event: Pick<ToolEvent, "command" | "urls"> = {}): Operation {
   if (event.command) return "bash";
   const t = (tool ?? "").toLowerCase();
-  if (event.url || event.urls?.length || t.includes("fetch")) return "fetch";
+  if (event.urls?.length || t.includes("fetch")) return "fetch";
   if (t.includes("apply_patch") || t.includes("write") || t.includes("edit")) return "write";
   if (["read", "list", "get", "context", "toc", "outline", "search", "refs", "diff", "glob", "grep"].some((s) => t.includes(s))) return "read";
   return "unknown";
@@ -713,21 +689,15 @@ export function commandFromToolInput(tool: string | undefined, input: Record<str
 }
 
 export function toolEventFromInput(tool: string | undefined, input: Record<string, unknown> | undefined, cwd?: string): ToolEvent {
-  const command = commandFromToolInput(tool, input);
-  const urls = urlsFromToolInput(input);
   const event: ToolEvent = {
     tool,
     cwd,
-    command,
+    command: commandFromToolInput(tool, input),
     paths: pathsFromToolInput(tool, input),
-    urls,
+    urls: stringValues(input, ["url"]).filter((s) => /^https?:/i.test(s)),
   };
   event.operation = inferOperation(tool, event);
   return event;
-}
-
-function loadedSet(loadedSkills?: Set<string> | string[]): Set<string> {
-  return loadedSkills instanceof Set ? loadedSkills : new Set(loadedSkills ?? []);
 }
 
 export function createGuardrails(agent: string) {
@@ -745,14 +715,14 @@ export function createGuardrails(agent: string) {
 
   function evaluate(event: ToolEvent, loadedSkills?: Set<string> | string[]): GuardrailDecision {
     const cwd = event.cwd ?? HOME;
-    const paths = [...(event.path ? [event.path] : []), ...(event.paths ?? [])];
-    const urls = [...(event.url ? [event.url] : []), ...(event.urls ?? [])];
+    const paths = event.paths ?? [];
+    const urls = event.urls ?? [];
     const operation = event.operation ?? inferOperation(event.tool, event);
 
     const r = guard.evaluate({ command: event.command, paths, cwd, operation });
     if (r.decision !== "allow") return r;
 
-    const loaded = loadedSet(loadedSkills);
+    const loaded = loadedSkills instanceof Set ? loadedSkills : new Set(loadedSkills ?? []);
     const hits = skillGate.requiredSkills({ ...event, paths, urls, cwd, operation });
     const missing = [...new Set(hits.flatMap((hit) => hit.skills).filter((skill) => !loaded.has(skill)))];
     if (missing.length) {
@@ -767,7 +737,7 @@ export function createGuardrails(agent: string) {
     return { decision: "allow" };
   }
 
-  return { evaluate, guard, skillGate };
+  return { evaluate };
 }
 
 /** Canonical skill-file path — the only pattern that yields a load receipt. */
