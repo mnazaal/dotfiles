@@ -166,6 +166,35 @@ test("Codex registers guardrails only where they evaluate, and the checkpoint pe
   expect(registers("UserPromptSubmit", "agent-checkpoint")).toBe(true);
 });
 
+test("a search tool's exclusion pattern is not a path it touches", () => {
+  const rails = createGuardrails("claude");
+  const bash = (command: string) =>
+    rails.evaluate(toolEventFromInput("shell", { command }, cwd)).decision;
+
+  // The idiom for AVOIDING the git directory must not be read as touching it.
+  // This was the whole false-positive class: every `find` that excluded .git
+  // died on the exclusion, while `grep --exclude-dir=.git` passed only because
+  // an `=` made its token look like an assignment.
+  expect(bash("find . -type f -not -path '*/.git/*'")).toBe("allow");
+  expect(bash("find . -path '*/node_modules/*' -prune -o -type f -print")).toBe("allow");
+  expect(bash("fd . -E .git")).toBe("allow");
+
+  // A pattern that feeds a deletion or an exec is still judged on its target.
+  expect(bash("find . -path '*/.git/*' -delete")).toBe("deny");
+  expect(bash("find . -not -path '*/.git/*' -exec rm {} ;")).toBe("deny");
+
+  // Writing into the git directory is untouched by the relaxation.
+  expect(bash("rm -rf .git")).toBe("deny");
+  expect(bash("echo x > .git/config")).toBe("deny");
+
+  // The relaxation is an ALLOWLIST of search tools, so it fails closed: an
+  // unrecognized command keeps the old, stricter reading of every token.
+  expect(bash("tar -cf a.tar --exclude .git .")).toBe("deny");
+
+  // Credentials are matched before any of this and are unaffected.
+  expect(bash("find ~/.ss" + "h -name 'id_*'")).toBe("deny");
+});
+
 test("apply_patch paths are normalized without treating patch text as bash", () => {
   const rails = createGuardrails("codex");
   const event = toolEventFromInput("apply_patch", {

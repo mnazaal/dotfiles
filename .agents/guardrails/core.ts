@@ -270,6 +270,17 @@ function isTopLevelRmTarget(target: string, base: string, origin: string): boole
   return false;
 }
 
+/**
+ * Tools that only read the filesystem, and the flags whose argument is a
+ * pattern rather than a target. Deliberately an allowlist: an unrecognized
+ * command keeps the old, stricter reading of every token.
+ */
+const SEARCH_TOOLS = new Set(["find", "fd", "fdfind", "rg", "ripgrep", "grep", "egrep", "fgrep", "ag", "ack"]);
+const PATTERN_FLAGS = new Set([
+  "-path", "-ipath", "-wholename", "-iwholename", "-name", "-iname", "-regex", "-iregex",
+  "-E", "--exclude", "--exclude-dir", "--include", "--glob", "-g",
+]);
+
 function hasProtectedSegment(path: string, operation: Operation = "unknown"): boolean {
   for (const comp of path.replace(/\\/g, "/").split("/")) {
     if (comp === ".env" || comp.startsWith(".env.")) return true;
@@ -332,8 +343,20 @@ export function createGuard(agent: string) {
       const abs = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
       if (norm.includes(s) || norm.includes(abs)) return s;
     }
-    for (const tok of pathTokenize(norm)) {
+    // The argument to a search tool's pattern flag is a PATTERN, not a path the
+    // command touches: `find . -not -path '*/.git/*'` is the idiom for AVOIDING
+    // the git directory, and judging it as a path denies the exclusion for
+    // naming what it excludes. Narrowed two ways so it fails closed: only for
+    // tools that just search, and only while the invocation carries no primary
+    // that can delete or execute — `find . -path '*/.git/*' -delete` is still
+    // judged on what it would remove.
+    const tokens = pathTokenize(norm);
+    const searching = SEARCH_TOOLS.has(basename(tokens[0] ?? "")) &&
+      !tokens.some((t) => FIND_EXEC.has(t));
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i];
       if (tok.startsWith("-") || tok.includes("=")) continue;
+      if (searching && i > 0 && PATTERN_FLAGS.has(tokens[i - 1])) continue;
       for (const comp of tok.replace(/\\/g, "/").split("/")) if (segments.has(comp)) return comp;
       const r = blocked(resolveAny(tok, cwd), "bash");
       if (r) return r;
