@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] && \"$f\" >/dev/null 2>&1; exit 0",
+            "timeout": 30,
+            "statusMessage": "Snapshotting working tree"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "*",

@@ -150,11 +150,20 @@ test("Claude guardrail hook covers path-capable tools and asks when unavailable"
   expect(commands.some((command: string) => command.includes("exit 2"))).toBe(false);
 });
 
-test("Codex only registers guardrails for evaluated hook events", () => {
+test("Codex registers guardrails only where they evaluate, and the checkpoint per turn", () => {
   const hooks = JSON.parse(readFileSync(join(import.meta.dir, "../hooks.json"), "utf8"));
-  expect(hooks.hooks.PreToolUse).toBeDefined();
-  expect(hooks.hooks.PermissionRequest).toBeDefined();
-  expect(hooks.hooks.UserPromptSubmit).toBeUndefined();
+  const commandsFor = (event: string) =>
+    (hooks.hooks[event] ?? []).flatMap((entry: { hooks?: { command?: string }[] }) =>
+      (entry.hooks ?? []).map((hook) => hook.command ?? ""));
+  const registers = (event: string, needle: string) =>
+    commandsFor(event).some((command: string) => command.includes(needle));
+  expect(registers("PreToolUse", "guardrails.ts")).toBe(true);
+  expect(registers("PermissionRequest", "guardrails.ts")).toBe(true);
+  // A prompt carries no tool event, so the adapter has nothing to evaluate on
+  // UserPromptSubmit. What belongs there is the per-turn working-tree snapshot
+  // claude gets from .claude/settings.json: allow-all rests on recoverability.
+  expect(registers("UserPromptSubmit", "guardrails.ts")).toBe(false);
+  expect(registers("UserPromptSubmit", "agent-checkpoint")).toBe(true);
 });
 
 test("apply_patch paths are normalized without treating patch text as bash", () => {
