@@ -1034,18 +1034,6 @@ See [[https://elpa.gnu.org/packages/corfu.html][documentation]] for more configu
         ("C-M-k" . corfu-popupinfo-scroll-down)))
 #+end_src
 
-** corfu-terminal                                                :completion:
-Allow corfu popups in terminal emacs.
-
-#+begin_src emacs-lisp
-(use-package corfu-terminal
-  :if (< emacs-major-version 31)
-  :vc (:url "https://codeberg.org/akib/emacs-corfu-terminal" :branch "master")
-  :config
-  (unless (display-graphic-p)
-    (corfu-terminal-mode 1)))
-#+end_src
-
 ** corfu-prescient                                               :completion:
 #+begin_src emacs-lisp
 (use-package corfu-prescient
