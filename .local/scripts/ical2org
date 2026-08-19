@@ -80,11 +80,34 @@ ICSFILE=$(mktemp)
 URLFILE=$(mktemp)
 trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
 
+# Report which calendar failed, at which stage, and when. gpg failures carry
+# no timestamp and no calendar name of their own, so an unattributed
+# "decryption failed" in a shared log was previously unreadable.
+fail() { # message [captured output]
+	printf '%s ical2org[%s]: %s\n' "$(date '+%F %T')" "$CALENDAR_NAME" "$1" >&2
+	if [ -n "${2:-}" ]; then
+		printf '%s\n' "$2" >&2
+	fi
+	exit 1
+}
+
 # Decrypt the URL and download the calendar without exposing the URL in argv.
-gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty --decrypt "$PASS_FILE" >"$URLFILE"
-# -nv: cron runs this every 10 minutes; wget progress dots dominated the log.
-wget -nv --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE"
+#
+# Every stage captures its own output and prints it ONLY on failure. cron runs
+# this every 10 minutes, so anything printed unconditionally accumulates: the
+# log reached 36 MB of successful-download chatter, and the gpg failures that
+# actually broke the sync were buried in it. A healthy run now prints nothing.
+out=$(gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty \
+	--decrypt "$PASS_FILE" 2>&1 >"$URLFILE") ||
+	fail "gpg could not decrypt $PASS_FILE" "$out"
 
-"$ICS2ORG" "$ICSFILE" "$ORGFILE"
+out=$(wget -nv --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE" 2>&1) ||
+	fail "download failed" "$out"
 
-echo "Synced calendar '$CALENDAR_NAME' to: $ORGFILE"
+out=$("$ICS2ORG" "$ICSFILE" "$ORGFILE" 2>&1) ||
+	fail "conversion to org failed" "$out"
+
+# Interactive runs still confirm; cron stays silent.
+if [ -t 1 ]; then
+	echo "Synced calendar '$CALENDAR_NAME' to: $ORGFILE"
+fi
