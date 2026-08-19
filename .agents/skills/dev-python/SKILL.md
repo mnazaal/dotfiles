@@ -41,7 +41,7 @@ uv add <package>        # adds to pyproject.toml + lockfile
 uv lock                 # re-resolve after a MANUAL pyproject edit (uv add/remove do this for you)
 uv sync                 # restore from lockfile
 
-# Tests — use the project-configured runner; otherwise prefer the worktree-local executable or `uv run pytest` when uv owns the environment
+# Tests — use the project-configured runner; otherwise prefer the worktree-local executable (`.venv/bin/pytest`)
 pytest                          # full suite
 pytest tests/test_foo.py -x     # focused, stop on first failure
 pytest -k "test_name" -v

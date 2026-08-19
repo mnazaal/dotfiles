@@ -70,7 +70,10 @@ headings at all).
 Count only **unmarked** forward-looking sets. A block carrying `DONE`,
 `RESOLVED`, `PARKED`, `SUPERSEDED`, or its own recorded outcome is history, not
 a rival — a finished phase is not ambiguous, and counting it is the fastest way
-to make this gate something you ignore. What actually counts:
+to make this gate something you ignore. The generated handoff block above the
+first heading is not a rival either: it is single-valued and replaced on every
+write (`session-handoff`), so it records where you are, not a competing plan.
+What actually counts:
 
 - two or more UNMARKED forward-looking sets (`NEXT`, `PENDING`, execution
   order, open risks);
@@ -121,7 +124,7 @@ this catches *unpropagated* ones, which pass it silently.
 3. Run or schedule the step-0 novelty gate before treating novelty as verified.
 4. Draft or rewrite decisions, rationale, execution order, and risks; keep unresolved choices out of the plan or mark them explicitly as risks.
 5. Append a decision-log entry per hard-to-reverse call; route results and dead branches to `LOG.md`.
-6. Grep for duplicate single-valued headings, then persist only with user/policy authorization and report unresolved risks and the next action.
+6. Re-run the revision gate as a read, not a grep, then persist only with user/policy authorization and report unresolved risks and the next action.
 
 ## Related Skills
 

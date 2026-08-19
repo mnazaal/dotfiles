@@ -51,7 +51,7 @@ Get a project's experiments onto a SLURM cluster and results back, reproducibly,
 ## Results
 
 - Pull one-way, cluster→laptop, `rsync -avz` (never push back) — safe to run mid-job.
-- Gitignore generated output (`experiments/results/`, hydra's `outputs/`, `multirun/`): synced, not versioned.
+- Gitignore generated output — `results/`, the single generated-output root, which holds hydra's `outputs/` and `multirun/` (`dev-ml-infra` owns the layout): synced, not versioned.
 - Result dirs accumulate from failed/OOM-killed/timed-out jobs too. Filter what you pull by `sacct -j <job_id> --allocations` keyed off each run's `.submitit/<job_id>/`, rather than a hand-rolled success marker. Only within `sacct`'s retention window (~30 days typically). `sacct` is authoritative for what the *scheduler* did — non-zero exits, OOM kills, timeouts — but NOT for whether the task body succeeded: a caught task exception exits 0 and reports `COMPLETED` (see Submission). Pair it with `JobReturn.status` and artifact presence.
 
 ## Sandbox Handoff
