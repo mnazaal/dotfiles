@@ -720,7 +720,6 @@ Directory management.
 (use-package flash
   :commands (flash-jump flash-jump-continue
               flash-treesitter)
-  :bind ("s-j" . flash-jump)
   :custom
   (flash-multi-window t)
   :config
@@ -1565,7 +1564,6 @@ Notes on the settings:
        (mode-io-correlate
         " --forward-search-file \"%b\" --forward-search-line %n --inverse-search \"emacsclient +%2 %1\""))
       "sioyek")))
-  (ConTeXt-Mark-version "IV")
   :hook
   (LaTeX-mode . TeX-source-correlate-mode)
   (LaTeX-mode . TeX-fold-mode))
@@ -1641,16 +1639,6 @@ Sharp bits:
 ** yaml-mode                                                        :utility:
 #+begin_src emacs-lisp
 (use-package yaml-mode)
-#+end_src
-
-** nov                                                              :reading:
-For reading EPUB files.
-
-#+begin_src emacs-lisp
-(use-package nov
-  :mode ("\\.epub\\'" . nov-mode)
-  :custom
-  (nov-variable-pitch nil))
 #+end_src
 
 ** ledger-mode                                          :personal_management:
