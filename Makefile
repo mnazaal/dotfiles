@@ -1,4 +1,4 @@
-.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync
+.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync
 
 help:
 	@printf '%s\n' \
@@ -44,7 +44,7 @@ clean:
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
 
-check: test check-agent-role-sync check-guardrails-native-sync
+check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/srcup .config/pass-extensions .config/renv .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -77,6 +77,7 @@ check: test check-agent-role-sync check-guardrails-native-sync
 test:
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/codex-skills-link-test.sh
+	@bash tests/guardrails-skill-state-test.sh
 	@bash tests/renv-claude-test.sh
 	@bash tests/renv-test.sh
 	@bash tests/sandbox-agent-profile-test.sh
@@ -111,5 +112,28 @@ check-guardrails-native-sync:
 	done; \
 	for p in $$machinery; do \
 		grep -qF "$$p" "$(CURDIR)/.config/codex/config.toml.template" || { printf 'native permission drift: machinery path %s missing from %s\n' "$$p" ".config/codex/config.toml.template" >&2; status=1; }; \
+	done; \
+	exit "$$status"
+
+# Drift check for the machinery paths the sandbox must pin read-only. Policy
+# lists them in sensitive-paths.json; machinery-ro.profile is what enforces them
+# at launch. A rename in one file and not the other unprotects the path with no
+# symptom: the sandbox silently drops binds whose source is missing, and no test
+# covers 17 of the 21 pins. Only ~/dotfiles entries are checked — the others are
+# the stow-deployed links, whose targets these pins already cover.
+check-machinery-ro-sync:
+	@set -eu; \
+	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
+	profile="$(CURDIR)/.config/sandbox/machinery-ro.profile"; \
+	status=0; \
+	machinery="$$(awk '/"machinery": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~/dotfiles[^"]*"' | tr -d '"')"; \
+	if [ -z "$$machinery" ]; then \
+		printf 'machinery-ro-sync: extracted no ~/dotfiles machinery paths from %s — the awk extraction depends on the current JSON formatting\n' "$$paths_file" >&2; \
+		exit 1; \
+	fi; \
+	pinned="$$(grep -v '^[[:space:]]*#' "$$profile")"; \
+	for p in $$machinery; do \
+		pin="$$(printf '%s' "$$p" | sed 's|^~|$$H|')"; \
+		printf '%s\n' "$$pinned" | grep -qF "\"$$pin\"" || { printf 'machinery-ro drift: %s is policy-protected but not pinned read-only in machinery-ro.profile\n' "$$p" >&2; status=1; }; \
 	done; \
 	exit "$$status"
