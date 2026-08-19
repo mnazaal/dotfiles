@@ -40,6 +40,8 @@
       "Read(~/.docker/config.json)",
       "Read(~/.kube/config)",
       "Read(~/.password-store/**)",
+      "Read(~/.local/share/gnupg/**)",
+      "Read(~/.local/share/pass/**)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(~/.claude/.credentials.json)",
