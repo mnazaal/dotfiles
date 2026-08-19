@@ -15,7 +15,6 @@ type HookInput = {
   hook_event_name?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
-  prompt?: string;
 };
 
 function readStdin(): HookInput {
@@ -68,13 +67,8 @@ function denyPermission(reason: string) {
   };
 }
 
-function blockPrompt(reason: string) {
-  return { decision: "block", reason };
-}
-
 function maybeDecision(event: string | undefined, reason: string) {
   if (event === "PermissionRequest") return denyPermission(reason);
-  if (event === "UserPromptSubmit") return blockPrompt(reason);
   return denyPreTool(reason);
 }
 

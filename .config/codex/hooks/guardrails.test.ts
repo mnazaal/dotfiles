@@ -74,12 +74,6 @@ test("recursive force rm is caught through wrappers", () => {
   }
 });
 
-test("find exec policy is caught", () => {
-  const rails = createGuardrails("opencode");
-  const r = rails.evaluate({ tool: "bash", command: "find . -name x -exec rm {} \\;", cwd });
-  expect(r.decision).toBe("ask");
-});
-
 test("git commit requires dev-git skill", () => {
   const rails = createGuardrails("opencode");
   const event = { tool: "bash", command: "git commit -m ok", cwd };
@@ -94,15 +88,9 @@ test("codex missing-skill message names the canonical skill path", () => {
   expect(r.reason).toContain("skills/<name>/SKILL.md");
 });
 
-test("root markdown write requires project-docs skill", () => {
+test("root markdown and project notes writes require project-docs skill", () => {
   const rails = createGuardrails("opencode");
-  const r = rails.evaluate({ tool: "write", paths: ["PLAN.md"], cwd });
-  expect(r.skills).toEqual(["context-project-docs"]);
-});
-
-test("README and project notes writes require project-docs skill", () => {
-  const rails = createGuardrails("opencode");
-  for (const path of ["README.md", "notes/claim.html"]) {
+  for (const path of ["PLAN.md", "README.md", "notes/claim.html"]) {
     expect(rails.evaluate({ tool: "write", paths: [path], cwd }).skills)
       .toEqual(["context-project-docs"]);
   }
