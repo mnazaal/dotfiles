@@ -60,7 +60,7 @@
   "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
   "find_policy": {
     "claude": "off",
-    "codex": "exec",
+    "codex": "off",
     "pi": "exec",
     "opencode": "exec"
   },
@@ -73,13 +73,13 @@
     "recursive-force-rm-toplevel": "deny",
     "world-writable": {
       "claude": "allow",
-      "codex": "ask",
+      "codex": "allow",
       "pi": "ask",
       "opencode": "ask"
     },
     "recursive-force-rm": {
       "claude": "allow",
-      "codex": "ask",
+      "codex": "allow",
       "pi": "ask",
       "opencode": "ask"
     }

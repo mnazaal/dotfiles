@@ -94,9 +94,11 @@ then retry" message.
   fail-safe. Never-legitimate categories (`escalation`, `confinement`,
   `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`) deny
   for everyone. Categories the sandbox already contains (`world-writable`,
-  `recursive-force-rm`) allow only where `agent-checkpoint` is wired: `ask`
-  means "hard block" to codex and opencode, so allowing there would loosen the
-  two agents that cannot recover uncommitted work.
+  `recursive-force-rm`) allow only where `agent-checkpoint` is wired — claude
+  and, since 2026-08-19, codex. It stays `ask` for pi and opencode, and `ask`
+  means "hard block" to opencode, so allowing it there would loosen an agent
+  that cannot recover uncommitted work. Wiring a checkpoint for an agent is
+  what earns it this tier; nothing else does.
 
 ## Native permission layers
 

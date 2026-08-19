@@ -48,9 +48,10 @@ type Severity = "deny" | "ask" | "allow";
 
 // A row expects either one severity for every harness, or a per-agent split.
 // The split is not cosmetic: `ask` means "prompt" to claude and pi but "hard
-// block" to codex and opencode, so reclassifying a row to `allow` loosens those
-// two from blocked to permitted. Rows that rely on agent-checkpoint for their
-// safety therefore stay `ask` wherever no checkpoint is wired.
+// block" to codex and opencode, so reclassifying a row to `allow` loosens the
+// latter from blocked to permitted. Rows that rely on agent-checkpoint for
+// their safety therefore stay `ask` wherever no checkpoint is wired -- which
+// since 2026-08-19 means pi and opencode, not codex.
 type Expected = Severity | ({ default: Severity } & Partial<Record<Agent, Severity>>);
 
 const expectedFor = (e: Expected, agent: Agent): Severity =>
@@ -104,15 +105,16 @@ const TABLE: Row[] = [
 
   // --- candidates for allow: the sandbox already contains these -----------------
   // Recursive force rm inside the project is recoverable via agent-checkpoint,
-  // which only claude has wired -- hence the per-agent split.
+  // which claude and codex have wired -- hence the per-agent split. The split
+  // tracks which agents snapshot per turn, not which harness is trusted.
   {
     command: "rm -rf build",
-    expected: { claude: "allow", default: "ask" },
+    expected: { claude: "allow", codex: "allow", default: "ask" },
     note: "inside the project, checkpoint covers it",
   },
   {
     command: "rm -rf ./build/cache",
-    expected: { claude: "allow", default: "ask" },
+    expected: { claude: "allow", codex: "allow", default: "ask" },
     note: "nested inside the project",
   },
 
@@ -140,18 +142,18 @@ const TABLE: Row[] = [
   { command: "cd .. && rm -rf project", expected: "deny", note: "relative target after cd up" },
   {
     command: "cd build && rm -rf src",
-    expected: { claude: "allow", default: "ask" },
+    expected: { claude: "allow", codex: "allow", default: "ask" },
     note: "cd tracking must not over-broaden: still inside the project",
   },
   {
     command: "chmod 777 script.sh",
-    expected: { claude: "allow", default: "ask" },
+    expected: { claude: "allow", codex: "allow", default: "ask" },
     note: "system paths are ro and the container is single-user; a lint concern, not a boundary",
   },
   {
     command: "find . -name '*.pyc' -exec rm {} ;",
-    expected: { claude: "allow", default: "ask" },
-    note: "find_policy.claude=off; a workflow nudge the sandbox already contains",
+    expected: { claude: "allow", codex: "allow", default: "ask" },
+    note: "find_policy off for the checkpointed agents; a nudge the sandbox already contains",
   },
 
   // --- read vs write forms of the ref subcommands ------------------------------
