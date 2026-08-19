@@ -56,7 +56,6 @@ end
 
 local function mason_packages()
   return {
-    "bash-language-server",
     "css-lsp",
     "html-lsp",
     "json-lsp",
