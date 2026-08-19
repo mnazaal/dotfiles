@@ -66,6 +66,7 @@
     "~/dotfiles/.config/codex/hooks",
     "~/.config/codex/config.toml",
     "~/.config/codex/hooks.json",
+    "~/dotfiles/.config/codex/hooks.json",
     "~/.config/codex/config.toml.template",
     "~/dotfiles/.config/codex/config.toml.template",
     "~/.config/goose",
