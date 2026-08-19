@@ -3,15 +3,13 @@
 # Backends share one profile/allowlist front-end:
 #   gvisor           — rootless container via the runsc user-space kernel
 #   podman (default) — rootless container on the default runtime (no runsc)
-#   bwrap            — binds the host rootfs directly (needs `sandbox --init ubuntu`)
-# A profile's allowlist becomes -v mounts (podman/gvisor) or --bind (bwrap);
-# everything else under $HOME stays invisible. See `sandbox --help`.
+# A profile's allowlist becomes -v mounts; everything else under $HOME stays
+# invisible. See `sandbox --help`.
 set -euo pipefail
 
 H=$HOME
 BACKEND=${SANDBOX_BACKEND:-podman}
 PROFILE_PATH=${SANDBOX_PROFILE_PATH:-${XDG_CONFIG_HOME:-$H/.config}/sandbox}
-APPARMOR_ASSET=${XDG_DATA_HOME:-$H/.local/share}/sandbox/bwrap-userns.apparmor
 IMAGE=${SANDBOX_IMAGE:-ubuntu:24.04}
 
 die() {
@@ -25,7 +23,6 @@ sandbox — run a command confined to an allowlist of directories
 
 USAGE
   sandbox [options] [--] <command> [args...]
-  sandbox --init <platform>
   sandbox --help
 
 OPTIONS
@@ -35,10 +32,9 @@ OPTIONS
                             a profile may `use OTHER` to compose.
       --rw DIR              add a read-write bind        (repeatable)
       --ro DIR              add a read-only  bind        (repeatable)
-      --backend NAME        gvisor | podman (default) | bwrap; or $SANDBOX_BACKEND
+      --backend NAME        gvisor | podman (default); or $SANDBOX_BACKEND
       --no-net              unshare the network (shared by default)
   -n, --dry-run             print the backend command instead of running it
-      --init PLATFORM       one-time host setup for bwrap (platforms: ubuntu)
   -h, --help                show this help
 
 DESCRIPTION
@@ -50,48 +46,9 @@ DESCRIPTION
   Backends: `gvisor` runs the command in a rootless container via the
   runsc runtime — a user-space kernel that shrinks the host kernel attack surface
   (needs `runsc` on PATH; no root/KVM). `podman` is the same container on the
-  default runtime (no runsc). `bwrap` binds the host rootfs directly (lighter, but
-  on Ubuntu needs the one-time `sandbox --init ubuntu`). Env: $SANDBOX_BACKEND,
-  $SANDBOX_IMAGE (container base image), $SANDBOX_PROFILE_PATH,
-  $SANDBOX_NO_PREFLIGHT.
+  default runtime (no runsc). Env: $SANDBOX_BACKEND, $SANDBOX_IMAGE (container
+  base image), $SANDBOX_PROFILE_PATH.
 EOF
-}
-
-# --- one-time host setup (bwrap) ---------------------------------------------
-
-init_ubuntu() {
-	# Install the AppArmor profile that lets unprivileged bwrap create user
-	# namespaces (Ubuntu blocks this via
-	# kernel.apparmor_restrict_unprivileged_userns=1). Self-elevates with sudo;
-	# the asset path is resolved as the user and passed across the sudo boundary.
-	local dest=/etc/apparmor.d/bwrap src="${1:-$APPARMOR_ASSET}"
-	[ -f "$src" ] || die "apparmor asset not found: $src"
-	if [ "$(id -u)" -ne 0 ]; then
-		cat >&2 <<-'WARN'
-			sandbox: --init ubuntu installs an AppArmor profile that re-enables
-			         unprivileged user namespaces SYSTEM-WIDE, undoing Ubuntu's
-			         apparmor_restrict_unprivileged_userns hardening. This widens a
-			         known local-privilege-escalation surface for ALL processes, not
-			         just sandbox. The podman/gvisor backends do NOT need this —
-			         prefer them unless you specifically need the bwrap backend.
-		WARN
-		printf 'sandbox: elevating with sudo to install %s …\n' "$dest" >&2
-		exec sudo "$(readlink -f "$0")" --init ubuntu "$src"
-	fi
-	install -m 0644 "$src" "$dest"
-	apparmor_parser -r "$dest"
-	printf 'sandbox: installed %s\n' "$dest"
-	printf 'sandbox: verify with  aa-status | grep -i bwrap\n'
-}
-
-sandbox_init() {
-	local platform=${1:-}
-	[ -n "$platform" ] || die 'usage: sandbox --init <platform>   (platforms: ubuntu)' 2
-	shift
-	case "$platform" in
-	ubuntu) init_ubuntu "$@" ;;
-	*) die "unknown platform: $platform   (known: ubuntu)" ;;
-	esac
 }
 
 # --- profile loading ---------------------------------------------------------
@@ -130,56 +87,6 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 }
 
 # --- backends ----------------------------------------------------------------
-
-run_bwrap() {
-	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
-	local d f
-	local args=(--unshare-all --clearenv)
-	[ "$NET" -eq 1 ] && args+=(--share-net)
-	for d in "${SANDBOX_ENV[@]}"; do
-		[ -n "${!d+x}" ] && args+=(--setenv "$d" "${!d}")
-	done
-	args+=(--die-with-parent --proc /proc --dev /dev --tmpfs /tmp)
-	# The tmpfs is what makes $HOME invisible here; the binds below put back
-	# only the allowlist. Unconditional — nothing may widen this boundary.
-	args+=(--tmpfs "$H")
-	args+=(--chdir "$PWD")
-
-	for d in /usr /bin /sbin /lib /lib64 /lib32 /etc /opt /var/lib /run/systemd/resolve; do
-		if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi
-	done
-	for d in "${RO[@]}"; do if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi; done
-	for d in "${RW[@]}"; do if [ -e "$d" ]; then args+=(--bind "$d" "$d"); fi; done
-	for f in "${RW_FILES[@]}"; do if [ -e "$f" ]; then args+=(--bind "$f" "$f"); fi; done
-	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi; done
-
-	# wayland clipboard: bind only the single socket, never the whole runtime dir
-	if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ] &&
-		[ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
-		args+=(--dir "$XDG_RUNTIME_DIR"
-			--ro-bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY")
-	fi
-	[ -n "$SANDBOX_PATH_PREPEND" ] && args+=(--setenv PATH "$SANDBOX_PATH_PREPEND:$PATH")
-
-	if [ "$DRYRUN" -eq 1 ]; then
-		printf 'bwrap'
-		printf ' %q' "${args[@]}" "${cmd[@]}"
-		printf '\n'
-		exit 0
-	fi
-	# Preflight: turn bwrap's cryptic uid_map error into actionable guidance.
-	if [ "${SANDBOX_NO_PREFLIGHT:-0}" != "1" ]; then
-		local t
-		t=$(command -v true) || t=/bin/true
-		if ! bwrap --unshare-user --ro-bind / / "$t" >/dev/null 2>&1; then
-			die "bubblewrap cannot create a user namespace.
-       On Ubuntu this is blocked until you run the one-time setup:
-         sandbox --init ubuntu
-       (or use the default podman backend, or set SANDBOX_NO_PREFLIGHT=1)"
-		fi
-	fi
-	exec bwrap "${args[@]}" "${cmd[@]}"
-}
 
 run_podman() {
 	command -v podman >/dev/null 2>&1 || die 'podman not found in PATH' 127
@@ -225,13 +132,7 @@ run_podman() {
 	exec podman "${pre[@]}" "${p[@]}" "$IMAGE" "${cmd[@]}"
 }
 
-# --- modes -------------------------------------------------------------------
-
-if [ "${1:-}" = "--init" ]; then
-	shift
-	sandbox_init "$@"
-	exit 0
-fi
+# --- run ---------------------------------------------------------------------
 
 # accumulators — profiles and flags append to these
 # RO_LAST is emitted AFTER every RW bind, so a read-only path nested inside a
@@ -366,6 +267,5 @@ gvisor)
 		die "gvisor backend needs 'runsc' (gVisor) on PATH — install it (no root/KVM): https://gvisor.dev/docs/user_guide/install/"
 	run_podman
 	;;
-bwrap) run_bwrap ;;
-*) die "unknown backend: $BACKEND   (known: podman, gvisor, bwrap)" ;;
+*) die "unknown backend: $BACKEND   (known: podman, gvisor)" ;;
 esac

@@ -1,7 +1,7 @@
 # sandbox
 
 Run **any** command confined to an allowlist of directories. One profile/allowlist
-front-end drives three backends; coding-agent harnesses are just one set of
+front-end drives two backends; coding-agent harnesses are just one set of
 profiles.
 
 ```sh
@@ -22,11 +22,10 @@ invisible**. Secrets already in the environment pass through, so a caller (e.g.
 `renv`) can resolve them *before* entering the sandbox; the vaults themselves are
 never mounted.
 
-How "invisible" is achieved depends on the backend: the container backends
-(`gvisor`/`podman`) only mount the allowlist, so the rest of the host simply isn't
-there; `bwrap` lays a tmpfs over `$HOME` and binds the allowlist back.
+"Invisible" is literal: the container backends (`gvisor`/`podman`) only mount the
+allowlist, so the rest of the host simply isn't there.
 
-All backends provide a writable private `/tmp` for scratch files. Host `/tmp` is
+Both backends provide a writable private `/tmp` for scratch files. Host `/tmp` is
 not mounted; use `--rw DIR` for any explicit shared scratch directory.
 
 Guards: `sandbox` refuses to auto-bind `cwd` when it is `$HOME` or above (which
@@ -41,12 +40,10 @@ Select with `--backend` or `$SANDBOX_BACKEND`.
 |---------|-----------|-------|-------|
 | **gvisor** | host-kernel attack surface shrunk by a user-space kernel (runsc) | `runsc` on PATH (no root/KVM) | rootless container via `--runtime=runsc`; FS served through a gofer (a bit slower) |
 | **podman** (default) | namespaces (shared kernel) | rootless podman | same container, default runtime; lighter than gvisor |
-| **bwrap** | namespaces (shared kernel) | bubblewrap; on Ubuntu the one-time `sandbox --init ubuntu` | binds host rootfs directly; lightest start-up |
 
-The container backends reuse the host userspace through read-only mounts (`/usr`,
-toolchains), an `ubuntu:24.04` base image (`$SANDBOX_IMAGE`), `--userns=keep-id`,
-and `--network=host`. They need no root. `bwrap` is the fallback for hosts where
-you *do* have root and want the lightest option.
+Both reuse the host userspace through read-only mounts (`/usr`, toolchains), an
+`ubuntu:24.04` base image (`$SANDBOX_IMAGE`), `--userns=keep-id`, and
+`--network=host`. They need no root.
 
 ## Profiles
 
@@ -93,8 +90,6 @@ Copy `~/.config/codex/config.toml.template` to the ignored local
   <https://gvisor.dev/docs/user_guide/install/>. `sandbox` errors with this
   pointer if it's missing.
 - **podman**: nothing — rootless podman works out of the box.
-- **bwrap**: `sandbox --init ubuntu` once (self-elevates with sudo; installs the
-  AppArmor profile from `~/.local/share/sandbox/`). Only needed for `--backend bwrap`.
 
 ## Limits / caveats
 
@@ -110,6 +105,6 @@ Copy `~/.config/codex/config.toml.template` to the ignored local
   interactive agent mid-task; add them only for unattended runs).
 - `~/.ssh` / `pass` are absent inside, so `git push` over SSH and `pass` reads
   won't work in the sandbox — do those outside, or pass a token via env.
-- Shared kernel for `podman`/`bwrap`; `gvisor` re-implements the kernel in user
+- Shared kernel for `podman`; `gvisor` re-implements the kernel in user
   space for stronger escape resistance. A microVM (KVM) would be stronger still
   but the host gates `/dev/kvm`.
