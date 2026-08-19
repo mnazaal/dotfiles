@@ -42,11 +42,12 @@ Adapters map:
 - opencode → throw on any non-allow (a plugin can't prompt, so `ask` becomes a hard block)
 
 Adapters normalize host payloads to a `ToolEvent` (`command`, `paths`, `urls`,
-`tool`, `cwd`, `operation`, `capabilities`) and call `createGuardrails(agent).evaluate(event,
-loadedSkills)`. The core owns path checks, bash checks, multi-path handling,
-`apply_patch` path extraction, provider-neutral capability classification, and
-skill-gate matching. Adapters only keep
-session evidence and render host-specific deny/ask responses.
+`tool`, `cwd`, `operation`) and call `createGuardrails(agent).evaluate(event,
+loadedSkills)`. Capabilities are not part of that payload: no adapter sets them,
+and the core derives them itself in `capabilitiesOf`. The core owns path checks,
+bash checks, multi-path handling, `apply_patch` path extraction,
+provider-neutral capability classification, and skill-gate matching. Adapters
+only keep session evidence and render host-specific deny/ask responses.
 
 Skill gates are workflow nudges, not a security boundary. Each adapter supplies
 session evidence that the skill was loaded — all adapters record only concrete
@@ -69,8 +70,11 @@ then retry" message.
 - **Session scope drifts in pi/opencode.** The loaded-skills set lives exactly
   as long as the extension/plugin process: a host reusing one process across
   sessions carries evidence over (errs open); a mid-session restart wipes it
--  (one self-healing false block). Claude persists receipts keyed by transcript
-  path, so a hook-process restart does not erase them.
+  (one self-healing false block). Claude and Codex both persist receipts under
+  `$XDG_STATE_HOME`, keyed by a hash of the transcript path and by session id
+  respectively, so a restart does not erase them. Codex has no alternative: its
+  hook is a fresh process per tool call, so without the state file every call
+  would start with an empty loaded-skills set and every gate would false-block.
 - **Write/fetch gates match on the path/URL the normalized tool event reports.** A host that
   routes a file write or fetch through a differently-shaped tool payload (no
   `path`/`url` the adapter recognizes) simply fails open for that gate — the
@@ -108,7 +112,7 @@ native/OS layer:
 | Agent    | Native layer                                                            | Status |
 |----------|--------------------------------------------------------------------------|--------|
 | Claude   | `.claude/settings.json` `permissions.deny`                               | permanent — typed Read/Edit tool calls expose structured paths to match |
-| opencode | none (was `permission.read` + bash globs)                      | removed — `plugins/guardrails.ts` enforces the shared core directly (verified loading + blocking) |
+| opencode | `.config/opencode/opencode.jsonc` `permission`                            | in-repo scope only — the host-credential duplication was removed, not the layer; `plugins/guardrails.ts` enforces the shared core (verified loading + blocking) |
 | Codex    | `.config/codex/config.toml.template` `[permissions.guarded-workspace]`   | permanent — OS-enforced (Landlock/seccomp) where the sandbox can initialize — see status below |
 | pi       | none                                                                     | assumed: pi embeds in the host process and ships no OS sandbox of its own (unverified) |
 
@@ -117,42 +121,32 @@ hook must pattern-match paths out of raw command text there — the weakest
 matching in the fleet. `[permissions.guarded-workspace]` compensates at the
 kernel: credentials → `deny`, machinery → `read`, translated 1:1 from
 `sensitive-paths.json`. Claude's credential denies and Codex's complete native
-profile are drift-checked by `make check-guardrails-native-sync`; opencode is
-plugin-enforced. The hook stays
+profile are drift-checked by `make check-guardrails-native-sync`; opencode's
+remaining native rules name no host path, so there is nothing to drift-check
+there. The hook stays
 primary for everything the 3-level filesystem model cannot express: dangerous
 commands, skill gates, ref-rewrite protection, and the `ask` tier.
 
 ### Codex verification status (codex-cli 0.143.0, 2026-07-16)
 
-Probed with `codex sandbox -P <profile>` against a scratch `$CODEX_HOME`
-(`codex debug landlock` no longer exists in this build):
-
-- [x] `deny` blocks reads and writes at the OS level (EACCES).
-- [x] `extends = ":workspace"` grants cwd writes; `read` allows reads and
-      blocks writes (EROFS).
-- [x] `default_permissions` + bare profile names are the live config surface
-      (unknown names fail with "default_permissions refers to undefined
-      profile").
-- [x] Tie gap, confirmed: launching Codex with cwd *inside* a machinery `read`
-      dir re-grants OS-level write there (the workspace-root `write` grant wins
-      the tie), so the shared hook is the only machinery guard in that case.
-      Credentials are unaffected — `deny` wins ties.
-- [x] Config write-back is additive and safe: Codex appends `[projects.*]`,
-      `[hooks.state.*]`, and `[tui.*]` tables to the live config and never
-      touches `[permissions.*]`, so a deployed profile survives sessions.
+Repro: `codex sandbox -P <profile>` against a scratch `$CODEX_HOME` (`codex
+debug landlock` no longer exists in this build).
 
 **Enforcement is environment-dependent — dormant on this host.** Codex applies
 the Landlock profile only inside its execution sandbox, and building that
-sandbox unshares the network namespace + configures loopback. Hosts that forbid
-unprivileged netns (this shared academic system: `bwrap: loopback: Failed
-RTM_NEWADDR: Operation not permitted`) cannot start the sandbox, so Codex falls
-back to running the command *outside* it (with approval), where **no Landlock
-rule applies**. Two independent routes leave the profile inert here: trusted
-projects (`trust_level = "trusted"`) bypass the sandbox entirely, and untrusted
-projects cannot build it. The `deny` *mechanism* itself is sound — the
-standalone `codex sandbox -P` proof above builds a Landlock-only sandbox without
-the failing netns step. Where the OS layer is dormant the shared hook is the
-sole functional Codex guard (its intended primary role anyway).
+sandbox unshares the network namespace. Hosts that forbid unprivileged netns
+(this shared academic system: `bwrap: loopback: Failed RTM_NEWADDR: Operation
+not permitted`) cannot start it, so Codex falls back to running the command
+*outside* the sandbox (with approval), where **no Landlock rule applies**;
+trusted projects bypass the sandbox regardless. The `deny` *mechanism* itself is
+sound — the standalone probe builds a Landlock-only sandbox without the failing
+netns step — so where the OS layer is dormant the shared hook is the sole
+functional Codex guard, which is its intended primary role anyway.
+
+One gap survives even where the sandbox works: with cwd *inside* a machinery
+`read` dir, the workspace-root `write` grant wins the tie and re-grants OS-level
+write there, leaving the hook as the only machinery guard. Credentials are
+unaffected — `deny` wins ties.
 
 `default_permissions` therefore stays `:read-only` in the template (Step B not
 flipped): on a sandbox-less host the flip buys no enforcement, and on a host
