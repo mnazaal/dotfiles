@@ -40,6 +40,14 @@ to summarize it. A summary is what already exists and is not being read.
 - Persist as repairs to the project's existing documents, never a new standing
   document. When the project is not the user's to write to, hand the defects
   back as findings instead.
+- Name what you searched and did not find: the source, the terms, and "nothing
+  found" where that is the answer. A searched-and-empty source decides which of
+  the two gap causes applies; an unsearched one is a blind spot. Never let the
+  two read the same.
+- Separate what a record states from what you infer from it, and hedge the
+  second ("appears to", "the evidence points toward"). Never cite code or the
+  manuscript as evidence for its own intent.
+- Build a diagram up one part at a time rather than presenting a finished one.
 
 ## Orientation
 

@@ -22,7 +22,6 @@ description: Use for test-first development: features, bug fixes, regression tes
 - Prefer tracer bullets: the thinnest end-to-end behavior that proves the path works (https://www.aihero.dev/tracer-bullets).
 - Primary completion evidence is end-to-end: a test that exercises the real entry point (CLI, script, train step). Unit-test a piece in isolation only when its logic is tricky enough to earn it; unit-green alone never proves the pipeline. For ML pipelines the standing form is `dev-ml-infra`'s smoke run.
 - Prefer vertical slices over horizontal slices; cut through the needed layers for one behavior instead of completing one layer for all behaviors.
-- Let each behavior/check/code/verification cycle inform the next.
 
 ## Workflow
 
@@ -67,7 +66,6 @@ Standing tests for ML code — the proactive form of `debug-ml-research`'s check
 - Horizontal slicing: all tests first, all implementation later, or layer-only work that cannot be verified end-to-end.
 - Testing mocks instead of behavior.
 - Broad golden tests that fail opaquely.
-- Refactors while red.
 
 ## Boundary
 

@@ -113,6 +113,8 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - Every experiment repo has a standing e2e smoke test: the full pipeline through the real entry point on tiny synthetic data with a known answer (~50 steps) — asserts loss decreases, metrics/artifacts land in the tracker, checkpoint reloads.
 - The smoke run, not unit-test green, is the completion evidence for pipeline changes (`dev-verification`).
 - No backward compatibility: change configs and interfaces freely and fix call sites (`dev-ponytail`).
+- Every run must converge on re-run. Ask what a second launch does, and what a launch after a crash mid-write does. The failure is a truncated cache, checkpoint, or metrics file that still loads: write to a temp path and rename, and validate a cache before adopting it. Resume must reach the same end state as a clean run.
+- Before two jobs can write one path, remove the sharing rather than lock it: give each array task its own output file or directory and merge at read time. Two workers writing different fields of one `state.json`, appending to one `results.csv`, or filling one preprocessing cache is still a race — "they won't collide" is not concurrency control.
 
 ## Anti-Patterns
 

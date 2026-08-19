@@ -99,25 +99,14 @@ of the work, that is `understand-project` — re-reading the handoff will not fi
 
 ## Anti-Patterns
 
-- Writing a handoff nobody asked for, or treating "this session got long" as the
-  request. The block is the user's record of their own state; refreshing it
-  uninvited overwrites it with yours.
 - Load-bearing results left only in session-temporary storage (scratchpad, chat).
 - A subagent's findings left in the main agent's context. Read-only reviewers
   write nothing, so their output is the most context-fragile artifact a session
   produces, and an unrepaired finding that vanishes reads as a clean review.
 - A handoff that lists what was done but not what is next or what is a dead end.
-- Handoff entries that rely on invented labels from the chat, e.g. “continue
-  with P1/T2”, instead of restating the concrete next action.
-- Re-narrating the same content across HANDOFF + LOG + PLAN — each has one role
-  (cross-session state / past / next); point between them, do not duplicate.
 - Appending a session summary to `LOG.md`. That is the run/result log; a
   single-valued record accumulating in a prepend-only log means every superseded
   copy is re-read forever, and the results it exists to hold get diluted.
-- Guessing which scratchpad artifacts the next session will want, instead of
-  enumerating them and deciding each.
-- Treating a written handoff as sufficient without reading it cold. The gap is
-  invisible from inside the session that produced it.
 
 ## Related Skills
 

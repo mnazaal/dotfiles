@@ -18,6 +18,8 @@ description: Use for JAX code, reading PyTorch reference code, and slow or OOMin
 - Enable x64 at module level (`jax.config.update("jax_enable_x64", True)`) for scientific/causal algorithms that need it; do it before any array creation. For Submitit/remote workers, use `dev-hpc`'s launcher environment setup so the flag is set before JAX import on the compute node.
 - pytest-xdist runs one process per worker, each independently JIT-compiling; a full parallel suite can multiply memory/CPU far past a single-process run. Scope JAX tests to changed files by default; if workers die without test failures, rerun with lower/no parallelism before debugging code (`dev-verification`).
 - `jax.tree_util.tree_flatten`/`tree_leaves` treat each array as one leaf, not per-element, and visit dict keys in sorted order, not insertion order. Don't assume element-wise or insertion-order leaf indexing when writing tooling that reports "the Nth leaf" (e.g. a NaN-locating diagnostic) — verify against an actual flattened tree.
+- Write the real invocation before the signature: the concrete shapes and dtypes you will pass, then derive params, state, and key threading from it. Sketch a second, structurally different pytree or axis convention before committing to the first — a different shape, not a renamed field.
+- Trace each vmapped or scanned access through the proposed pytree. If the answer is "we reshape at the call site", the structure is wrong. Redesign rather than patch when one workaround recurs: repeated reshape or squeeze at callers, guards multiplying around one branch, or callers having to remember an axis convention the types do not carry.
 
 ## Workflow
 

@@ -25,6 +25,7 @@ No fixes without root-cause investigation or a stated blocker.
 
 - If first fix fails, stop and reassess the hypothesis before trying another fix.
 - If three fixes fail, stop patching and map shared state, hidden coupling, environment, and assumptions.
+- "Worked yesterday, fails today, code unchanged" means suspect state, not code: preprocessing or JIT caches, `uv.lock` against the actual `.venv`, a stale `results/` or hydra output directory, a half-written checkpoint. If clearing one restores the behavior, the root cause is the missing validation on that state, not the clear.
 - Change one variable per probe unless explicitly testing an interaction.
 - Keep symptom, hypothesis, probe, result, and next inference separate.
 - For performance regressions, distrust logs — establish a baseline measurement first (timing harness, profiler, query plan), then bisect against it.

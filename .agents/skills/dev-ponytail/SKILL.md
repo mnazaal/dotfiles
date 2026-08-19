@@ -39,8 +39,6 @@ description: Use for minimal software solutions: YAGNI, simplest correct code, s
 - New dependency for tiny behavior.
 - General framework around one use case.
 - Refactor bundled with unrelated feature.
-- New validator/predicate/wrapper to police an API you could instead shrink.
-- Shallow layers that re-expose what they wrap: interface added, no complexity hidden.
 
 ## Related Skills
 
