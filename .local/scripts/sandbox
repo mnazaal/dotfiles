@@ -35,10 +35,8 @@ OPTIONS
                             a profile may `use OTHER` to compose.
       --rw DIR              add a read-write bind        (repeatable)
       --ro DIR              add a read-only  bind        (repeatable)
-      --rw-file FILE        add a read-write file bind   (repeatable)
-      --ro-file FILE        add a read-only  file bind   (repeatable)
       --backend NAME        gvisor | podman (default) | bwrap; or $SANDBOX_BACKEND
-      --net | --no-net      share (default) or unshare the network
+      --no-net              unshare the network (shared by default)
   -n, --dry-run             print the backend command instead of running it
       --init PLATFORM       one-time host setup for bwrap (platforms: ubuntu)
   -h, --help                show this help
@@ -152,7 +150,6 @@ run_bwrap() {
 	done
 	for d in "${RO[@]}"; do if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi; done
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then args+=(--bind "$d" "$d"); fi; done
-	for f in "${RO_FILES[@]}"; do if [ -e "$f" ]; then args+=(--ro-bind "$f" "$f"); fi; done
 	for f in "${RW_FILES[@]}"; do if [ -e "$f" ]; then args+=(--bind "$f" "$f"); fi; done
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then args+=(--ro-bind "$d" "$d"); fi; done
 
@@ -216,7 +213,6 @@ run_podman() {
 	done
 	for d in "${RO[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
-	for d in "${RO_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 
@@ -242,7 +238,7 @@ fi
 # writable one stays read-only. Plain RO is emitted first, where an overlapping
 # RW bind wins — which is why the read-only $H/.agents bind does not protect
 # its stow targets under the writable $H/dotfiles bind.
-declare -a RW=() RO=() RW_FILES=() RO_FILES=() RO_LAST=()
+declare -a RW=() RO=() RW_FILES=() RO_LAST=()
 # Only these non-secret host variables cross the sandbox boundary by default.
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
@@ -270,24 +266,12 @@ while [ $# -gt 0 ]; do
 		RO+=("$2")
 		shift 2
 		;;
-	--rw-file)
-		RW_FILES+=("$2")
-		shift 2
-		;;
-	--ro-file)
-		RO_FILES+=("$2")
-		shift 2
-		;;
 	--backend)
 		BACKEND=$2
 		shift 2
 		;;
 	--no-net)
 		NET=0
-		shift
-		;;
-	--net)
-		NET=1
 		shift
 		;;
 	-n | --dry-run)
@@ -361,7 +345,6 @@ dedupe() { # $1 = array name; drop entries whose realpath already appeared
 dedupe RW
 dedupe RW_FILES
 dedupe RO
-dedupe RO_FILES
 dedupe RO_LAST
 
 # Profiles are trusted shell snippets, but environment names still need to be

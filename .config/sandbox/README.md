@@ -51,7 +51,7 @@ you *do* have root and want the lightest option.
 ## Profiles
 
 A profile is a tiny `*.profile` file sourced by the engine; it appends to the
-`RW` / `RO` / `RW_FILES` / `RO_FILES` arrays and can `use NAME` to compose
+`RW` / `RO` / `RW_FILES` / `RO_LAST` arrays and can `use NAME` to compose
 another. `-p NAME` resolves a bare name against **`$SANDBOX_PROFILE_PATH`**
 (default `~/.config/sandbox`); `-p PATH` (containing `/`) loads a file directly.
 
