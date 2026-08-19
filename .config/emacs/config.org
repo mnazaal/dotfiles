@@ -499,6 +499,7 @@ Perform encryption on org headings with the =crypt= tag.
       :if-new (file+head "%<%Y%m%d%H%M%S>-${citar-citekey}.org" "#+title: ${citar-title} - ${citar-date}\n")
       :unnarrowed t)))
   :bind
+  ("C-c n f" . org-roam-node-find)
   ("C-c n l" . org-roam-buffer-toggle)
   (:map org-mode-map
         ("C-c n i" . org-roam-node-insert))
@@ -553,10 +554,6 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
                  ("" "xcolor")))
     (add-to-list 'org-latex-packages-alist pkg))
   :custom
-  ;; One latexmk call rather than a fixed xelatex/biber/xelatex/xelatex chain:
-  ;; latexmk decides how many passes are actually needed (usually one or two)
-  ;; and runs biber only when the =.bcf= changed. It also means Org export and
-  ;; =C-c C-c= drive the same tool, so they cannot disagree about the engine.
   (org-latex-pdf-process
    '("latexmk -pdf -interaction=nonstopmode -output-directory=%o %f"))
   (org-latex-logfiles-extensions
@@ -599,7 +596,7 @@ Use vim keybindings in Emacs.
 #+begin_src emacs-lisp
 (use-package evil
   :init
-  (setq evil-want-C-i-jump nil)  ;; Fix TAB behaviour in `emacs -nw`
+  (setq evil-want-C-i-jump nil)   ;; Fix TAB behaviour in `emacs -nw`
   (setq evil-want-keybinding nil) ;; Otherwise shows some warnings
   (evil-mode t)
   :config
@@ -668,7 +665,6 @@ Visualise undo history as it is - a tree structure.
   :bind
   ("C-x u" . vundo)
   :custom
-  ;; Use Emacs' built-in undo/redo (undo-tree replacement); vundo visualizes it.
   (evil-undo-system 'undo-redo)
   (vundo-glyph-alist vundo-unicode-symbols))
 #+end_src
@@ -1050,7 +1046,6 @@ Show flymake diagnostics at point. Helpful to show LSP errors and warnings.
   :vc (:url "https://codeberg.org/akib/emacs-flymake-popon" :branch "master")
   :hook
   (prog-mode . flymake-popon-mode)
-  ;; LaTeX diagnostics come from auctex-cont-latexmk, which is Flymake-backed.
   (LaTeX-mode . flymake-popon-mode))
 #+end_src
 
@@ -1464,10 +1459,6 @@ Manage multiple =vterm= buffers.
                               "^\\*TeX Help\\*$"
                               helpful-mode
                               compilation-mode
-                              ;; AUCTeX's output buffer derives from
-                              ;; special-mode, not compilation-mode, so it
-                              ;; needs naming separately or it steals a window
-                              ;; from the source/PDF split.
                               TeX-output-mode))
   (popper-window-height 0.25))
 #+end_src
@@ -1553,11 +1544,6 @@ Notes on the settings:
   (TeX-electric-math '("$" . "$"))
   (LaTeX-electric-left-right-brace t)
   (TeX-view-program-selection '((output-pdf "Sioyek")))
-  ;; AUCTeX's built-in Sioyek entry does not pass --reuse-window, and
-  ;; prefs_user.config sets =should_launch_new_window 1=, so every view would
-  ;; spawn a fresh window and strand the one being watched. Override the entry
-  ;; rather than flipping the global pref, which is wanted when reading papers
-  ;; through citar.
   (TeX-view-program-list
    '(("Sioyek"
       ("sioyek --reuse-window %o"
@@ -1617,10 +1603,6 @@ Sharp bits:
 (use-package auctex-cont-latexmk
   :after latex
   :custom
-  ;; Restates the package default (which is already pdflatex) and adds
-  ;; =$sleep_time=, because latexmk's =-pvc= default is *2 seconds* between
-  ;; checks for file changes, with no CLI flag to change it — pure dead time
-  ;; between saving and the compile even starting.
   (auctex-cont-latexmk-command
    '("latexmk -pvc -pdf -view=none -e "
      ("$pdflatex=q/pdflatex %O -synctex=1 -file-line-error -interaction=nonstopmode %S/; $sleep_time=0.3;")))
