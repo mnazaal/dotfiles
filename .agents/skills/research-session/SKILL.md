@@ -12,8 +12,9 @@ Use when choosing or framing research work, not for writing the durable plan. If
 1. Capture focus, if user gave one.
 2. Inspect available research state: active projects, recent notes, open tasks, recent papers, run artifacts, saved ideas.
 3. Summarize current state and stale/blocked items. If a research-code repo's
-   README lacks a `research-map` overview block, or its stamp trails HEAD by
-   many commits, name that as stale state and offer `research-map`.
+   README lacks a `research-map` overview block, or the stamp on that block or
+   on `notes/main.html` trails HEAD by many commits, name that as stale state
+   and offer `research-map`.
 4. Suggest 2-3 next actions with concrete routes.
 5. Route based on user choice or strongest evidence.
 
