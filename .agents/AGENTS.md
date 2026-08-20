@@ -61,6 +61,12 @@ This file is global routing and behavior policy. Keep it small.
 
 ## Shell Output Capture
 
+- Anything the user must run or read themselves (handoff scripts, driver
+  commands, logs) goes under `~/.cache/`, never `/tmp` or the agent
+  scratchpad — those are container-private in sandboxed sessions, so a path
+  there names a file that does not exist on the user's machine. State the
+  exact `~/.cache/...` path (and the `!`-prefixed command to run) in the chat
+  message itself.
 - State an expected duration before launching anything that may take more than a
   few seconds (builds, test suites, experiment sweeps, data/model jobs, any
   enumeration whose cost grows with a parameter). Say the estimate and how you
