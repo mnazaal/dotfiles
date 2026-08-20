@@ -193,8 +193,8 @@ The ledger is the reserved `notes/claims.md` (`context-project-docs` owns the
 name; Markdown — it is a diff-heavy status/pointer file, an exception to the
 HTML-notes convention). Keep it in the planning area, not inside a synced
 `manuscript/` — it is planning, not publishable source (Core Rule). Reference
-it from the manuscript. It is hand-curated primary state: statuses and numbers
-update in place, never regenerated.
+it from the manuscript. It is curated primary state — user and agent edit it
+in ordinary commits: statuses and numbers update in place, never regenerated.
 
 ```markdown
 # Core claim

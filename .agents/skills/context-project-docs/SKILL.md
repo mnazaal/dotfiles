@@ -37,7 +37,7 @@ The full doc inventory is bounded: the four standing docs above, two reserved `n
 Reserved files, each with one owner:
 
 - `main.html` — the project map and front door of `notes/`. Written only by `research-map` (full form), provenance-stamped, regenerated top-to-bottom, never hand-edited. Its opening lines point to `claims.md` and `PLAN.md`.
-- `claims.md` — the claims/evidence ledger: hand-curated primary state, never regenerated. Shape owned by `research-manuscript-workflow`.
+- `claims.md` — the claims/evidence ledger: curated primary state — user and agent edit it in ordinary commits; never regenerated. Shape owned by `research-manuscript-workflow`.
 
 All other notes are prefixed working notes (closed vocabulary):
 
