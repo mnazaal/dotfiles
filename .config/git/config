@@ -85,3 +85,5 @@
     required = true
 [credential]
     helper = cache --timeout=3600
+[credential "https://git.overleaf.com"]
+    helper = "!f() { test \"$1\" = get && pass show overleaf-git 2>/dev/null | sed -n '1s/^/password=/p'; true; }; f"
