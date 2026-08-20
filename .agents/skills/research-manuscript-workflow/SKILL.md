@@ -65,11 +65,20 @@ elsewhere — the directory boundary is an interface, not just a folder. Then:
   `figures/`/`build/` rule catches `manuscript/figures/` too.
 - **Planning stays outside.** The claims/evidence ledger and scaffold/bootstrap
   scripts are not publishable artifacts — keep them in the project's planning
-  area (`notes/`) and tooling (`scripts/`), referenced from the manuscript, not
-  inside the synced boundary.
+  area (`notes/`) and tooling (`scripts/`), outside the synced boundary, and
+  name them from the manuscript only by identity (next bullet), never by path.
+- **Reference-self-contained, comments included.** Every reference inside the
+  boundary must resolve for a reader who has only this directory: name outside
+  things by identity — results tag, generator name, the repo's name — and keep
+  a single boundary description (the manuscript README) as the one place that
+  says what lives outside and where. Parent-repo paths (`notes/...`,
+  `scripts/...`, plan/log files) dead-end for collaborators and rot invisibly:
+  no sweep on the parent side covers the synced copy. LaTeX comments count —
+  arXiv publishes the source, comments and all; strip them at submission time
+  (e.g. `arxiv_latex_cleaner`) as the backstop, not the primary defense.
 
 The test: could a coauthor download this directory, or arXiv unpack it, and have
-it just work?
+it just work — and does every reference in it resolve for that reader?
 
 ## Syncing to a hosted git bridge (Overleaf)
 
