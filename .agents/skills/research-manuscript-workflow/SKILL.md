@@ -189,22 +189,25 @@ clearly separated from human-authored ones.
 
 ## Claims and Evidence Ledger
 
-Keep this ledger in the project's planning area (e.g. an HTML working note in
-`notes/` per global policy), not inside a synced `manuscript/` — it is planning,
-not publishable source (Core Rule). Reference it from the manuscript.
+The ledger is the reserved `notes/claims.md` (`context-project-docs` owns the
+name; Markdown — it is a diff-heavy status/pointer file, an exception to the
+HTML-notes convention). Keep it in the planning area, not inside a synced
+`manuscript/` — it is planning, not publishable source (Core Rule). Reference
+it from the manuscript. It is hand-curated primary state: statuses and numbers
+update in place, never regenerated.
 
-```html
-<h1>Core claim</h1>
+```markdown
+# Core claim
 
-<h2>Exact wording</h2>
-<h2>Evidence</h2>
-<h2>Required experiments</h2>
-<h2>Figure/table support</h2>
-<h2>Known weaknesses</h2>
-<h2>Reviewer objections</h2>
-<h2>Status</h2>
+## Exact wording
+## Evidence
+## Required experiments
+## Figure/table support
+## Known weaknesses
+## Reviewer objections
+## Status
 
-<h1>Secondary claim</h1>
+# Secondary claim
 ```
 
 Use this ledger to keep the paper anchored to actual evidence rather than
@@ -283,7 +286,7 @@ as direct manuscript editors.
 Good requests:
 
 - “Read `manuscript/main.tex` and produce a section-by-section revision plan.”
-- “Compare `notes/claims.html` against the current experiments and flag unsupported claims.”
+- “Compare `notes/claims.md` against the current experiments and flag unsupported claims.”
 - “Inspect the LaTeX build log and summarize errors/warnings.”
 - “Suggest better related-work positioning, with verified citations.”
 - “Check whether figures and tables support the abstract claims.”

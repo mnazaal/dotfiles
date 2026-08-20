@@ -1,13 +1,13 @@
 ---
 name: research-map
-description: Use for quick project orientation: map a research paper to its codebase, architecture/dataflow overview, mermaid diagrams, equation-to-code mapping, paper-code divergences; emit to chat, or write a generated, provenance-stamped Overview block into an existing README.
+description: Use when asked to map out a project, understand the full project, or point to the code implementing each part; also for paper-to-codebase mapping, architecture/dataflow overview, mermaid diagrams, equation-to-code mapping, paper-code divergences. Sinks - chat, README's stamped Overview block, or the full form as notes/main.html.
 ---
 
 # Skill: Research Map
 
 ## Purpose
 
-Regenerate-on-demand orientation for a research project: what the paper claims, how the code realizes it, and where they disagree. Output is derived fresh from the current code and paper. Two sinks: emit to chat for your own orientation, or write it into README's delimited Overview block (`context-project-docs`) as the shareable snapshot. The chat form can't go stale; the persisted block carries a provenance stamp so its staleness is visible and it is regenerated, never hand-edited.
+Regenerate-on-demand orientation for a research project: what the paper claims, how the code realizes it, and where they disagree. Output is derived fresh from the current code and paper. Three sinks: emit to chat for your own orientation, write the gist into README's delimited Overview block (`context-project-docs`) as the shareable snapshot, or write the full form as `notes/main.html` — the project's front-door note. The chat form can't go stale; each persisted form carries a provenance stamp so its staleness is visible and it is regenerated, never hand-edited.
 
 ## Workflow
 
@@ -20,10 +20,11 @@ Regenerate-on-demand orientation for a research project: what the paper claims, 
 
 ## Output Shape
 
-Same content, two sinks:
+Same content, three sinks:
 
-- **Chat** (default, for orientation): orientation summary (≤10 lines); concept→code table; mermaid diagram(s) in fenced blocks; divergences, each with `file:line` and paper-section evidence.
-- **README Overview block** (the shareable snapshot): write the summary + mermaid diagram + concept→code table between the markers, replacing whatever was there. Keep divergences in chat, not README (they are working notes, not the gist).
+- **Chat** (default, for orientation): orientation summary (≤10 lines); concept→code table; mermaid diagram(s) in fenced blocks; divergences, each with `file:line` and paper-section evidence. Plain-text math — chat renders no LaTeX.
+- **README Overview block** (the shareable snapshot): write the summary + mermaid diagram + concept→code table between the markers, replacing whatever was there. Divergences stay out of README (they are working notes, not the gist).
+- **`notes/main.html`** (the full form, when asked to persist the map): everything — summary, concept→code table, mermaid, divergences, and real math (self-contained HTML with inline MathJax, per the global notes convention). Replace the whole file on regeneration; open with the provenance stamp and pointers to `notes/claims.md` and `PLAN.md` (`context-project-docs` owns the reserved name).
 
 ```markdown
 ## Overview
@@ -32,13 +33,13 @@ Same content, two sinks:
 <!-- research-map:end -->
 ```
 
-Stamp the block with `git rev-parse --short HEAD` and today's date.
+Stamp every persisted write (README block and `main.html` alike) with `git rev-parse --short HEAD` and today's date.
 
 ## Rules
 
-- Two sinks only: chat, or README's `research-map:begin/end` block after loading/following `context-project-docs`. Never create a new standing doc (`OVERVIEW.md`/`MAP.md`) and never hand-write an overview elsewhere — the persisted form is the stamped README block or nothing.
-- Read-only on code: the only file this skill writes is README, and only between its markers. Never edit code, and never touch README outside the block.
-- Stamp every README write with the source commit + date; if HEAD has moved past the stamp, treat the block as stale and regenerate rather than trusting it.
+- Three sinks only: chat, README's `research-map:begin/end` block, or `notes/main.html` — the latter two after loading/following `context-project-docs`. Never create a new standing doc (`OVERVIEW.md`/`MAP.md`) and never hand-write an overview elsewhere — a persisted form is stamped and regenerated or nothing.
+- Read-only on code: the only files this skill writes are README (only between its markers) and `notes/main.html` (whole-file replace). Never edit code, and never touch README outside the block.
+- If HEAD has moved past a persisted stamp, treat that copy as stale and regenerate rather than trusting it.
 - Diagrams stay small (≤ ~12 nodes); split rather than cram.
 - Claims about the paper follow `research-protocol`; a divergence is evidence-backed, not a vibe.
 - Surface divergences as findings; route suspected silent bugs to `debug-ml-research`, doc staleness to `context-project-docs`.

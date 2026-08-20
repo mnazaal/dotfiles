@@ -56,7 +56,8 @@ This file is global routing and behavior policy. Keep it small.
   the project now has or knows that it didn't, and what comes next.
 - Write research/working notes as self-contained HTML with inline MathJax
   (theme-aware, so equations render), not Markdown; keep them in the project's
-  `notes/` directory. (Standing docs — PLAN/LOG/README — stay Markdown.)
+  `notes/` directory, named per `context-project-docs`. (Standing docs —
+  PLAN/LOG/README — and the reserved `notes/claims.md` stay Markdown.)
 
 ## Shell Output Capture
 
