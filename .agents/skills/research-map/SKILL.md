@@ -24,7 +24,7 @@ Same content, three sinks:
 
 - **Chat** (default, for orientation): orientation summary (≤10 lines); concept→code table; mermaid diagram(s) in fenced blocks; divergences, each with `file:line` and paper-section evidence. Plain-text math — chat renders no LaTeX.
 - **README Overview block** (the shareable snapshot): write the summary + mermaid diagram + concept→code table between the markers, replacing whatever was there. Divergences stay out of README (they are working notes, not the gist).
-- **`notes/main.html`** (the full form, when asked to persist the map): everything — summary, concept→code table, mermaid, divergences, and real math (self-contained HTML with inline MathJax, per the global notes convention). Replace the whole file on regeneration; open with the provenance stamp and pointers to `notes/claims.md` and `PLAN.md` (`context-project-docs` owns the reserved name).
+- **`notes/main.html`** (the full form, when asked to persist the map): everything — summary, concept→code table, mermaid, divergences, and real math (self-contained HTML with inline MathJax, per the global notes convention). Replace the whole file on regeneration; its first line is the stamp `<!-- research-map (generated from <sha>, <date>) -->` (same `generated from` core as the README marker, so one grep covers both persisted forms; no end marker — the whole file is generated), followed by pointers to `notes/claims.md` and `PLAN.md` (`context-project-docs` owns the reserved name).
 
 ```markdown
 ## Overview

@@ -32,7 +32,7 @@ A project carries four standing documents — next, past, vocabulary, outward �
 
 ## notes/
 
-The full doc inventory is bounded: the four standing docs above, two reserved `notes/` files, and prefixed working notes. Nothing else.
+The full doc inventory is bounded: the four standing docs above, two reserved `notes/` files, and prefixed working notes. Nothing else — among notes; non-note artifacts a note references (figure assets, generated run outputs) sit outside this vocabulary, not in violation of it.
 
 Reserved files, each with one owner:
 
@@ -42,10 +42,10 @@ Reserved files, each with one owner:
 All other notes are prefixed working notes (closed vocabulary):
 
 - `deriv-` derivations · `design-` method/experiment designs · `lit-` related-work and lit maps · `review-` adversarial/full reviews · `draft-` paper-draft fragments · `probe_*.py` analysis scripts.
-- A note fitting no prefix is a signal the content belongs in chat or the scratchpad, not `notes/`.
+- A prose note fitting no prefix is a signal the content belongs in chat or the scratchpad, not `notes/`.
 - Working notes are one-per-topic, many-per-prefix: if an existing note's scope covers the new content, rewrite that note (git keeps the history; the moving git date is the recency signal) rather than minting a sibling or adding a superseded-banner. Content removed as stale is visible in the commit diff — review it there.
 
-No dates in filenames. The date of record is git (`git log -1 --format=%cs -- <file>`); mtime is a local convenience that dies on re-clone. The naming rules apply to new files — no bulk renames of existing projects' notes.
+No dates in filenames. The date of record is git (`git log -1 --format=%cs -- <file>`); mtime is a local convenience that dies on re-clone. The naming rules apply to new files — no bulk renames of existing projects' notes. Exception: when a one-per-topic rewrite touches a legacy-named note, `git mv` it to the convention in the same commit — a single opportunistic rename is not a bulk rename, and it keeps a stale filename date off fresh content.
 
 ## Related Skills
 
