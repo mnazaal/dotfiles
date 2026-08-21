@@ -1076,7 +1076,7 @@ Template expansion layered on top of CAPF completion.
                 (cons #'tempel-complete
                       completion-at-point-functions)))
   :hook
-  ((prog-mode org-mode) . tempel-setup-capf)
+  ((prog-mode org-mode LaTeX-mode) . tempel-setup-capf)
   :bind
   ("M-+" . tempel-complete) ;; Alternative tempel-expand
   ("M->" . tempel-insert)
@@ -1218,6 +1218,14 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
 
 # TODO: Find a way to ignore certain directories. For example, many log files in the project directory can make functions like =evil-goto-definition= slow. [2025-04-08 Tue] This is probably a language-server-specific issue, so it may be better to see how Pyright handles it.
 
+=harper-ls= handles prose in Markdown, Org and LaTeX buffers. Its spell checker
+is switched off here because [[*jinx][jinx]] already checks spelling in every =text-mode=
+buffer, and running both gives two sets of underlines with two separate
+dictionaries and two different ways to accept a word. The split is: jinx owns
+spelling, harper owns grammar and style. The server expects its settings under a
+=harper-ls= key with the linters under =linters=, and every linter is a boolean,
+so =:json-false= is required — plain =nil= would serialise as an empty object.
+
 #+begin_src emacs-lisp
 (use-package eglot
   :hook
@@ -1232,6 +1240,8 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
                '((markdown-mode org-mode latex-mode LaTeX-mode) . ("harper-ls" "--stdio")))
   :custom
   (eglot-prefer-plaintext t) ;; TODO Fix HTML artefacts in eldoc-doc-buffer
+  (eglot-workspace-configuration
+   '(:harper-ls (:linters (:SpellCheck :json-false))))
   :bind
   ([remap pop-tag-mark] . xref-go-back) ;; C-t
   ("M-<"                . xref-go-forward)
@@ -1241,9 +1251,16 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
 ** apheleia                                                          :coding:
 # TODO: Make this depend on project configurations when they exist.
 
+=LaTeX-mode= is hooked separately because it derives from =text-mode=, not
+=prog-mode=. It needs no =apheleia-mode-alist= entry: apheleia already ships a
+=latexindent= formatter and already maps =latex-mode= / =LaTeX-mode= to it, so
+adding one here would only restate the default.
+
 #+begin_src emacs-lisp
 (use-package apheleia
-  :hook (prog-mode . apheleia-mode)
+  :hook
+  (prog-mode . apheleia-mode)
+  (LaTeX-mode . apheleia-mode)
   :config
   (setf (alist-get 'python-mode    apheleia-mode-alist) '(ruff-isort ruff))
   (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff))
@@ -1531,6 +1548,18 @@ Notes on the settings:
   =srcup sioyek=, never =./build_linux.sh= directly: the recipe pins the Qt 6.8
   qmake, and the script's fallback silently picks the system Qt 5, which fails
   to compile.
+- =flymake-mode= runs AUCTeX's own =LaTeX-flymake= backend, which shells out to
+  =chktex= for the typographic errors latexmk never reports: a missing =~=
+  before a reference, =...= instead of =\ldots=, wrong quote characters. Pass
+  extra flags through =LaTeX-flymake-chktex-options=. =chktex= is a separate TeX
+  Live package (=tlmgr install chktex=) and the backend is silent without it.
+- The =eglot-managed-mode-hook= entry exists because [[*eglot][eglot]] *replaces*
+  =flymake-diagnostic-functions= with its own single backend when it starts
+  managing a buffer, which silently drops chktex the moment =harper-ls=
+  attaches. Re-adding =LaTeX-flymake= buffer-locally afterwards lets both report
+  into the same Flymake session. The alternative — putting =flymake= in
+  =eglot-stay-out-of= — is global, so it would also disable eglot's Flymake
+  handling for Python and shell buffers.
 
 #+begin_src emacs-lisp
 (use-package tex
@@ -1552,12 +1581,44 @@ Notes on the settings:
       "sioyek")))
   :hook
   (LaTeX-mode . TeX-source-correlate-mode)
-  (LaTeX-mode . TeX-fold-mode))
+  (LaTeX-mode . TeX-fold-mode)
+  (LaTeX-mode . flymake-mode)
+  :config
+  (defun tex-setup-chktex-flymake ()
+    (when (derived-mode-p 'LaTeX-mode)
+      (add-hook 'flymake-diagnostic-functions #'LaTeX-flymake nil t)))
+  (add-hook 'eglot-managed-mode-hook #'tex-setup-chktex-flymake))
 #+end_src
 
 For a continuously rebuilding PDF, run =latexmk -pvc= on the file in a terminal;
 sioyek picks up each rebuild on its own. [[*auctex-cont-latexmk][auctex-cont-latexmk]] does the same from
 inside Emacs and additionally reports errors through Flymake.
+
+*** Per-paper =.latexmkrc=
+Every paper repository gets its own =.latexmkrc=, committed alongside the
+source. It is what makes Make, this AUCTeX setup, and a coauthor's checkout all
+build the same way; without it each entry point carries its own flags and they
+drift. Deliberately *not* installed as a global =~/.latexmkrc=: a coauthor who
+clones the repo does not get the home directory with it.
+
+#+begin_example
+$pdf_mode      = 1;        # pdflatex, matching the engine choice above
+$bibtex_use    = 1.5;      # run bibtex as needed; keep the .bbl on cleanup
+$aux_dir       = 'build';
+$emulate_aux   = 1;        # TeX Live has no real -aux-directory
+@default_files = ('main.tex');
+$pdflatex      = 'pdflatex %O -synctex=1 -file-line-error -halt-on-error -interaction=nonstopmode %S';
+#+end_example
+
+- =$bibtex_use= stays at =1.5=, never =2=. At =2= latexmk treats the =.bbl= as a
+  regeneratable file and deletes it on =latexmk -C=, and the =.bbl= is exactly
+  what arXiv wants shipped in the submission tarball.
+- =$out_dir= is left unset, so the PDF stays at the repository root while the
+  aux clutter goes to =build/=. Add =build/= to that repo's =.gitignore=.
+- Overleaf runs its own compile and its handling of =$aux_dir= is unverified; if
+  a web build breaks after a push, drop the two aux lines and keep the rest.
+- =-shell-escape= is deliberately absent: arXiv will not run it, so a document
+  that needs it cannot be submitted as source.
 
 ** reftex                                                     :writing:latex:
 Built-in cross-referencing for LaTeX: label and reference completion that reads
