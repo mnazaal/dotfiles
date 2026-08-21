@@ -29,10 +29,34 @@ if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	# No --intercept-tool-results: since 0.36.1 headroom refuses to start with it
 	# on the stable rollout channel, and a proxy that never binds looks like
 	# "Connection refused" in the client, not like a flag error.
+	_hr_log="${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log"
 	nohup headroom proxy --port "$HEADROOM_PORT" --mode "${HEADROOM_MODE:-cache}" \
 		--lossless \
-		>"${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log" 2>&1 &
-	sleep 2
+		>"$_hr_log" 2>&1 &
+	_hr_pid=$!
+	# A proxy that dies during startup — a flag the installed version has moved
+	# behind a rollout channel, a port already taken — is otherwise invisible:
+	# the harness reports only "Connection refused" and retries ten times. Wait
+	# for readiness rather than a fixed sleep, and stop the launch naming the
+	# log, the same way a secret that cannot be read stops it.
+	_hr_ready=0
+	_hr_tries=30
+	while [ "$_hr_tries" -gt 0 ]; do
+		if curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
+			_hr_ready=1
+			break
+		fi
+		# An exited proxy will never become ready; do not wait out the budget.
+		kill -0 "$_hr_pid" 2>/dev/null || break
+		sleep 0.5
+		_hr_tries=$((_hr_tries - 1))
+	done
+	if [ "$_hr_ready" -ne 1 ]; then
+		printf 'claude.sh: headroom proxy did not come up on %s; see %s\n' \
+			"$HEADROOM_ANTHROPIC_BASE_URL" "$_hr_log" >&2
+		return 1
+	fi
+	unset _hr_log _hr_pid _hr_ready _hr_tries
 fi
 ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
 

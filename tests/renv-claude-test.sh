@@ -95,3 +95,55 @@ expect 'linked worktree' "$(run "$linked")" "$(confined "$linked" "$common")"
 expect 'non-git directory' "$(run "$tmp/untracked")" "$(
 	printf 'prefix=claude\n-p\nagent-claude\n--\n%s\n--version\n' "$bin/claude"
 )"
+
+# A proxy that cannot start must stop the launch with its log named, not leave
+# the harness pointed at a dead base URL to retry "Connection refused" ten times
+# with nothing saying why. Worst case here is the whole readiness budget (~15s),
+# if bash has not yet reaped the exited stub; a prompt failure is the liveness
+# check working.
+dead="$tmp/deadbin"
+mkdir -p "$dead" "$tmp/hrstate"
+
+cat >"$dead/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 7
+EOF
+
+cat >"$dead/headroom" <<'EOF'
+#!/usr/bin/env bash
+printf 'error: --a-flag is not available in the current rollout channel\n' >&2
+exit 2
+EOF
+chmod +x "$dead/curl" "$dead/headroom"
+
+capture="$tmp/capture"
+rm -f "$capture"
+status=0
+stderr=$(
+	cd "$tmp/untracked" || exit 1
+	PATH="$dead:$bin:$PATH" \
+		XDG_CONFIG_HOME="$config" \
+		GIT_CEILING_DIRECTORIES="$tmp" \
+		RENV_CAPTURE="$capture" \
+		HEADROOM_PORT=1 \
+		HEADROOM_WORKSPACE_DIR="$tmp/hrstate" \
+		"$repo/.local/scripts/renv" claude --version 2>&1 >/dev/null
+) || status=$?
+
+[ "$status" -ne 0 ] || {
+	printf 'a proxy that failed to start did not stop the launch\n' >&2
+	exit 1
+}
+
+case "$stderr" in
+*"$tmp/hrstate/proxy-1.log"*) ;;
+*)
+	printf 'launch failure did not name the proxy log:\n%s\n' "$stderr" >&2
+	exit 1
+	;;
+esac
+
+[ ! -e "$capture" ] || {
+	printf 'claude was launched despite a proxy that never came up\n' >&2
+	exit 1
+}
