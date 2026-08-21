@@ -139,11 +139,21 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
 - Before producing academic-paper, literature, citation, related-work,
   bibliography, author-lookup, or field-survey content, load
   `research-protocol` and follow it.
-- `~/org` (the personal Org note store) is READ-ONLY for agents: never write
-  to it; propose Org edits as snippets the user applies in Emacs. `plan-day`
-  owns which files to read and why the agenda view hides most open items.
+- `~/org` (the personal Org note store) is READ-ONLY for agents except
+  `~/org/agents/`, which is the agent-writable area and is bound read-write by
+  the sandbox profile. It holds literature that has no project home yet —
+  cross-project surveys and pre-project novelty gates — one file per topic,
+  named `lit-<topic>.org`. Once a topic becomes a project, its map moves to
+  that project's `notes/` (`context-project-docs`) and the agents copy is
+  deleted, not left to fork. Everywhere else under `~/org`, never write:
+  propose Org edits as snippets the user applies in Emacs. `plan-day` owns
+  which agenda files to read and why the agenda view hides most open items.
   Project standing docs and project `notes/` are governed by
   `context-project-docs`.
+- `~/org/roam` publishes to a **public** website. Every file under `roam/org/`
+  is exported, and `:noexport:` excludes tagged *headlines*, not whole files.
+  Proposing a roam note is therefore proposing publication: say so when you
+  propose one, and keep unpublished novelty gates out of it.
 - When environment context shows a git worktree (e.g. a path under
   `.claude/worktrees/*` or an explicit "this is a git worktree" note), load
   `dev-worktree` before running tests/tools.
