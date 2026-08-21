@@ -26,8 +26,11 @@ export HEADROOM_WORKSPACE_DIR HEADROOM_MEMORY_DB_PATH
 
 if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	mkdir -p "${HEADROOM_WORKSPACE_DIR}"
+	# No --intercept-tool-results: since 0.36.1 headroom refuses to start with it
+	# on the stable rollout channel, and a proxy that never binds looks like
+	# "Connection refused" in the client, not like a flag error.
 	nohup headroom proxy --port "$HEADROOM_PORT" --mode "${HEADROOM_MODE:-cache}" \
-		--lossless --intercept-tool-results \
+		--lossless \
 		>"${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log" 2>&1 &
 	sleep 2
 fi
