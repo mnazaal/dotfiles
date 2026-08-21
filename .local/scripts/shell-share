@@ -179,7 +179,7 @@ check_deps() {
 
 	if ((${#missing[@]} > 0)); then
 		echo -e "${RED}Error: Missing required dependencies: ${missing[*]}${NC}" >&2
-		echo "ttyd and cloudflared have no pkgit or srcup recipe; install them manually." >&2
+		echo "ttyd and cloudflared have no pkgit recipe; install them manually." >&2
 		exit 1
 	fi
 }

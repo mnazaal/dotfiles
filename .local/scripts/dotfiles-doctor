@@ -29,7 +29,6 @@ CHECKS:
   - Neovim vim.pack availability when nvim is installed
   - Claude agent guard hooks are present and parse (they fail open if broken)
   - ~/org/agenda exists and is writable (--strict only; warning otherwise)
-  - srcup helpers are executable or readable
   - Optional shellcheck and shfmt availability
   - Waybar bluetooth module is listed when configured
 EOF
@@ -199,19 +198,6 @@ for cmd in grim slurp wl-copy; do
 		warn "screenshot dependency missing: $cmd"
 	fi
 done
-
-srcup_dir="$repo/.config/srcup"
-if [[ -d "$srcup_dir" ]]; then
-	while IFS= read -r -d '' script; do
-		if [[ -x "$script" ]]; then
-			ok "srcup executable: ${script#$repo/}"
-		elif [[ -r "$script" ]]; then
-			warn "srcup readable but not executable: ${script#$repo/}"
-		else
-			fail "srcup unreadable: ${script#$repo/}"
-		fi
-	done < <(find "$srcup_dir" -maxdepth 1 -type f -name '*.sh' -print0)
-fi
 
 if command -v shellcheck >/dev/null 2>&1; then
 	ok "shellcheck installed"
