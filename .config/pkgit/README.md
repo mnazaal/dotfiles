@@ -67,8 +67,12 @@ fetches the tracked branch explicitly before each build and then:
 
 - fast-forward when possible;
 - auto-reset a clean checkout when upstream rebased or force-pushed;
-- refuse to update dirty worktrees, detached HEADs, or repos with an in-progress
-  Git operation.
+- discard local changes to tracked files first, because an autotools bootstrap
+  rewrites tracked files it does not own (stow's `aclocal.m4`, rdfind's
+  `INSTALL`, msmtp's `po/*`) and refusing would let one build block every later
+  update. Untracked files, `build/` included, are left alone;
+- skip the source update on a detached HEAD (a `checkout` pin), and refuse
+  outright when a Git operation is already in progress.
 
 Do not use pkgit checkouts for local development unless you first move the work
 elsewhere; pkgit source-package trees are allowed to be reset to upstream.

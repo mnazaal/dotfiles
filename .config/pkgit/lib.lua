@@ -44,9 +44,15 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 1
   fi
 
+  # An autotools bootstrap rewrites tracked files it does not own: stow's
+  # aclocal.m4, rdfind's INSTALL, msmtp's 15 po/ and build-aux files. Refusing
+  # here would mean a package's first build permanently blocks its next update,
+  # so discard instead — these trees are disposable by policy (see README) and
+  # the divergence branch below already resets them. Untracked files, including
+  # build/, are left alone.
   if ! git diff --quiet --ignore-submodules=all || ! git diff --cached --quiet --ignore-submodules=all; then
-    printf '%s\n' 'pkgit: refusing to update: worktree has local changes' >&2
-    exit 1
+    printf '%s\n' 'pkgit: discarding local changes to tracked files before updating' >&2
+    git reset --quiet --hard HEAD || exit 1
   fi
 
   branch=$(git symbolic-ref --quiet --short HEAD) || {
