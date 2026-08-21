@@ -1603,18 +1603,30 @@ clones the repo does not get the home directory with it.
 
 #+begin_example
 $pdf_mode      = 1;        # pdflatex, matching the engine choice above
-$bibtex_use    = 1.5;      # run bibtex as needed; keep the .bbl on cleanup
+$bibtex_use    = 2;        # always regenerate the .bbl; it is committed, not preserved
 $aux_dir       = 'build';
 $emulate_aux   = 1;        # TeX Live has no real -aux-directory
 @default_files = ('main.tex');
 $pdflatex      = 'pdflatex %O -synctex=1 -file-line-error -halt-on-error -interaction=nonstopmode %S';
 #+end_example
 
-- =$bibtex_use= stays at =1.5=, never =2=. At =2= latexmk treats the =.bbl= as a
-  regeneratable file and deletes it on =latexmk -C=, and the =.bbl= is exactly
-  what arXiv wants shipped in the submission tarball.
+- =$bibtex_use= controls both whether bibtex runs *and* whether cleanup deletes
+  the =.bbl=. From latexmk's own source: =0= and =1= never delete it, =1.5=
+  deletes it *if the bib files exist* — which they always do, so =1.5= is not the
+  protection its name suggests — and =2= always deletes it. This template picks
+  =2= and commits the =.bbl= instead: a stale bibliography that survives a clean
+  is far more expensive to debug than a regenerated one, and arXiv (which does
+  not run bibtex) gets its copy from version control rather than from whatever
+  happens to be on disk.
 - =$out_dir= is left unset, so the PDF stays at the repository root while the
-  aux clutter goes to =build/=. Add =build/= to that repo's =.gitignore=.
+  aux clutter goes to =build/=. That puts the =.bbl= in =build/= too, and git
+  cannot re-include a file whose parent directory is excluded — so the
+  =.gitignore= needs =build/*= followed by =!build/main.bbl=, *not* =build/=.
+  Check it with =git check-ignore -v build/main.bbl=, which should report no
+  match while =build/main.aux= stays ignored.
+- Because the =.bbl= is tracked and =$bibtex_use= is =2=, =latexmk -C= deletes a
+  file git knows about; =git status= shows the deletion until the next build
+  restores it. That is the accepted cost of keeping "clean" honest.
 - Overleaf runs its own compile and its handling of =$aux_dir= is unverified; if
   a web build breaks after a push, drop the two aux lines and keep the rest.
 - =-shell-escape= is deliberately absent: arXiv will not run it, so a document
