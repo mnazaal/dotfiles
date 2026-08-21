@@ -63,10 +63,10 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
 
 * Notes on helper scripts
 
-- source packages: =pkgit= installs from the recipes in =.config/pkgit/= (see
-  its README); =.local/scripts/srcup= remains the update mechanism for existing
-  checkouts (dispatching =.config/srcup/= scripts) until pkgit gains a working
-  in-place update
+- source packages: =pkgit= builds everything under =~/.local= from the recipes
+  in =.config/pkgit/= (see its README). =pkgit -i <pkg>= installs, =pkgit -b
+  <pkg>,update= updates in place. Never =pkgit -u= or =-f=: both delete a
+  package's source tree from under themselves
 - =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=
   (=renv codex= launches Codex in the dedicated filesystem sandbox; bare
   =codex= retains its local conservative defaults)

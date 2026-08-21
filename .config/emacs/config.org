@@ -1545,9 +1545,9 @@ Notes on the settings:
 - sioyek needs to be new enough: commit =5a262027= (2026-07-22) introduced a
   regression that segfaulted it whenever an open PDF was rewritten — exactly the
   live-reload case — fixed upstream by =fe698ba=. Build it through
-  =srcup sioyek=, never =./build_linux.sh= directly: the recipe pins the Qt 6.8
-  qmake, and the script's fallback silently picks the system Qt 5, which fails
-  to compile.
+  =pkgit -b sioyek,update=, never =./build_linux.sh= directly: the recipe pins
+  the Qt 6.8 qmake, and the script's fallback silently picks the system Qt 5,
+  which fails to compile.
 - =flymake-mode= runs AUCTeX's own =LaTeX-flymake= backend, which shells out to
   =chktex= for the typographic errors latexmk never reports: a missing =~=
   before a reference, =...= instead of =\ldots=, wrong quote characters. Pass
