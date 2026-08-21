@@ -43,6 +43,23 @@ For each package:
 2. Check installed binary/library behavior under `~/.local`.
 3. Mark the package as pkgit-verified in commit notes or another tracking file.
 
+## Commands
+
+- install: `pkgit -i <pkgit-name>`
+- update: `pkgit -b <pkgit-name>,update`
+
+`update` is a target profile defined in `lib.lua`, applied to every recipe. It
+fetches, fast-forwards, rebuilds and installs in place.
+
+**Never run `pkgit -u` or `pkgit -f`.** Both delete a package's source dir while
+pkgit's own working directory is inside it; the clone that follows then fails on
+`getcwd()`, leaving a checkout with no worktree files that `pkgit -i` refuses to
+repair (it reports "already installed"). Recovery is
+`rm -rf ~/.local/share/pkgit/<pkg> && pkgit -i <pkg>`.
+
+pkgit exits 0 even when a build fails, so never chain it with `&&`; check the
+installed artifact instead.
+
 ## Update semantics
 
 pkgit source checkouts are disposable build trees. The pkgit build wrapper

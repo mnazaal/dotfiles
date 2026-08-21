@@ -77,6 +77,18 @@ fi
 ]==])
 end
 
+-- pkgit's build() ignores a failed chdir into the package source dir, so a
+-- recipe invoked for a package that was never cloned would run in whatever
+-- directory pkgit was called from. Refuse instead of building somewhere random.
+function M.require_source_tree()
+  return M.sh([==[
+case "$PWD" in
+  */share/pkgit/*) exit 0 ;;
+  *) printf '%s\n' 'pkgit: refusing: not in a pkgit source tree' >&2; exit 1 ;;
+esac
+]==])
+end
+
 function M.target(t)
   if t.build then
     local build = t.build
@@ -90,7 +102,21 @@ function M.target(t)
   -- (targets.<profile>.dependencies) before building; default to empty since no
   -- inter-package deps are declared. default and quiet share the same table `t`.
   t.dependencies = t.dependencies or {}
-  return { default = t, quiet = t }
+  -- Update profile, run as `pkgit -b <pkg>,update`. It is the only way to
+  -- re-run a recipe against an existing checkout: `pkgit -i` returns early once
+  -- the source dir exists, and `pkgit -u`/`-f` delete that dir while pkgit's own
+  -- cwd is inside it, which wrecks the tree. t.build already carries
+  -- git_update_source_only, so this is fetch + ff-merge + build + install in
+  -- place. pkgit calls the resolved profile's `build` and requires a 0 return.
+  local u = { dependencies = {} }
+  u.build = function()
+    local guard = M.require_source_tree()
+    if guard ~= 0 then return guard end
+    local code = t.build and t.build() or 0
+    if code ~= 0 then return code end
+    return t.install and t.install() or 0
+  end
+  return { default = t, quiet = t, update = u }
 end
 
 function M.clean_root_ninja_build()
@@ -158,7 +184,10 @@ function M.meson(opts)
     if flags ~= "" then cmd = cmd .. " " .. flags end
     return M.sh(with_pcp(cmd .. " && ninja -C build"))
   end
-  t.install = function() return M.sh(with_pcp("ninja -C build install")) end
+  -- `--only-changed` preserves byte-identical files instead of rewriting the
+  -- whole install set, which `ninja install` does unconditionally. Matters now
+  -- that the update profile re-installs on every run.
+  t.install = function() return M.sh(with_pcp("meson install -C build --only-changed")) end
   t.uninstall = function() return M.sh("ninja -C build uninstall") end
   return M.target(t)
 end
