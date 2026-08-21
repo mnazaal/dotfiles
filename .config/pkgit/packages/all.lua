@@ -89,11 +89,21 @@ local repos = {
   grim = { url = "https://gitlab.freedesktop.org/emersion/grim.git", targets = meson },
   ["isync-isync"] = { url = "https://git.code.sf.net/p/isync/isync", targets = lib.autotools({ autogen = true }) },
   keyd = { url = "https://github.com/rvaiya/keyd", targets = lib.make_prefix() },
+  -- kitty runs from its build tree: the launcher locates the vendored python
+  -- tree beside itself, so it is linked rather than copied. Without this the
+  -- PATH entry stayed a hand-made symlink into ~/.local/src/kitty, i.e. the
+  -- running terminal came from a tree pkgit does not own and deleting that
+  -- tree would have broken it. `kitten` sits in the same directory if wanted.
   kitty = {
     url = "https://github.com/kovidgoyal/kitty.git",
     targets = lib.target({
       build = function() return lib.sh("./dev.sh build") end,
-      install = function() return 0 end,
+      install = function()
+        return lib.sh(
+          "[ -x kitty/launcher/kitty ] || { echo 'kitty: launcher missing after build' >&2; exit 1; }\n" ..
+          "ln -sfn \"$(pwd)/kitty/launcher/kitty\" " .. lib.q(prefix .. "/bin/kitty")
+        )
+      end,
     }),
   },
   -- wlroots 0.20's drm-backend (needed to run on a TTY, not just nested) needs
@@ -182,6 +192,10 @@ case "$qt_prefix" in
 esac
 sioyek_build=$(realpath "$PWD/build/sioyek")
 mkdir -p "$BIN"
+# Remove first: $BIN/sioyek may still be an older symlink into ~/.local/src,
+# and a bare redirect writes THROUGH a symlink — which once overwrote the
+# binary at the other end with this wrapper.
+rm -f "$BIN/sioyek"
 cat > "$BIN/sioyek" <<WRAP
 #!/usr/bin/env sh
 export LD_LIBRARY_PATH="$qt_prefix/lib:\${LD_LIBRARY_PATH:-}"
