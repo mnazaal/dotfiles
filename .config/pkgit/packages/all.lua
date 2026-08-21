@@ -128,7 +128,7 @@ local repos = {
   msmtp = { url = "https://git.marlam.de/git/msmtp.git", targets = lib.autotools({ autoreconf = true }) },
   -- The nautilus extension .so installs to an ABSOLUTE system dir
   -- (NAUTILUS_EXTENSION_DIR=/usr/lib/.../nautilus/extensions-4) → EACCES on a
-  -- ~/.local install (srcup's plain `make install` failed here too). Redirect it
+  -- ~/.local install (a plain `make install` fails here too). Redirect it
   -- under prefix so the whole install completes (incl. the `dropbox` CLI). For
   -- Nautilus to actually load it, set NAUTILUS_4_EXTENSION_DIR to that prefix dir.
   ["nautilus-dropbox"] = { url = "https://github.com/dropbox/nautilus-dropbox.git", targets = lib.autotools({ autogen = true, make_vars = { NAUTILUS_EXTENSION_DIR = prefix .. "/lib/x86_64-linux-gnu/nautilus/extensions-4" } }) },
@@ -221,7 +221,7 @@ chmod +x "$BIN/sioyek"
   -- Pin to 0.20.x: scenefx/mango require the wlroots-0.20 pkgconfig; HEAD is
   -- 0.21.0-dev. Reads local_pkg_config to find the prefix libdrm (>=2.4.129).
   wlroots = { url = "https://gitlab.freedesktop.org/wlroots/wlroots.git", targets = lib.meson({ clean_root_build = true, checkout = "0.20.2", pkg_config_path = local_pkg_config }) },
-  -- wlroots 0.20 needs xkbcommon >=1.8.0; Ubuntu 24.04 ships 1.6.0 and srcup
+  -- wlroots 0.20 needs xkbcommon >=1.8.0; Ubuntu 24.04 ships 1.6.0 and this
   -- never built it (its older wlroots predated the floor). Core build only
   -- (docs/x11 off) into prefix. Same story as libdrm.
   -- enable-bash-completion installs xkbcli's completion to an ABSOLUTE system

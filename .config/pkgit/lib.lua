@@ -171,8 +171,8 @@ function M.meson(opts)
   -- Export the local pkgconfig for the whole command — meson setup, ninja, and
   -- any cargo/custom subproject it spawns (they run their own pkg-config that
   -- reads PKG_CONFIG_PATH from the env). pkgit runs build and install as
-  -- SEPARATE shells, so the export must be applied to each (srcup gets this for
-  -- free with one `export` in a single script). Append existing, like srcup.
+  -- SEPARATE shells, so the export must be applied to each; a single script
+  -- would get this for free. Append to any existing value rather than replace.
   local function with_pcp(cmd)
     local exports = ""
     if opts.pkg_config_path then
@@ -256,8 +256,8 @@ function M.autotools(opts)
     if opts.autogen then table.insert(steps, "./autogen.sh") end
     -- Generate ./configure from configure.ac when the repo doesn't ship it
     -- (rdfind etc.). Equivalent to a project's bootstrap.sh/autogen.sh but
-    -- name-agnostic. Fresh pkgit clones need this; srcup checkouts hid it by
-    -- being bootstrapped once by hand.
+    -- name-agnostic. A fresh clone needs it; a checkout bootstrapped once by
+    -- hand hides the need.
     if opts.autoreconf then table.insert(steps, "autoreconf -fi") end
     local flags = M.qjoin(opts.configure_flags or {})
     local cfg = "./configure --prefix=" .. M.q(prefix)
