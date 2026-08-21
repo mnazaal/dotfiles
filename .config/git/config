@@ -67,6 +67,7 @@
     pruneTags = true
 [merge]
     conflictStyle = zdiff3
+    ff = only
 [help]
     autocorrect = prompt
 [commit]
