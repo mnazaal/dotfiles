@@ -44,7 +44,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 1
   fi
 
-  if ! git diff --quiet || ! git diff --cached --quiet; then
+  if ! git diff --quiet --ignore-submodules=all || ! git diff --cached --quiet --ignore-submodules=all; then
     printf '%s\n' 'pkgit: refusing to update: worktree has local changes' >&2
     exit 1
   fi
@@ -60,7 +60,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 
   git fetch --no-tags --prune "$remote" "$remote_branch"
 
-  if ! git diff --quiet || ! git diff --cached --quiet; then
+  if ! git diff --quiet --ignore-submodules=all || ! git diff --cached --quiet --ignore-submodules=all; then
     printf '%s\n' 'pkgit: refusing to update: fetch changed local worktree unexpectedly' >&2
     exit 1
   fi
@@ -73,6 +73,21 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'pkgit: upstream diverged; resetting clean source checkout to %s/%s\n' "$remote" "$remote_branch" >&2
     git reset --hard FETCH_HEAD
   fi
+fi
+]==])
+end
+
+-- pkgit clones with --recursive, so submodules are right at clone time and then
+-- never move again: nothing in the update path touches them. gimp (gimp-data),
+-- pwvucontrol, rofi (libgwater, libnkutils) and waybar all carry submodules, so
+-- without this an update advances the superproject and builds it against stale
+-- submodule content. It also unsticks the dirty-worktree guard above, which a
+-- lagging submodule pointer would otherwise trip on every later run.
+function M.sync_submodules()
+  return M.sh([==[
+if [ -f .gitmodules ]; then
+  git submodule sync --recursive >/dev/null 2>&1
+  git submodule update --init --recursive
 fi
 ]==])
 end
@@ -94,6 +109,8 @@ function M.target(t)
     local build = t.build
     t.build = function()
       local code = M.git_update_source_only()
+      if code ~= 0 then return code end
+      code = M.sync_submodules()
       if code ~= 0 then return code end
       return build()
     end
@@ -175,6 +192,10 @@ function M.meson(opts)
     -- branch on the very first (fresh-clone) build.
     if opts.checkout then
       local code = M.sh("git checkout --detach " .. M.q(opts.checkout))
+      if code ~= 0 then return code end
+      -- The pin moves HEAD after M.target already synced submodules, so sync
+      -- again to land them on what the pinned commit records.
+      code = M.sync_submodules()
       if code ~= 0 then return code end
     end
     if opts.clean_root_build then M.clean_root_ninja_build() end
