@@ -39,6 +39,33 @@ do not follow from general plotting sense.
   artifact must be byte-deterministic — `research-manuscript-workflow` owns both
   rules.
 
+### How the prose uses a float
+
+Producing the figure is half of it; the other half is how the text points at
+it. Each rule with the shape its violation takes:
+
+- **Every float is referenced and discussed.** *Violation:* a figure present
+  in the document and never `\ref`'d; a table cited once with nothing said
+  about what it shows.
+- **The reference says what to look for.** Name the pattern, the comparison,
+  or the direction the reader should take away. *Violation:* a bare "as shown
+  in Figure 3", which asserts the figure exists and leaves extracting its
+  message to the reader.
+- **Figure, caption and text agree.** Same terminology for the same element,
+  and positional claims that match the rendering. *Violation:* text saying
+  "top-left" for something rendered bottom-right; a caption describing an
+  element the figure does not contain.
+- **The caption stands alone.** It states what is shown, expands the symbols
+  and abbreviations appearing in the figure, gives units, and names the
+  takeaway — readers scan floats before deciding to read the prose.
+  *Violation:* "Results on dataset X"; a caption leaning on a term defined
+  only in the body; a caption narrating layout ("Left: …, Right: …") without
+  saying what it means.
+- **Subfigure rows align at the top.** Use `[t]` on subfigures in multi-row
+  grids and pin `\includegraphics[height=…]` when a row mixes aspect ratios.
+  *Violation:* the template's default `[b]`, which staggers a row as soon as
+  one subfigure carries a caption and its neighbours do not.
+
 ## Workflow
 
 1. Identify audience and output medium.

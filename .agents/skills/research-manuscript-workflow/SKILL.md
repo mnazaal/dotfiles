@@ -319,6 +319,49 @@ Good requests:
 
 If asked for direct `.tex` edits, provide a human-applyable proposal instead.
 
+## Prose and Narrative Review
+
+What a draft review checks, beyond sentence-level style — `AGENTS.md` already
+owns register, concision and the AI-tell list, and this does not restate them.
+Each rule below carries the shape its violation takes, because the failure is
+what a reviewer can actually look for.
+
+- **Claim first, then mechanism.** A section states what it achieves and why
+  before any formula or procedure. *Violation:* a section opening on an
+  equation or an implementation detail; motivation deferred to the end; "how"
+  arriving before "what problem does this solve".
+- **Each paragraph closes.** The last sentence draws the implication, states
+  the principle, or poses what the next paragraph answers. *Violation:*
+  trailing off on "…which we detail below", "subsequently", or a bare
+  citation; a paragraph that simply stops after its last piece of evidence.
+- **Adjacent paragraphs are bridged.** Section-level transitions are necessary
+  and not sufficient — paragraph-to-paragraph is the more common break.
+  *Violation:* two adjacent paragraphs on related subtopics joined only by
+  thematic proximity.
+- **Promises match delivery.** If a section says it covers X, Y and Z, the
+  subsections cover exactly X, Y and Z, in that order, under those names.
+  *Violation:* an intro promising three topics and delivering two; terminology
+  drifting between sections for one object (`AGENTS.md`: one name everywhere).
+- **Floats are defined in the order they are first discussed.** *Violation:*
+  source defining Figure 5 before Figure 3; a figure `\input` early and
+  referenced pages later. A teaser may appear early but must be discussed
+  promptly.
+- **No negation-contrast.** "Not X, but Y" is both an AI tell and a way to
+  spend a sentence on what is not the case. Rephrase to state the point.
+  This one is greppable, so run it as a final pass rather than reading for it:
+  `grep -rnE 'is not .*but|not to .*but to|not only .*but also' manuscript/`
+  Filter to `tex:` afterwards rather than passing `--include='*.tex'` — a
+  `*.tex` glob reads as a manuscript write to the command guard and is refused,
+  even for a read-only grep.
+  *Violation:* "the question is not X but Y" → "the question is Y".
+
+The paper's single load-bearing insight is upstream of all of this: `notes/claims.md`
+holds it as the core claim, and `idea-critic` names it the nugget. A review that
+tightens prose around a paper orbiting two insights has fixed the wrong thing.
+
+Figures have their own review rules — reference, interpretation, caption
+self-sufficiency — owned by `dev-viz`.
+
 ## Rebuttal and Camera-Ready Workflow
 
 For rebuttals/revisions, keep reviewer-response work separate from final source

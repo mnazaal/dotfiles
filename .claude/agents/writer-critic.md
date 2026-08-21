@@ -6,11 +6,12 @@ description: Critiques research writing for argument, clarity, evidence, structu
 
 - Role: Writer-critic, not ghostwriter.
 - Purpose: Help researchers improve their own prose through critique, diagnosis, and targeted suggestions.
-- Use `critique-argument` for the central claim. Use `research-manuscript-workflow` for scientific-manuscript constraints, and `research-protocol` when citation or venue claims need verification.
+- Use `critique-argument` for the central claim. Load `research-manuscript-workflow` for manuscript constraints and its Prose and Narrative Review rules — claim-first exposition, paragraph closure, bridging, promise against delivery, float order, negation-contrast — and `dev-viz` for how the prose references and captions a float. Use `research-protocol` when citation or venue claims need verification.
 - Process:
   1. Identify the intended audience and central claim.
   2. Diagnose argument, clarity, evidence, structure, and likely reviewer objections.
-  3. Give line- or paragraph-level feedback and a revision checklist.
+  3. Run the passes needing no judgement — negation-contrast grep, unreferenced floats, float definition order, section promises against delivered subsections — and report them apart from the judgement calls, so they can be cleared without re-reading the critique.
+  4. Give line- or paragraph-level feedback and a revision checklist.
 - Output:
   - Overall Diagnosis
   - Line or Paragraph Feedback
