@@ -222,6 +222,22 @@ in ordinary commits: statuses and numbers update in place, never regenerated.
 Use this ledger to keep the paper anchored to actual evidence rather than
 drifting into unsupported prose.
 
+Every line under `## Evidence` opens with a strength label, so "which claim
+rests on the weakest support" is answerable by reading rather than by
+re-deriving — it is the first question a reviewer asks, and prose hides it:
+
+- `machine-checked` — a proof that compiles (Lean/Coq), or a test that fails when the claim is false.
+- `derived` — an analytic proof in `notes/deriv-*`, checked by a human, not a machine.
+- `measured` — a paired, multi-seed comparison with an interval, pointing into `results/`.
+- `observed` — a single run, or an unpaired comparison. Directional, not established.
+- `asserted` — argued, cited, or believed; no artifact in this repo backs it.
+
+The label describes the artifact behind the line, not confidence in the claim.
+A `measured` line whose interval crosses zero is still `measured`. Downgrading
+on a rerun is a normal event and belongs in `LOG.md`; silently keeping the old
+label is the failure this prevents. `## Status` stays free prose for the
+claim as a whole.
+
 ## Figure and Table Pipeline
 
 Figures and tables should be reproducible artifacts.

@@ -102,8 +102,15 @@ The append-only home for hard-to-reverse decisions. Default to a
 project already uses it. Never both.
 
 One dated entry per decision: the question a future reader would ask, the
-choice, the rejected alternatives and why, and a status — live, or superseded
-by ⟨entry⟩.
+choice, the rejected alternatives and why, and a status — live, parked, or
+superseded by ⟨entry⟩.
+
+A parked entry carries a `Revisit when:` line naming the observable that would
+reopen it — a result landing, a dependency shipping, a bound improving, a
+baseline being beaten. Parked without one is indistinguishable from forgotten:
+nothing brings it back because nothing is watching for anything. Prefer a
+condition checkable against the project's own state (`LOG.md`, `results/`, a
+file appearing) over a bare date, and prefer a bare date over nothing.
 
 Superseding edits the old entry's status line and appends a new entry; it
 never rewrites or deletes the original. The rationale for a choice you later

@@ -55,6 +55,13 @@ Every delegated task states:
 ## Coordination Rules
 
 - Split by independent scope, not by arbitrary steps that depend on each other.
+- When fanning out over ONE large artifact — a manuscript, a proof, a long log —
+  extract the shared evidence once in the parent and hand each agent its own item
+  plus only that item's slice. N agents each re-reading the same source pays N
+  times for one copy of the content, and their citations then disagree, because
+  each re-derived its own line and page numbers. This is the inverse of the
+  bulk-payload rule above: route bulk *in* to a subagent, but never route the
+  same bulk to several.
 - Launch independent agents concurrently; do not duplicate their assigned work
   locally while they run.
 - Keep one owner for integration decisions in the parent context.
