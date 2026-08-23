@@ -613,6 +613,12 @@ export function createSkillGate() {
     if (toolTokens.some((token) => ["paper", "papers", "citation", "citations", "author", "authors", "bibliography", "bibliographic"].includes(token))) {
       capabilities.add("academic-source");
     }
+    // Delegation is a tool call, not a command or a path, so it is keyed on the
+    // tool name: Task/Agent (Claude), task (opencode), pi's subagents package.
+    // Exact names rather than tokens -- a tool called TaskOutput must not trip it.
+    if (["task", "agent", "subagent", "delegate"].includes((input.tool ?? "").toLowerCase()) || toolTokens.includes("subagent")) {
+      capabilities.add("subagent-spawn");
+    }
     if (input.command) {
       const commandTokens = pathTokenize(input.command).map((token) => basename(token).toLowerCase());
       if (commandTokens.some((token) => ["pytest", "unittest", "vitest", "jest", "mocha", "rspec"].includes(token))) {

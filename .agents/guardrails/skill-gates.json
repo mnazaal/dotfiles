@@ -48,6 +48,11 @@
       "message": "running tests inside a git worktree"
     },
     {
+      "skills": ["agent-orchestration"],
+      "trigger": { "type": "capability", "all_of": ["subagent-spawn"] },
+      "message": "delegating to a subagent"
+    },
+    {
       "skills": ["research-manuscript-workflow"],
       "trigger": { "type": "bash", "command": "git", "arg_contains": "overleaf" },
       "message": "running git against an Overleaf bridge remote"

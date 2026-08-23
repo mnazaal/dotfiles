@@ -81,6 +81,18 @@ test("git commit requires dev-git skill", () => {
   expect(rails.evaluate(event, ["dev-git"]).decision).toBe("allow");
 });
 
+test("spawning a subagent requires agent-orchestration skill", () => {
+  const rails = createGuardrails("claude");
+  for (const tool of ["Task", "Agent", "task"]) {
+    expect(rails.evaluate({ tool, cwd }).skills).toEqual(["agent-orchestration"]);
+    expect(rails.evaluate({ tool, cwd }, ["agent-orchestration"]).decision).toBe("allow");
+  }
+  // a tool whose name merely contains "task"/"agent" is not a delegation
+  for (const tool of ["TaskOutput", "AgentOutput"]) {
+    expect(rails.evaluate({ tool, cwd }).decision).toBe("allow");
+  }
+});
+
 test("codex missing-skill message names the canonical skill path", () => {
   const rails = createGuardrails("codex");
   const r = rails.evaluate({ tool: "bash", command: "git commit -m ok", cwd });

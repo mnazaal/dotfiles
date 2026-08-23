@@ -87,7 +87,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Glob|Grep|Skill",
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Glob|Grep|Skill|Task|Agent",
         "hooks": [
           {
             "type": "command",
