@@ -15,18 +15,22 @@ This directory configures pkgit source builds.
 
 Versioned source package names are normalized to pkgit-native package names:
 
-| source package | pkgit package | pkgit version |
+| source package | pkgit package | recipe `checkout` |
 |--------------|---------------|---------------|
 | `wayland-1.25.0` | `wayland` | `1.25.0` |
 | `wayland-protocols-1.48` | `wayland-protocols` | `1.48` |
+
+The third column is the recipe's own `checkout` option, not pkgit's per-package
+`version` field. That field is a no-op in the installed binary — it always
+clones ref HEAD — so every pin in this config is a `checkout`.
 
 ## Current recipe groups
 
 | Group | Packages |
 |-------|----------|
 | Meson | `babl`, `grim`, `libinput`, `pixman`, `rofi`, `slurp`, `swaybg`, `wireplumber` |
-| Meson + flags/env | `gegl`, `gimp`, `pwvucontrol`, `swayidle`, `swaylock`, `waybar` |
-| Meson, Wayland stack (root-build cleanup, pinned checkouts, prefix pkgconfig) | `libdisplay-info`, `libdrm`, `mango`, `scenefx`, `wayland`, `wayland-protocols`, `wlroots`, `xkbcommon` |
+| Meson + flags/env | `gegl`, `gimp`, `pwvucontrol`, `waybar` |
+| Meson, Wayland stack (root-build cleanup, pinned checkouts, prefix pkgconfig) | `libdisplay-info`, `libdrm`, `mango`, `scenefx`, `swayidle`, `swaylock`, `wayland`, `wayland-protocols`, `wlroots`, `xkbcommon` |
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
 | Make + PREFIX | `dunst`, `keyd`, `pass-otp` |
 | Autotools | `emacs`, `isync-isync`, `msmtp`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
@@ -59,6 +63,20 @@ repair (it reports "already installed"). Recovery is
 
 pkgit exits 0 even when a build fails, so never chain it with `&&`; check the
 installed artifact instead.
+
+**`pkgit -r` does not run the recipe's uninstall.** In 1.2.0 its `repo_uninstall`
+never loads the `repositories` table (`src/pkg_remove.c` omits the
+`lua_getglobal` that the build and update paths do), logs
+`init.lua: 'repositories' is not a table`, and falls through to a fallback that
+matches a marker file in the source tree against the `build_systems` keys and
+runs THAT entry's uninstall — then reports `[SUCCESS]` either way. So a removal
+runs the bare `lib.make_prefix()`/`lib.meson()`/`lib.cmake()` uninstall with none
+of the recipe's options: `pass-otp` without `BASHCOMPDIR`, `nautilus-dropbox`
+without `NAUTILUS_EXTENSION_DIR`, the Wayland-stack packages without their prefix
+pkgconfig. It also picks by table order when a tree carries two markers (`neovim`
+has both a `Makefile` and a `CMakeLists.txt`), so which one runs is not
+determined. Uninstall by hand instead; writing per-recipe `uninstall` functions
+would not help, because nothing calls them.
 
 ## Update semantics
 
