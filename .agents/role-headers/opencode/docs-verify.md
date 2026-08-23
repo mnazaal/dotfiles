@@ -1,5 +1,5 @@
 ---
-description: Verify technical information against current documentation when uncertain
+description: Verifies technical information against current authoritative documentation when uncertain, instead of relying on memory. Citation-heavy. Use before giving version-specific guidance.
 mode: subagent
 temperature: 0.2
 permission:
