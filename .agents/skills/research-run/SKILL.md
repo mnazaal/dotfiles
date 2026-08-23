@@ -126,9 +126,11 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - One hypothesis per attempt, named as a mechanism rather than "try tuning
   something". Keep it only if it clears noise with the check still green;
   otherwise revert in full. A tweak that might help does not ride along.
-- Log every attempt, kept and reverted, outside the tree so it survives reverts,
-  and read the log before the next attempt so the search accumulates instead of
-  circling.
+- Log every attempt, kept and reverted, and read the log before the next
+  attempt so the search accumulates instead of circling. Append it to the
+  comparison's `notes/design-*` note and commit as you go: the requirement is
+  that it survive a revert of the code, which a committed note does and an
+  uncommitted or scratchpad file does not.
 - A plateau means pivot category or go more radical, not stop. Correctness and
   simplicity outrank the number: revert a win that breaks behavior, keep a
   simplification that holds it.
