@@ -35,6 +35,8 @@ OPTIONS
       --backend NAME        gvisor | podman (default); or $SANDBOX_BACKEND
       --no-net              unshare the network (shared by default)
   -n, --dry-run             print the backend command instead of running it
+      --verify-pins         inside the sandbox: check every machinery pin is
+                            actually read-only, then exit. Non-zero if any is not
   -h, --help                show this help
 
 DESCRIPTION
@@ -128,13 +130,34 @@ run_podman() {
 	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
 
+	# Fail closed: assert every pin is genuinely read-only INSIDE the container
+	# before the sandboxed command gets control. Emitting the -v above is a
+	# request; this is the only place the kernel's answer is read. `test -w`
+	# reports false on a read-only bind for both files and directories, so no
+	# mountinfo parsing is needed.
+	local pins=() d
+	for d in "${RO_LAST[@]}"; do [ -e "$d" ] && pins+=("$d"); done
+	local preflight='n=$1; shift
+while [ "$n" -gt 0 ]; do
+	if [ -w "$1" ]; then
+		printf "sandbox: FATAL machinery pin not enforced: %s\n" "$1" >&2
+		printf "sandbox: refusing to start.\n" >&2
+		exit 78
+	fi
+	shift
+	n=$((n - 1))
+done
+exec "$@"'
+
 	if [ "$DRYRUN" -eq 1 ]; then
 		printf 'podman'
-		printf ' %q' "${pre[@]}" "${p[@]}" "$IMAGE" "${cmd[@]}"
+		printf ' %q' "${pre[@]}" "${p[@]}" "$IMAGE" \
+			/bin/sh -c "$preflight" sandbox-preflight "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 		printf '\n'
 		exit 0
 	fi
-	exec podman "${pre[@]}" "${p[@]}" "$IMAGE" "${cmd[@]}"
+	exec podman "${pre[@]}" "${p[@]}" "$IMAGE" \
+		/bin/sh -c "$preflight" sandbox-preflight "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
 
 # --- run ---------------------------------------------------------------------
@@ -151,6 +174,7 @@ declare -a RW=() RO=() RW_FILES=() RO_LAST=()
 declare -a SANDBOX_ENV=(HOME PWD PATH LANG LC_ALL LC_CTYPE TERM COLORTERM NO_COLOR EDITOR VISUAL XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_RUNTIME_DIR XDG_STATE_HOME WAYLAND_DISPLAY)
 NET=1 # 1 share network, 0 unshare
 DRYRUN=0
+VERIFY_PINS=0
 SANDBOX_PATH_PREPEND=""
 PODMAN_RUNTIME="" # gvisor backend sets this to the runsc path
 PROFILE_NAME=""   # first -p name, used as podman container name
@@ -184,6 +208,10 @@ while [ $# -gt 0 ]; do
 		DRYRUN=1
 		shift
 		;;
+	--verify-pins)
+		VERIFY_PINS=1
+		shift
+		;;
 	-h | --help)
 		show_help
 		exit 0
@@ -201,7 +229,39 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-[ ${#cmd[@]} -gt 0 ] || die 'usage: sandbox [options] [--] <command> [args...]' 2
+[ ${#cmd[@]} -gt 0 ] || [ "$VERIFY_PINS" -eq 1 ] ||
+	die 'usage: sandbox [options] [--] <command> [args...]' 2
+
+# A read-only bind is attached to an inode, so replacing the file orphans the
+# mount and silently disarms the pin for the life of the session — and replacing
+# is what `git checkout`, stow and every temp-then-rename editor write does. The
+# profile and the backend argv both still look correct afterwards, which is why
+# comparing those two (`make check-machinery-ro-sync`) cannot detect it. Only the
+# live mount namespace can, so ask it.
+if [ "$VERIFY_PINS" -eq 1 ]; then
+	[ -e /run/.containerenv ] || [ -e /.dockerenv ] ||
+		die '--verify-pins is meaningful only inside the sandbox' 2
+	pin_status=0
+	pin_checked=0
+	for d in "${RO_LAST[@]}"; do
+		[ -e "$d" ] || continue
+		pin_checked=$((pin_checked + 1))
+		if [ -w "$d" ]; then
+			printf 'sandbox: machinery pin NOT enforced (writable): %s\n' "$d" >&2
+			pin_status=1
+		fi
+	done
+	if [ "$pin_checked" -eq 0 ]; then
+		printf 'sandbox: no machinery pins to check — the profile did not compose\n' >&2
+		exit 1
+	fi
+	if [ "$pin_status" -eq 0 ]; then
+		printf 'sandbox: %d machinery pins enforced\n' "$pin_checked"
+	else
+		printf 'sandbox: relaunch to re-bind. a pin breaks when its file is replaced.\n' >&2
+	fi
+	exit "$pin_status"
+fi
 
 cmdpath=$(command -v -- "${cmd[0]}") || die "command not found: ${cmd[0]}" 127
 cmd[0]=$cmdpath

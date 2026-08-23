@@ -189,3 +189,60 @@ if ! grep -q 're-exposes all of \$HOME or /' "$tmp/stderr"; then
 	printf 'sandbox rejected the ancestor for an unexpected reason\n' >&2
 	exit 1
 fi
+
+# Emitting a read-only bind is a REQUEST; the kernel's answer is only visible in
+# the mount namespace. A file bind is orphaned when its inode is replaced (git
+# checkout, stow, any temp-then-rename write), which silently disarms the pin
+# while both the profile and this argv still look correct — so comparing those
+# two (make check-machinery-ro-sync) cannot detect it. The launcher therefore
+# asserts each pin inside the container before the command runs.
+out=$(run "$home/dotfiles" -p agent-claude)
+case "$out" in
+*sandbox-preflight*) ;;
+*)
+	printf 'sandbox no longer runs the pin preflight before the command\n' >&2
+	exit 1
+	;;
+esac
+case "$out" in
+*"machinery pin not enforced"*) ;;
+*)
+	printf 'the preflight no longer refuses on an unenforced pin\n' >&2
+	exit 1
+	;;
+esac
+
+# The preflight is a shell snippet passed to `sh -c`, so exercise it directly
+# with the real one extracted from the launcher — a copy here would drift.
+preflight=$(awk "/^\tlocal preflight='/{f=1; sub(/^\tlocal preflight='/,\"\")} f{print} /^exec \"\\\$@\"'\$/{exit}" \
+	"$repo/.local/scripts/sandbox" | sed "s/'$//")
+[ -n "$preflight" ] || {
+	printf 'could not extract the preflight snippet from the launcher\n' >&2
+	exit 1
+}
+
+ro_pin="$tmp/readonly-pin"
+rw_pin="$tmp/writable-pin"
+: >"$ro_pin"
+: >"$rw_pin"
+chmod a-w "$ro_pin"
+
+expect_preflight() { # label expected_exit expected_stdout args...
+	local label=$1 want=$2 wantout=$3
+	shift 3
+	local got rc
+	got=$(/bin/sh -c "$preflight" sandbox-preflight "$@" 2>/dev/null) && rc=0 || rc=$?
+	if [ "$rc" -ne "$want" ] || [ "$got" != "$wantout" ]; then
+		printf 'preflight %s: exit %s (want %s), stdout %s (want %s)\n' \
+			"$label" "$rc" "$want" "$got" "$wantout" >&2
+		exit 1
+	fi
+}
+
+expect_preflight 'runs the command when every pin holds' 0 ran 1 "$ro_pin" /bin/echo ran
+expect_preflight 'refuses when any pin is writable' 78 '' 2 "$ro_pin" "$rw_pin" /bin/echo ran
+expect_preflight 'refuses on the first writable pin' 78 '' 1 "$rw_pin" /bin/echo ran
+expect_preflight 'passes command arguments through' 0 'a b' 1 "$ro_pin" /bin/echo a b
+expect_preflight 'runs when there is nothing to assert' 0 ran 0 /bin/echo ran
+
+chmod u+w "$ro_pin"
