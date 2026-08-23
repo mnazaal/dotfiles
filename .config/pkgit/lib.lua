@@ -34,6 +34,22 @@ function M.qjoin(parts)
   return table.concat(out, " ")
 end
 
+-- Lua 5.4 randomizes string hashes per process, so pairs() over an options
+-- table yields a different order in every run. Nothing downstream cares which
+-- order exports or make vars are emitted in, but a build command that is not
+-- byte-stable cannot be diffed against a previous run's log — which is the only
+-- verification available when the build itself can't be run. Sort.
+function M.sorted_pairs(t)
+  local keys = {}
+  for key in pairs(t or {}) do table.insert(keys, key) end
+  table.sort(keys)
+  local i = 0
+  return function()
+    i = i + 1
+    if keys[i] ~= nil then return keys[i], t[keys[i]] end
+  end
+end
+
 function M.git_update_source_only()
   return M.sh([==[
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -156,7 +172,7 @@ function M.make_prefix(opts)
   -- (e.g. pass-otp's BASHCOMPDIR=/etc/bash_completion.d) which must be pointed
   -- at a user-writable path for a ~/.local install.
   local extra = ""
-  for name, value in pairs(opts.vars or {}) do
+  for name, value in M.sorted_pairs(opts.vars) do
     extra = extra .. " " .. name .. "=" .. M.q(value)
   end
   local t = {}
@@ -182,7 +198,7 @@ function M.meson(opts)
     -- General prepend-to-existing env exports (e.g. GI_TYPELIB_PATH / LD_LIBRARY_PATH /
     -- XDG_DATA_DIRS at prefix), for builds that run an in-tree tool which dlopens or
     -- introspects prefix libs — works even when the session env (e.g. mango's) lacks them.
-    for name, value in pairs(opts.env or {}) do
+    for name, value in M.sorted_pairs(opts.env) do
       exports = exports .. "export " .. name .. "=" .. M.q(value) ..
         '${' .. name .. ':+:"$' .. name .. '"}; '
     end
@@ -246,7 +262,7 @@ function M.autotools(opts)
   -- NAUTILUS_EXTENSION_DIR=/usr/lib/.../nautilus/extensions-4, which needs
   -- pointing under prefix so a ~/.local install doesn't hit EACCES on /usr).
   local mkvars = ""
-  for name, value in pairs(opts.make_vars or {}) do
+  for name, value in M.sorted_pairs(opts.make_vars) do
     mkvars = mkvars .. " " .. name .. "=" .. M.q(value)
   end
   local t = {}
