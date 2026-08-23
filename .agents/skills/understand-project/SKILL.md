@@ -34,7 +34,8 @@ to summarize it. A summary is what already exists and is not being read.
 - Diagnose before teaching. Ask what the user believes, then teach to the
   difference. Do not grade the answer or say whether it was right — use it only
   to locate the gap.
-- One question at a time.
+- One diagnostic question at a time. This is teaching, not scoping —
+  `plan-interview` owns batched scoping rounds.
 - Every gap has one of two causes: the user forgot, or the record is broken.
   Decide which. The second is the more valuable finding.
 - Persist as repairs to the project's existing documents, never a new standing

@@ -92,15 +92,11 @@ This file is global routing and behavior policy. Keep it small.
   the outset rather than discovering the cap by timeout. A run killed at the cap
   restarts from zero, and the killed worker lingers as a zombie that confuses
   later process checks — so the cost of guessing wrong is the whole run twice.
-- If you still hand-roll a completion-poll loop, poll the actual worker PID,
-  not a launcher/wrapper PID: an unreaped launcher becomes a zombie that stays
-  visible to `ps -p` forever, so `until ! ps -p <launcher>` never exits. Once a
-  wait task is armed, consume its notification instead of abandoning it for
-  manual polling.
-- Poll for *completion*, not for first output. `until [ -s log ]` fires on the
-  first partial write, so a job that streams progress will be declared finished
-  while still running. Wait on the worker PID, an exit-status file, or a marker
-  the job writes last.
+- A hand-rolled poll loop is banned above because it fails silently in two ways:
+  `until [ -s log ]` fires on the first partial write and declares a streaming
+  job finished while it is still running, and an unreaped launcher stays visible
+  to `ps -p` forever so `until ! ps -p <pid>` never exits. Once a wait task is
+  armed, consume its notification rather than abandoning it for manual polling.
 - `pkill -f <pattern>` matches the shell running it, so the command kills itself
   and reports a spurious exit code. Bracket a character — `pkill -f 'jo[b]name'`
   — or match the worker PID.

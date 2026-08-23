@@ -29,7 +29,8 @@ by a predecessor, or by an upstream author — and never landed anywhere legible
   than reconciling them silently.
 - Diagnose before teaching. Ask what the user believes, then teach to the
   difference. Do not grade the answer — use it to locate the gap.
-- One question at a time.
+- One diagnostic question at a time. This is teaching, not scoping —
+  `plan-interview` owns batched scoping rounds.
 - Gather structure with `dev-scout` rather than re-deriving it here. This skill
   owns the delivery, not the mapping.
 - Persist as repairs to the code and its documents, never a new standing
@@ -105,6 +106,6 @@ Route each; do not fix silently.
 - `dev-jax-port` when understanding a reference implementation is the prelude to
   porting it.
 - `dev-ponytail` for the deletion call on an unjustifiable abstraction.
-- `dev-tdd` for covering an unenforced invariant.
-- `dev-tdd` when comprehension should escalate to pinned behavior.
+- `dev-tdd` to cover an unenforced invariant, when comprehension should
+  escalate to pinned behavior.
 - `context-project-docs` for README claims that no longer match.
