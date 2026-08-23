@@ -166,10 +166,12 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   its canonical set.
 - For security-sensitive work (secrets, credentials, auth, permissions, token
   handling, or suspected leakage), load `dev-security`.
-- Before asking the user clarifying questions about scope, approach, or
-  design — including via a structured question tool — load `plan-interview`
-  and follow its rounds discipline: batch independent questions with
-  recommended defaults; a question whose prerequisite is unsettled waits.
+- Before asking the user two or more clarifying questions, or any single
+  question that would change the scope, approach, or design — including via a
+  structured question tool — load `plan-interview` and follow its rounds
+  discipline: batch independent questions with recommended defaults; a question
+  whose prerequisite is unsettled waits. A lone factual or confirmatory
+  question does not need it.
 
 ## Maintenance
 

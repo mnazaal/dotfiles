@@ -1,6 +1,6 @@
 ---
 name: plan-interview
-description: Load BEFORE asking the user any clarifying question about scope, approach, requirements, or design — including before every structured question tool call (e.g. AskUserQuestion) on a plan, implementation approach, research direction, or workflow change; also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
+description: Load BEFORE asking the user two or more clarifying questions, or any single question that would change the scope, approach, or design of the work — including before a structured question tool call (e.g. AskUserQuestion) carrying more than one question, on a plan, implementation approach, research direction, or workflow change. A lone factual or confirmatory question does not need it. Also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
 ---
 
 # Skill: Plan Interview
