@@ -91,7 +91,7 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - Does the mean difference agree with the median and the win-rate? A significant mean with a near-zero median and a ~50% win-rate is a heavy-tailed effect: a few cases moved far in *both* directions. Report median, win-rate and the tail beside the mean, and word the finding as unreliability rather than a shift.
 - Is there a simpler baseline/control?
 - Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
-- Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number.
+- Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number. A flat 0% recovery is usually a non-identifying objective or a broken metric, not a failing method.
 - What condition would force this effect to zero, and has it been run? Every mechanism implies a null-control — an arm where the claimed *cause* is structurally absent (latent made irrelevant, signal removed, knob at its no-op value). Distinct from the oracle, which bounds what is *achievable*: this bounds what the mechanism *explains*. An effect that survives its own null-control is either more general than the story attached to it, or an artifact of the comparison, and nothing else in the sweep separates those. Unlike the oracle it stays repairable after the fact — usually one extra cell.
 - Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
 - How many comparisons produced this winner? If the comparison was not named before running (Before Launching), correct for the number of cells or confirm the winner on a fresh seed set before reporting the gap.
@@ -123,13 +123,8 @@ If the project keeps a `LOG.md` (`context-project-docs`), offer to prepend the f
 
 - Comparing across changed eval pipelines.
 - Cherry-picking best seed.
-- Treating one seed as robust.
-- Quoting each arm's mean ± std and reading overlap as the test. The quantity of interest is the difference and its own variance; overlapping bars can still be a significant paired difference, and non-overlapping bars are not automatically significant.
-- Reporting the top cell of a sweep as the effect size without correcting for selection or confirming it on fresh seeds.
 - Reporting metric movement without variance/noise context.
 - Training longer instead of checking broken assumptions.
-- Reading recovery-vs-ground-truth without first checking the score's optimum IS the truth — a flat 0% recovery is usually a non-identifying objective (or a broken metric), not a failing method; no method comparison on that metric means anything until the ceiling is confirmed.
-- Reading a verdict off a sweep point where both arms are saturated (floored/ceilinged) — the comparison is uninformative; pick a regime where the axis still moves the metric before comparing.
 - Reading a flat/invariant sweep as "the axis doesn't matter" without running the axis's null point. If the effect is unchanged where its supposed cause is absent, the mechanism story is wrong even when every cell is individually significant.
 - Calling a non-significant result "no effect" (or accepting a pre-registered null) without a power check — under-powered or confounded non-significance is inconclusive, not evidence of absence.
 - Comparing against a baseline we reimplemented when the authors'/established implementation exists and could be run via an adapter — a hand-rolled comparator that underperforms flatters the method.
