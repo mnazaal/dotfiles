@@ -196,7 +196,7 @@ mkdir -p "$BIN"
 rm -f "$BIN/sioyek"
 cat > "$BIN/sioyek" <<WRAP
 #!/usr/bin/env sh
-export LD_LIBRARY_PATH="$qt_prefix/lib:\${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$qt_prefix/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$qt_prefix/plugins\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}"
 exec "$sioyek_build" "\$@"
 WRAP
