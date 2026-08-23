@@ -48,6 +48,11 @@
       "message": "running tests inside a git worktree"
     },
     {
+      "skills": ["dev-verification"],
+      "trigger": { "type": "capability", "all_of": ["test-command"] },
+      "message": "running a test command"
+    },
+    {
       "skills": ["agent-orchestration"],
       "trigger": { "type": "capability", "all_of": ["subagent-spawn"] },
       "message": "delegating to a subagent"

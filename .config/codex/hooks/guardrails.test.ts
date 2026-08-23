@@ -114,13 +114,24 @@ test("academic-source tool names require research-protocol without provider coup
   expect(rails.evaluate(event).skills).toEqual(["research-protocol"]);
 });
 
-test("test commands in a git worktree require dev-worktree", () => {
+test("a test command requires dev-verification anywhere", () => {
+  const rails = createGuardrails("opencode");
+  for (const command of ["pytest", "pytest tests/test_foo.py -x", "npx vitest run"]) {
+    expect(rails.evaluate({ tool: "bash", command, cwd }).skills)
+      .toEqual(["dev-verification"]);
+  }
+});
+
+test("test commands in a git worktree require dev-worktree AND dev-verification", () => {
   const worktree = mkdtempSync(join(tmpdir(), "guardrails-worktree-"));
   writeFileSync(join(worktree, ".git"), "gitdir: /tmp/main/.git/worktrees/test\n");
 
+  // Both capability gates key on `test-command`; the worktree one additionally
+  // needs `git-worktree`, so inside a worktree they fire together rather than
+  // the narrower one replacing the broader.
   const rails = createGuardrails("opencode");
   expect(rails.evaluate({ tool: "bash", command: "pytest", cwd: worktree }).skills)
-    .toEqual(["dev-worktree"]);
+    .toEqual(["dev-worktree", "dev-verification"]);
 });
 
 test("only concrete skill calls or canonical skill reads produce load receipts", () => {
