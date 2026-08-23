@@ -252,7 +252,6 @@ function M.autotools(opts)
   local t = {}
   t.build = function()
     local steps = {}
-    if opts.bootstrap then table.insert(steps, "./bootstrap") end
     if opts.autogen then table.insert(steps, "./autogen.sh") end
     -- Generate ./configure from configure.ac when the repo doesn't ship it
     -- (rdfind etc.). Equivalent to a project's bootstrap.sh/autogen.sh but

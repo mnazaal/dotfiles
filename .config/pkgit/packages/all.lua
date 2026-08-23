@@ -2,7 +2,6 @@ local lib = require("lib")
 
 local cc = lib.cmake({ ccache = true })
 local meson = lib.meson()
-local meson_clean = lib.meson({ clean_root_build = true })
 
 local local_pkg_config = prefix .. "/lib/x86_64-linux-gnu/pkgconfig:" .. prefix .. "/lib/pkgconfig:" .. prefix .. "/share/pkgconfig"
 
@@ -44,21 +43,20 @@ local repos = {
       install = function() return lib.install_bin("bin/fzf", "fzf") end,
     }),
   },
-  gegl = (function()
-    local env = "cc_triplet=$(cc -dumpmachine 2>/dev/null || true); " ..
-      "PKG_CONFIG_PATH=" .. lib.q(prefix .. "/share/pkgconfig:" .. prefix .. "/lib/pkgconfig") .. ":${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet/pkgconfig:}${PKG_CONFIG_PATH:-}; " ..
-      "LD_LIBRARY_PATH=${cc_triplet:+" .. lib.q(prefix .. "/lib") .. "/$cc_triplet:}" .. lib.q(prefix .. "/lib") .. ":${LD_LIBRARY_PATH:-}; " ..
-      "export PKG_CONFIG_PATH LD_LIBRARY_PATH; "
-    return {
-      url = "https://gitlab.gnome.org/GNOME/gegl.git",
-      targets = lib.target({
-        build = function()
-          return lib.sh(env .. "meson setup build --prefix=" .. lib.q(prefix) .. " --reconfigure && ninja -C build")
-        end,
-        install = function() return lib.sh(env .. "ninja -C build install") end,
-      }),
-    }
-  end)(),
+  -- gegl needs the prefix babl at build time (pkgconfig) and its in-tree tools
+  -- dlopen prefix libs at run time — the same two needs gimp has, so it takes
+  -- the same M.meson options. This was hand-rolled only for the build env,
+  -- which M.meson has carried since the `env` option landed. The multiarch dir
+  -- is written out rather than derived from `cc -dumpmachine`: babl-0.1.pc,
+  -- gegl-0.4.pc and libgegl-0.4.so all sit under lib/x86_64-linux-gnu here,
+  -- and a wrong guess fails loudly (meson cannot find babl), not silently.
+  gegl = {
+    url = "https://gitlab.gnome.org/GNOME/gegl.git",
+    targets = lib.meson({
+      pkg_config_path = local_pkg_config,
+      env = { LD_LIBRARY_PATH = prefix .. "/lib/x86_64-linux-gnu:" .. prefix .. "/lib" },
+    }),
+  },
   -- gimp master is painful on a ~/.local stack under a minimal session (mango):
   --  (1) -Dvala=disabled: vapigen resolves Vala bindings via vapi/GIR dirs (from
   --      XDG_DATA_DIRS, which lacks ~/.local/share), not pkg-config, so it can't
