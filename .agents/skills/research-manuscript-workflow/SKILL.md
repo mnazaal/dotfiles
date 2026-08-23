@@ -193,9 +193,6 @@ documentation and related documents.
 Do not split the manuscript into a separate repository unless collaboration,
 publisher requirements, or artifact submission constraints require it.
 
-The directory has one purpose: produce the paper artifact. Keep generated files
-clearly separated from human-authored ones.
-
 ## Claims and Evidence Ledger
 
 The ledger is the reserved `notes/claims.md` (`context-project-docs` owns the
@@ -219,9 +216,6 @@ in ordinary commits: statuses and numbers update in place, never regenerated.
 # Secondary claim
 ```
 
-Use this ledger to keep the paper anchored to actual evidence rather than
-drifting into unsupported prose.
-
 Every line under `## Evidence` opens with a strength label, so "which claim
 rests on the weakest support" is answerable by reading rather than by
 re-deriving — it is the first question a reviewer asks, and prose hides it:
@@ -239,8 +233,6 @@ label is the failure this prevents. `## Status` stays free prose for the
 claim as a whole.
 
 ## Figure and Table Pipeline
-
-Figures and tables should be reproducible artifacts.
 
 Rules:
 
@@ -308,16 +300,8 @@ verification policy before producing paper-specific content.
 Given human-owned `.tex`, use agents as reviewers and research assistants, not
 as direct manuscript editors.
 
-Good requests:
-
-- “Read `manuscript/main.tex` and produce a section-by-section revision plan.”
-- “Compare `notes/claims.md` against the current experiments and flag unsupported claims.”
-- “Inspect the LaTeX build log and summarize errors/warnings.”
-- “Suggest better related-work positioning, with verified citations.”
-- “Check whether figures and tables support the abstract claims.”
-- “Draft proposed edits in a project `notes/` HTML working note, not in `.tex`.”
-
-If asked for direct `.tex` edits, provide a human-applyable proposal instead.
+If asked for direct `.tex` edits, provide a human-applyable proposal instead,
+drafted in a project `notes/` working note rather than in `.tex`.
 
 ## Prose and Narrative Review
 
