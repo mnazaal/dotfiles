@@ -61,7 +61,7 @@ harnesses use the same profile namespace:
 | `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
 | `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
 | `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state |
-| `agent-codex` / `agent-opencode` / `agent-pi` / `agent-goose` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
+| `agent-codex` / `agent-opencode` / `agent-pi` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
 
 ## Coding agents (via renv)
 

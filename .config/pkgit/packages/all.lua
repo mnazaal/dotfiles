@@ -77,13 +77,6 @@ local repos = {
       },
     }),
   },
-  goose = {
-    url = "https://github.com/aaif-goose/goose.git",
-    targets = lib.target({
-      build = function() return 0 end,
-      install = function() return lib.sh("cargo install --force --locked --path crates/goose-cli --bin goose --root " .. lib.q(prefix)) end,
-    }),
-  },
   grim = { url = "https://gitlab.freedesktop.org/emersion/grim.git", targets = meson },
   ["isync-isync"] = { url = "https://git.code.sf.net/p/isync/isync", targets = lib.autotools({ autogen = true }) },
   keyd = { url = "https://github.com/rvaiya/keyd", targets = lib.make_prefix() },

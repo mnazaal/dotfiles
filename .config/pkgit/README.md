@@ -34,7 +34,7 @@ clones ref HEAD — so every pin in this config is a `checkout`.
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
 | Make + PREFIX | `dunst`, `keyd`, `pass-otp` |
 | Autotools | `emacs`, `isync-isync`, `msmtp`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
-| Custom | `fzf`, `goose`, `kitty`, `neovim`, `sioyek` |
+| Custom | `fzf`, `kitty`, `neovim`, `sioyek` |
 
 ## Verification
 

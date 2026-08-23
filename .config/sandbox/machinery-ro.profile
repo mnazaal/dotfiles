@@ -14,7 +14,6 @@ RO_LAST+=(
 	"$H/dotfiles/.config/codex/hooks"
 	"$H/dotfiles/.config/codex/hooks.json"
 	"$H/dotfiles/.config/codex/config.toml.template"
-	"$H/dotfiles/.config/goose"
 	"$H/dotfiles/.config/opencode/plugins"
 	"$H/dotfiles/.config/opencode/opencode.jsonc"
 	"$H/dotfiles/.config/pi/agent/extensions"

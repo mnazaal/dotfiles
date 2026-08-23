@@ -26,7 +26,7 @@ printf 'prefix=%s\nasta=%s\nopenrouter=%s\ncodex_home=%s\ncache=%s\n' \
 	"${CODEX_HOME:-}" "${XDG_CACHE_HOME:-}" >"$RENV_CAPTURE"
 printf '%s\n' "$@" >>"$RENV_CAPTURE"
 EOF
-for h in codex opencode goose pi; do printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/$h"; done
+for h in codex opencode pi; do printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/$h"; done
 chmod +x "$bin"/*
 
 deploy_guardrails() { # [malformed]
@@ -77,11 +77,6 @@ expect codex "$out" "prefix=codex"
 expect codex "$out" "asta=test-asta-mcp"
 expect codex "$out" "codex_home=$config/codex"
 expect codex "$out" "$(printf -- '-p\nagent-codex\n--\n%s\n--sandbox\ndanger-full-access\n--ask-for-approval\nnever\n--version' "$bin/codex")"
-
-out=$(run goose --version)
-expect goose "$out" "prefix=goose"
-expect goose "$out" "codex_home=$config/codex"
-expect goose "$out" "$(printf -- '-p\nagent-goose\n--\n%s\n--version' "$bin/goose")"
 
 out=$(run opencode -c)
 expect opencode "$out" "prefix=opencode"
