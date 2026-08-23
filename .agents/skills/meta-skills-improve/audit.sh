@@ -83,15 +83,23 @@ echo "gating skill. edit the pairs below to match the gates you want to check."
 # the event: 'git worktree' matches 557 of 588 sessions as text and 10 as a real
 # command. An unanchored denominator does not understate compliance, it reports
 # a number with no meaning.
+# A subagent transcript is not a session. A delegate legitimately does not load
+# the parent's gating skills, so counting subagents/*.jsonl inflates every
+# denominator: measured 2026-08-23, session-handoff read 57% with them and 77%
+# without, and the difference was 53 delegate transcripts.
+gate_sessions() {
+	grep -rlE "$1" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | grep -v '/subagents/'
+}
+
 check_gate() {
-	local label="$1" pattern="$2" skill="$3" total with
-	total=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null | wc -l)
+	local label="$1" pattern="$2" skill="$3" total with files
+	files=$(gate_sessions "$pattern")
+	total=$(printf '%s' "$files" | grep -c .)
 	if [ "$total" -eq 0 ]; then
 		printf "  %-22s %-24s no sessions with this event\n" "$label" "$skill"
 		return
 	fi
-	with=$(grep -rlE "$pattern" --include="*.jsonl" "$TRANSCRIPTS" 2>/dev/null |
-		xargs grep -l "\"skill\":\"$skill\"" 2>/dev/null | wc -l)
+	with=$(printf '%s\n' "$files" | xargs grep -l "\"skill\":\"$skill\"" 2>/dev/null | wc -l)
 	printf "  %-22s %-24s %4d/%-4d  %3d%%\n" "$label" "$skill" "$with" "$total" \
 		"$((100 * with / total))"
 }
@@ -99,9 +107,15 @@ printf "  %-22s %-24s %-10s %s\n" "EVENT" "GATING SKILL" "LOADED" "RATE"
 check_gate 'git commit' '"command":"[^"]*git commit' dev-git
 check_gate 'git push' '"command":"[^"]*git push' dev-git
 check_gate 'git rebase' '"command":"[^"]*git rebase' dev-git-rescue
-check_gate 'git worktree' '"command":"[^"]*git worktree' dev-worktree
+# `git worktree add` creates one; `git worktree list` is a read-only probe and
+# is not the event dev-worktree exists for. Anchoring on the bare subcommand
+# reported 2/9 = 22% for a skill sitting at 54 recorded loads — a number with no
+# meaning. Anchor on the tool call that PERFORMS the event, not the topic.
+check_gate 'git worktree add' '"command":"[^"]*git worktree add' dev-worktree
 check_gate 'arxiv fetch' '"name":"WebFetch","input":\{"url":"[^"]*arxiv\.org' research-protocol
 check_gate 'handoff written' 'session-handoff:begin' session-handoff
+check_gate 'structured question' '"name":"AskUserQuestion"' plan-interview
+check_gate 'subagent spawn' '"name":"(Task|Agent)","input"' agent-orchestration
 
 echo
 echo "=== 5. where in the session each skill fires ==="
