@@ -7,7 +7,27 @@ description: Use for ML/research runs at both ends. Before launching — designi
 
 ## Purpose
 
-Decide what a run result means and what to do next.
+Design a comparison that can answer something, then decide what its result
+means.
+
+## Workflow
+
+The order is the content. Steps 1-2 cannot be repaired once step 3 has run,
+and the Checklist can only ask whether they happened.
+
+1. State the hypothesis as a mechanism, not as "try tuning something".
+2. Settle the design: the comparison of interest, Δ, seeds sized from pilot
+   variance, pairing, a regime where the axis still bites, and the oracle
+   (Before Launching).
+3. **Launch. This is the barrier** — every decision above is spent now,
+   whatever the run returns. `dev-hpc` owns submission and its wall-time floor.
+4. Read the run against the Checklist.
+5. Give a verdict (Verdicts).
+6. Prepend the filled Output block to `LOG.md`.
+
+Driving one metric over many attempts is a different shape: Sustained
+Improvement Loop iterates steps 3-5 under a stop predicate, with step 2 done
+once for the first measurement.
 
 ## Rules
 
@@ -86,7 +106,6 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - What config/commit/log path?
 - Is effect bigger than noise?
 - If non-significant: was the design ever powered for the minimum effect worth acting on (Before Launching)? Below that N the result is inconclusive, not "no effect".
-- Were the arms paired on seed (Before Launching)? If not, the comparison carries seed variance it did not need to.
 - Report an interval on the *difference*, not two point estimates. With few seeds prefer a paired-difference CI or a bootstrap over quoting each arm's mean ± std and eyeballing the overlap — non-overlapping error bars is not the same test, in either direction.
 - Does the mean difference agree with the median and the win-rate? A significant mean with a near-zero median and a ~50% win-rate is a heavy-tailed effect: a few cases moved far in *both* directions. Report median, win-rate and the tail beside the mean, and word the finding as unreliability rather than a shift.
 - Is there a simpler baseline/control?
