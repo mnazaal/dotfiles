@@ -18,14 +18,17 @@ project="$tmp/project"
 mkdir -p \
 	"$home/.agents" "$home/.cache/opencode" \
 	"$home/.config/codex" "$home/.config/opencode" "$home/.config/pi" \
-	"$home/.local/share/opencode" "$home/.local/share/pi" \
+	"$home/.config/pi/agent/sessions" "$home/.config/pi/agent/npm" \
+	"$home/.local/share/opencode" \
 	"$home/.local/state/codex" "$home/.local/state/headroom" \
-	"$home/.local/state/nvim" "$home/.local/state/opencode" "$home/.local/state/pi" \
+	"$home/.local/state/nvim" "$home/.local/state/opencode" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
 	"$home/dotfiles/.config/codex/hooks" \
 	"$home/projects/demo/src" "$project"
 touch "$home/.config/codex/config.toml" \
+	"$home/.config/pi/agent/mcp-cache.json" \
+	"$home/.config/pi/agent/run-history.jsonl" \
 	"$home/dotfiles/.config/codex/hooks.json" \
 	"$home/dotfiles/.config/codex/config.toml.template"
 
@@ -154,8 +157,10 @@ assert_mounts agent-pi "$output" \
 	"$home/.agents:$home/.agents:ro" \
 	"$home/dotfiles:$home/dotfiles:ro" \
 	"$home/.config/pi:$home/.config/pi:ro" \
-	"$home/.local/share/pi:$home/.local/share/pi" \
-	"$home/.local/state/pi:$home/.local/state/pi" \
+	"$home/.config/pi/agent/sessions:$home/.config/pi/agent/sessions" \
+	"$home/.config/pi/agent/npm:$home/.config/pi/agent/npm" \
+	"$home/.config/pi/agent/mcp-cache.json:$home/.config/pi/agent/mcp-cache.json" \
+	"$home/.config/pi/agent/run-history.jsonl:$home/.config/pi/agent/run-history.jsonl" \
 	-- \
 	"$home/.config:$home/.config:ro" \
 	"$home/dotfiles:$home/dotfiles " \

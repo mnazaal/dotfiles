@@ -8,5 +8,6 @@ use machinery-ro
 
 RO+=( "$H/.agents" "$H/.config/pi" )
 RO+=( "$H/dotfiles" )
-RW+=( "$H/.local/share/pi" "$H/.local/state/pi" )
+RW+=( "$H/.config/pi/agent/sessions" "$H/.config/pi/agent/npm" )
+RW_FILES+=( "$H/.config/pi/agent/mcp-cache.json" "$H/.config/pi/agent/run-history.jsonl" )
 SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "OPENROUTER_API_KEY" "ASTA_MCP_API_KEY" )
