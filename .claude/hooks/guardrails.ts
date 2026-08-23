@@ -28,11 +28,14 @@ state.save(loadedSkills);
 const r = rails.evaluate(event, loadedSkills);
 if (r.decision === "allow") process.exit(0);
 
+// Capability gates (e.g. subagent delegation) carry no command, path or URL,
+// so only append the offending context when there is one.
+const context = (event.command ?? event.paths?.[0] ?? event.urls?.[0] ?? "").slice(0, 80);
 console.log(JSON.stringify({
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
     permissionDecision: r.decision,
-    permissionDecisionReason: `${r.reason} — ${(event.command ?? event.paths?.[0] ?? event.urls?.[0] ?? "").slice(0, 80)}`,
+    permissionDecisionReason: context ? `${r.reason} — ${context}` : r.reason,
   },
 }));
 process.exit(0);
