@@ -10,7 +10,8 @@ agents). Map their tool names onto Claude Code as follows:
 - **Code search** — use the native `Grep`/`Glob` tools, and the `Explore`
   subagent for broad fan-out searches. Avoid raw `rg`/`grep`/`find` via `Bash`
   for code discovery.
-- **File inspection/edit** — use `Read`/`Edit`/`Write`, never `cat`/`sed`/`awk`.
+- **File inspection/edit** — prefer `Read`/`Edit`/`Write` for edits. `cat`/`head`/
+  `tail` for quick inspection are pre-allowed in `settings.json` and fine to use.
 - **Docs** — use `WebFetch`/`WebSearch` for library/API docs.
 - **Papers** — use the configured academic-paper verification tool before citing
   a paper; never cite an unverified paper.
