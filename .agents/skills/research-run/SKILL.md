@@ -22,7 +22,7 @@ and the Checklist can only ask whether they happened.
 3. **Launch. This is the barrier** — every decision above is spent now,
    whatever the run returns. `dev-hpc` owns submission and its wall-time floor.
 4. Read the run against the Checklist.
-5. Give a verdict (Verdicts).
+5. Give a verdict and take its exit (Verdicts).
 6. Prepend the filled Output block to `LOG.md`.
 
 Driving one metric over many attempts is a different shape: Sustained
@@ -123,10 +123,22 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - `broken`: invalid run, metric, data, or code path.
 - `unknown`: missing artifact prevents conclusion.
 
+Every verdict has an exit, and three of them leave this skill.
+
+- `improve` / `degrade` → the Output block, then `LOG.md`.
+- `noise` → back to Before Launching. An unsized design cannot separate a null
+  result from an underpowered one, so re-size from the observed paired sd
+  before recording anything as no effect.
+- `broken`, and any run that is plausible but wrong → `debug-ml-research`.
+- `unknown` → find the artifact before re-running anything. When the run was a
+  cluster job, that is `dev-hpc`: a hydra task exception exits zero and `sacct`
+  reports COMPLETED, so a missing output is evidence about the task body and
+  not about the scheduler.
+
 ## Boundary
 
 - This skill interprets run evidence and chooses the next check.
-- If verdict is `broken` or the run is plausible-but-wrong, stop interpretation and hand off to `debug-ml-research`.
+- Interpretation stops at `broken`; the diagnosis belongs to `debug-ml-research` (Verdicts).
 
 ## Output
 
