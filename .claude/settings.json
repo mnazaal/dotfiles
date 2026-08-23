@@ -82,6 +82,10 @@
             "type": "command",
             "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] && \"$f\" >/dev/null 2>&1; exit 0"
           }
+          ,{
+            "type": "command",
+            "command": "f=\"$HOME/.local/scripts/sandbox\"; if [ -x \"$f\" ] && [ -e /run/.containerenv ]; then out=$(\"$f\" -p agent-claude --verify-pins 2>&1) || printf '%s\\n' \"$out\"; fi; exit 0"
+          }
         ]
       }
     ],
