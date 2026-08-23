@@ -47,10 +47,17 @@ Use when evaluating a research idea, direction, or hunch ("should we try X", "is
    (PLAN.md risks and decision log) by concept, not keyword — "night theme"
    matches a dark-mode rejection. On a hit, surface the recorded reason and
    ask whether it still holds before any fresh evaluation.
-3. Generate plausible framings and alternatives.
+3. Generate plausible framings and alternatives before scoring any of them:
+   alternative framings, cross-field connections, extensions, the high-risk
+   variant, and the counter-arguments worth testing. Produce the whole set
+   first — evaluating each candidate as it appears collapses the range. When
+   the current framing is likely to anchor generation, use
+   `agent-orchestration` to spawn a read-only subagent for an unanchored pass.
 4. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, use `agent-orchestration` to spawn a constrained critique subagent.
 5. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
-6. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above.
+6. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above. Name the lens the
+   decision actually turns on — triage, comparative advantage, field timing,
+   opportunity cost, or scooping risk — and say which evidence would flip it.
 
 ## Framing
 
