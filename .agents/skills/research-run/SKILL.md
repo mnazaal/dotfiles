@@ -1,6 +1,6 @@
 ---
 name: research-run
-description: Use for ML/research runs at both ends. Before launching — designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken verdicts.
+description: Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken verdicts.
 ---
 
 # Skill: Research Run
@@ -16,18 +16,21 @@ The order is the content. Steps 1-2 cannot be repaired once step 3 has run,
 and the Checklist can only ask whether they happened.
 
 1. State the hypothesis as a mechanism, not as "try tuning something".
-2. Settle the design: the comparison of interest, Δ, seeds sized from pilot
+2. Pre-register the prediction, the decision rule, the falsifier, the analysis
+   path and the search bounds (Pre-Registration).
+3. Settle the design: the comparison of interest, Δ, seeds sized from pilot
    variance, pairing, a regime where the axis still bites, and the oracle
    (Before Launching).
-3. **Launch. This is the barrier** — every decision above is spent now,
+4. **Launch. This is the barrier** — every decision above is spent now,
    whatever the run returns. `dev-hpc` owns submission and its wall-time floor.
-4. Read the run against the Checklist.
-5. Give a verdict and take its exit (Verdicts).
-6. Prepend the filled Output block to `LOG.md`.
+5. Read the run against the Checklist.
+6. Give a verdict and take its exit (Verdicts).
+7. Prepend the filled Output block to `LOG.md`, pointing back at the
+   pre-registration note.
 
 Driving one metric over many attempts is a different shape: Sustained
-Improvement Loop iterates steps 3-5 under a stop predicate, with step 2 done
-once for the first measurement.
+Improvement Loop iterates steps 4-6 under a stop predicate, with steps 2-3
+done once for the first measurement.
 
 ## Rules
 
@@ -36,6 +39,40 @@ once for the first measurement.
 - Do not treat one noisy seed as evidence.
 - Prefer the cheapest check that reduces uncertainty.
 - If run looks plausible but wrong, use `debug-ml-research`.
+
+## Pre-Registration
+
+Before Launching settles the design; this settles what the design is a test
+of, in a form that outlives the moment it was decided. Five commitments, none
+of which can be made honestly once the numbers exist:
+
+- **The prediction.** What you expect, in direction and rough size.
+  `Hypothesis:` in the Output block is filled at verdict time and is a
+  different artifact — one nothing can be checked against.
+- **The decision rule.** If the result is X, the next action is Y. Write the
+  consequent, not only Δ; a threshold with no action attached is a number to
+  argue with later.
+- **The falsifier.** What result would drop the mechanism, as opposed to
+  prompt a re-run. If nothing would, the run is not a test of it.
+- **The analysis path.** The interval on the difference, the statistics
+  reported beside the mean, and the multiplicity rule. All three live in the
+  Checklist, which is read after the numbers, and each is a live degree of
+  freedom until it is fixed.
+- **The search bounds.** The hyperparameter ranges to be swept, as part of the
+  hypothesis rather than a detail. An unbounded search is where the forking
+  paths are.
+
+Split it in two, because ML iterates and one up-front commitment does not
+survive that: fix the question, metric with its threshold, data, transforms
+and baselines before any training; fix the method, seeds, compute budget and
+resolved hyperparameters after validation and before touching test. Answer
+"has this test set been accessed before?" explicitly at the second phase — it
+is the leakage no data-path rule catches, since it is a fact about the
+researcher rather than the pipeline (`dev-ml-infra` owns the rest).
+
+Sink: `notes/design-<comparison>.md` (`context-project-docs` owns the prefix).
+The result's `LOG.md` entry points back at it, which is what makes a
+prediction checkable rather than remembered.
 
 ## Before Launching
 
