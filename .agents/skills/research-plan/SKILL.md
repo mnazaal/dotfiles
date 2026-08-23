@@ -32,6 +32,12 @@ to `research-session`; if decisions are unresolved, route to `plan-interview`.
   inline ("extract the two helpers; do not add a state-machine layer") — the
   non-goal travels with the task a future session will actually read, not only
   in the decision log.
+- Every execution-order item names what ends it — the check that passes, the
+  artifact that appears, or the observation that settles it. An item with no
+  exit condition ends when attention runs out, and a later session cannot tell
+  a finished one from an abandoned one. That is the same ambiguity the
+  revision gate below spends a whole read resolving, so it is cheaper to write
+  the exit than to infer it twice.
 - Pin upstream API surfaces exactly (module paths, function names); flag
   anything unverified as a scaffold-time task rather than guessing.
 - Name the load-bearing ablation: the experiment separating the claimed
