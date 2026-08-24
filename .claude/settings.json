@@ -84,7 +84,7 @@
           }
           ,{
             "type": "command",
-            "command": "f=\"$HOME/.local/scripts/sandbox\"; if [ -x \"$f\" ] && [ -e /run/.containerenv ]; then out=$(\"$f\" -p agent-claude --verify-pins 2>&1) || printf '%s\\n' \"$out\"; fi; exit 0"
+            "command": "f=\"$HOME/.local/scripts/sandbox\"; if [ -x \"$f\" ] && [ -e /run/.containerenv ]; then if ! out=$(\"$f\" -p agent-claude --verify-pins 2>&1); then printf '%s\\n' \"$out\"; printf '%s\\n' \"$out\" >&2; exit 1; fi; fi; exit 0"
           }
         ]
       }
