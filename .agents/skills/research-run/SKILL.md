@@ -1,6 +1,6 @@
 ---
 name: research-run
-description: Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken verdicts.
+description: Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken/unknown verdicts, a run whose artifacts are missing.
 ---
 
 # Skill: Research Run
@@ -12,7 +12,7 @@ means.
 
 ## Workflow
 
-The order is the content. Steps 1-2 cannot be repaired once step 3 has run,
+The order is the content. Steps 1-3 cannot be repaired once step 4 has run,
 and the Checklist can only ask whether they happened.
 
 1. State the hypothesis as a mechanism, not as "try tuning something".
@@ -29,8 +29,9 @@ and the Checklist can only ask whether they happened.
    pre-registration note.
 
 Driving one metric over many attempts is a different shape: Sustained
-Improvement Loop iterates steps 4-6 under a stop predicate, with steps 2-3
-done once for the first measurement.
+Improvement Loop iterates step 1 and steps 4-6 under a stop predicate — one
+fresh hypothesis per attempt — with steps 2-3 done once for the first
+measurement.
 
 ## Rules
 
@@ -176,7 +177,8 @@ Every verdict has an exit, and three of them leave this skill.
 
 ## Boundary
 
-- This skill interprets run evidence and chooses the next check.
+- This skill owns both ends: the design a run is a test of, and what its
+  evidence means afterwards.
 - Interpretation stops at `broken`; the diagnosis belongs to `debug-ml-research` (Verdicts).
 
 ## Output
