@@ -204,13 +204,6 @@ case "$out" in
 	exit 1
 	;;
 esac
-case "$out" in
-*"machinery pin not enforced"*) ;;
-*)
-	printf 'the preflight no longer refuses on an unenforced pin\n' >&2
-	exit 1
-	;;
-esac
 
 # The preflight is a shell snippet passed to `sh -c`, so exercise it directly
 # with the real one extracted from the launcher — a copy here would drift.
@@ -239,10 +232,25 @@ expect_preflight() { # label expected_exit expected_stdout args...
 	fi
 }
 
-expect_preflight 'runs the command when every pin holds' 0 ran 1 "$ro_pin" /bin/echo ran
-expect_preflight 'refuses when any pin is writable' 78 '' 2 "$ro_pin" "$rw_pin" /bin/echo ran
-expect_preflight 'refuses on the first writable pin' 78 '' 1 "$rw_pin" /bin/echo ran
-expect_preflight 'passes command arguments through' 0 'a b' 1 "$ro_pin" /bin/echo a b
-expect_preflight 'runs when there is nothing to assert' 0 ran 0 /bin/echo ran
+# Arguments are: declared-count surviving-count pins... command...
+expect_preflight 'runs the command when every pin holds' 0 ran 1 1 "$ro_pin" /bin/echo ran
+expect_preflight 'refuses when any pin is writable' 78 '' 2 2 "$ro_pin" "$rw_pin" /bin/echo ran
+expect_preflight 'refuses on the first writable pin' 78 '' 1 1 "$rw_pin" /bin/echo ran
+expect_preflight 'passes command arguments through' 0 'a b' 1 1 "$ro_pin" /bin/echo a b
+expect_preflight 'runs when no pin is declared' 0 ran 0 0 /bin/echo ran
+
+# A pin that vanished must not shrink the denominator into a silent pass: the
+# command still runs (a declared-but-absent path cannot be enforced, and
+# refusing would brick the launcher when an optional tool is uninstalled) but
+# the count mismatch has to be reported.
+expect_preflight 'reports a missing pin and continues' 0 ran 2 1 "$ro_pin" /bin/echo ran
+missing_report=$(/bin/sh -c "$preflight" sandbox-preflight 2 1 "$ro_pin" /bin/echo ran 2>&1 >/dev/null)
+case "$missing_report" in
+*"1 of 2 machinery pins are missing"*) ;;
+*)
+	printf 'the preflight did not report the missing pin: %s\n' "$missing_report" >&2
+	exit 1
+	;;
+esac
 
 chmod u+w "$ro_pin"

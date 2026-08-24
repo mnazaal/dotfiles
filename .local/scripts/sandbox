@@ -136,11 +136,22 @@ run_podman() {
 	# reports false on a read-only bind for both files and directories, so no
 	# mountinfo parsing is needed.
 	local pins=() d
-	for d in "${RO_LAST[@]}"; do [ -e "$d" ] && pins+=("$d"); done
-	local preflight='n=$1; shift
+	for d in "${RO_LAST[@]}"; do
+		if [ -e "$d" ]; then pins+=("$d"); fi
+	done
+	# Two counts, because a pin that VANISHED and a pin that is WRITABLE are
+	# different failures. Passing only the surviving count would let a missing
+	# pin shrink the denominator and report success on a smaller set than was
+	# declared, which is the fail-open this whole check exists to remove.
+	local preflight='declared=$1; n=$2; shift 2
+if [ "$n" -ne "$declared" ]; then
+	printf "sandbox: %s of %s machinery pins are missing from the container and are unprotected\n" \
+		"$((declared - n))" "$declared" >&2
+	printf "sandbox: continuing — a declared pin whose file does not exist cannot be enforced\n" >&2
+fi
 while [ "$n" -gt 0 ]; do
 	if [ -w "$1" ]; then
-		printf "sandbox: FATAL machinery pin not enforced: %s\n" "$1" >&2
+		printf "sandbox: FATAL machinery pin is writable, so it is not enforced: %s\n" "$1" >&2
 		printf "sandbox: refusing to start.\n" >&2
 		exit 78
 	fi
@@ -152,12 +163,12 @@ exec "$@"'
 	if [ "$DRYRUN" -eq 1 ]; then
 		printf 'podman'
 		printf ' %q' "${pre[@]}" "${p[@]}" "$IMAGE" \
-			/bin/sh -c "$preflight" sandbox-preflight "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
+			/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 		printf '\n'
 		exit 0
 	fi
 	exec podman "${pre[@]}" "${p[@]}" "$IMAGE" \
-		/bin/sh -c "$preflight" sandbox-preflight "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
+		/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
 
 # --- run ---------------------------------------------------------------------
@@ -243,22 +254,45 @@ if [ "$VERIFY_PINS" -eq 1 ]; then
 		die '--verify-pins is meaningful only inside the sandbox' 2
 	pin_status=0
 	pin_checked=0
+	pin_writable=0
+	pin_missing=0
 	for d in "${RO_LAST[@]}"; do
-		[ -e "$d" ] || continue
+		if [ ! -e "$d" ]; then
+			printf 'sandbox: machinery pin MISSING, so unprotected: %s\n' "$d" >&2
+			pin_missing=$((pin_missing + 1))
+			pin_status=1
+			continue
+		fi
 		pin_checked=$((pin_checked + 1))
 		if [ -w "$d" ]; then
-			printf 'sandbox: machinery pin NOT enforced (writable): %s\n' "$d" >&2
+			printf 'sandbox: machinery pin WRITABLE, so not enforced: %s\n' "$d" >&2
+			pin_writable=$((pin_writable + 1))
 			pin_status=1
 		fi
 	done
-	if [ "$pin_checked" -eq 0 ]; then
-		printf 'sandbox: no machinery pins to check — the profile did not compose\n' >&2
+	if [ "${#RO_LAST[@]}" -eq 0 ]; then
+		printf 'sandbox: no machinery pins declared — the profile did not compose\n' >&2
 		exit 1
 	fi
 	if [ "$pin_status" -eq 0 ]; then
-		printf 'sandbox: %d machinery pins enforced\n' "$pin_checked"
+		# Says what was measured, not what was hoped. `test -w` answers "not
+		# writable from here", which for a pin nested under a read-only parent
+		# bind is also true when the pin's own bind is absent — so this counts
+		# non-writable paths, and only a session whose cwd makes the parent
+		# writable distinguishes the two.
+		printf 'sandbox: %d of %d machinery pins present and not writable\n' \
+			"$pin_checked" "${#RO_LAST[@]}"
 	else
-		printf 'sandbox: relaunch to re-bind. a pin breaks when its file is replaced.\n' >&2
+		# Different causes, different remedies. A writable pin means its bind was
+		# orphaned by the file being replaced, which a relaunch fixes. A missing
+		# pin means policy names a path that is not there, which a relaunch
+		# cannot fix and which needs the profile or the file reconciled.
+		if [ "$pin_writable" -gt 0 ]; then
+			printf 'sandbox: relaunch to re-bind — a pin breaks when its file is replaced.\n' >&2
+		fi
+		if [ "$pin_missing" -gt 0 ]; then
+			printf 'sandbox: a missing pin is not fixed by relaunching; reconcile the profile with the filesystem.\n' >&2
+		fi
 	fi
 	exit "$pin_status"
 fi
