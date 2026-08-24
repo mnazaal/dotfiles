@@ -41,7 +41,7 @@ zstyle ':completion:*' group-name ''
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu select
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
-    '[ -d "$realpath" ] && { eza --tree --color=always -- "$realpath" 2>/dev/null || ls -la --color=always -- "$realpath"; } || { bat --color=always -- "$realpath" 2>/dev/null || cat -- "$realpath"; }'
+    '[ -n "$realpath" ] || exit 0; [ -d "$realpath" ] && { eza --tree --color=always -- "$realpath" 2>/dev/null || ls -la --color=always -- "$realpath"; } || { bat --color=always -- "$realpath" 2>/dev/null || cat -- "$realpath"; }'
 zstyle ':fzf-tab:complete:ssh:*' fzf-preview 'grep -A5 -- "Host $_" "$HOME/.ssh/config"'
 zstyle ':fzf-tab:*' fzf-flags --height=80% --preview-window=right:50%
 
