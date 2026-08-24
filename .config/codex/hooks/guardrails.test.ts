@@ -129,9 +129,11 @@ test("test commands in a git worktree require dev-worktree AND dev-verification"
   // Both capability gates key on `test-command`; the worktree one additionally
   // needs `git-worktree`, so inside a worktree they fire together rather than
   // the narrower one replacing the broader.
+  // Sorted: which of the two comes first is only their order in
+  // skill-gates.json, so asserting it verbatim reds on a harmless reorder.
   const rails = createGuardrails("opencode");
-  expect(rails.evaluate({ tool: "bash", command: "pytest", cwd: worktree }).skills)
-    .toEqual(["dev-worktree", "dev-verification"]);
+  expect([...rails.evaluate({ tool: "bash", command: "pytest", cwd: worktree }).skills].sort())
+    .toEqual(["dev-verification", "dev-worktree"]);
 });
 
 test("only concrete skill calls or canonical skill reads produce load receipts", () => {
