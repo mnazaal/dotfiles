@@ -43,6 +43,19 @@ zstyle ':completion:*' menu select
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
     '[ -n "$realpath" ] || exit 0; [ -d "$realpath" ] && { eza --tree --color=always -- "$realpath" 2>/dev/null || ls -la --color=always -- "$realpath"; } || { bat --color=always -- "$realpath" 2>/dev/null || cat -- "$realpath"; }'
 zstyle ':fzf-tab:complete:ssh:*' fzf-preview 'grep -A5 -- "Host $_" "$HOME/.ssh/config"'
+
+# Ref candidates carry no $realpath, so the file preview above is inert for
+# them. Show what the ref actually points at instead. Listed per subcommand:
+# a ':fzf-tab:complete:git-*:*' pattern would outrank the '*:*' file preview
+# and break `git add` too.
+zstyle ':fzf-tab:complete:git-merge:*' fzf-preview 'git log --oneline --graph --color=always -20 $word 2>/dev/null'
+zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview 'git log --oneline --graph --color=always -20 $word 2>/dev/null'
+zstyle ':fzf-tab:complete:git-switch:*' fzf-preview 'git log --oneline --graph --color=always -20 $word 2>/dev/null'
+zstyle ':fzf-tab:complete:git-rebase:*' fzf-preview 'git log --oneline --graph --color=always -20 $word 2>/dev/null'
+
+# `git merge` completes any commit-ish, so zsh offers local+remote heads, tags,
+# and the last 20 commits with their subject lines. Try branches first.
+zstyle ':completion:*:*:git-merge:*' tag-order 'heads' 'commit-tags' 'commit-objects'
 zstyle ':fzf-tab:*' fzf-flags --height=80% --preview-window=right:50%
 
 # Prompt
