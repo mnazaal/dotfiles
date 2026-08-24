@@ -169,10 +169,12 @@ Every verdict has an exit, and three of them leave this skill.
 - `noise` → back to Before Launching, to re-size before recording anything as
   no effect.
 - `broken`, and any run that is plausible but wrong → `debug-ml-research`.
-- `unknown` → find the artifact before re-running anything. When the run was a
-  cluster job, that is `dev-hpc`: a hydra task exception exits zero and `sacct`
-  reports COMPLETED, so a missing output is evidence about the task body and
-  not about the scheduler.
+- `unknown` → find the artifact before re-running anything. For a cluster job
+  read the scheduler first, because it partitions the causes: a non-zero exit,
+  an OOM kill or a timeout is scheduler-visible and `sacct` names it, whereas
+  `COMPLETED` with no output means the task body raised — hydra catches the
+  exception and exits zero, so only `JobReturn.status` sees it. `dev-hpc` owns
+  both paths.
 
 ## Boundary
 
