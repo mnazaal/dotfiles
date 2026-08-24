@@ -25,8 +25,8 @@ and the Checklist can only ask whether they happened.
    whatever the run returns. `dev-hpc` owns submission and its wall-time floor.
 5. Read the run against the Checklist.
 6. Give a verdict and take its exit (Verdicts).
-7. Prepend the filled Output block to `LOG.md`, pointing back at the
-   pre-registration note.
+7. Fill the Output block, including the predicted-versus-observed line, and
+   offer to prepend it to `LOG.md`.
 
 Driving one metric over many attempts is a different shape: Sustained
 Improvement Loop iterates step 1 and steps 4-6 under a stop predicate — one
@@ -39,7 +39,6 @@ measurement.
 - Do not compare runs unless data, code, eval, and metric are compatible.
 - Do not treat one noisy seed as evidence.
 - Prefer the cheapest check that reduces uncertainty.
-- If run looks plausible but wrong, use `debug-ml-research`.
 
 ## Pre-Registration
 
@@ -47,25 +46,25 @@ Before Launching settles the design; this settles what the design is a test
 of, in a form that outlives the moment it was decided. Five commitments, none
 of which can be made honestly once the numbers exist:
 
-- **The prediction.** What you expect, in direction and rough size.
-  `Hypothesis:` in the Output block is filled at verdict time and is a
-  different artifact — one nothing can be checked against.
+- **The prediction.** What you expect, in direction and rough size. The Output
+  block records what happened against it, so this is the half that has to
+  exist first or the comparison is unavailable.
 - **The decision rule.** If the result is X, the next action is Y. Write the
   consequent, not only Δ; a threshold with no action attached is a number to
   argue with later.
 - **The falsifier.** What result would drop the mechanism, as opposed to
   prompt a re-run. If nothing would, the run is not a test of it.
-- **The analysis path.** The interval on the difference, the statistics
-  reported beside the mean, and the multiplicity rule. All three live in the
-  Checklist, which is read after the numbers, and each is a live degree of
-  freedom until it is fixed.
+- **The analysis path.** The interval on the difference and the statistics
+  reported beside the mean. Both live in the Checklist, which is read after the
+  numbers, and each is a live degree of freedom until it is fixed.
 - **The search bounds.** The hyperparameter ranges to be swept, as part of the
   hypothesis rather than a detail. An unbounded search is where the forking
   paths are.
 
 Split it in two, because ML iterates and one up-front commitment does not
-survive that: fix the question, metric with its threshold, data, transforms
-and baselines before any training; fix the method, seeds, compute budget and
+survive that: fix the question, metric with its threshold, data, transforms,
+baselines, and the seed and compute budgets before any training — those are
+design quantities and Before Launching owns them; fix the method and its
 resolved hyperparameters after validation and before touching test. Answer
 "has this test set been accessed before?" explicitly at the second phase — it
 is the leakage no data-path rule catches, since it is a fact about the
@@ -147,6 +146,7 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - Is effect bigger than noise?
 - If non-significant: was the design ever powered for the minimum effect worth acting on (Before Launching)? Below that N the result is inconclusive, not "no effect".
 - Report an interval on the *difference*, not two point estimates. With few seeds prefer a paired-difference CI or a bootstrap over quoting each arm's mean ± std and eyeballing the overlap — non-overlapping error bars is not the same test, in either direction.
+- Did pairing hold, or only nominally? Per-seed differences far larger than the effect are the tell, and they read identically to a heavy-tailed effect (next bullet) while being nuisance rather than unreliability. Separate them by reading the arms' RNG consumption, not the numbers (Before Launching).
 - Does the mean difference agree with the median and the win-rate? A significant mean with a near-zero median and a ~50% win-rate is a heavy-tailed effect: a few cases moved far in *both* directions. Report median, win-rate and the tail beside the mean, and word the finding as unreliability rather than a shift.
 - Is there a simpler baseline/control?
 - Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
@@ -166,9 +166,8 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 Every verdict has an exit, and three of them leave this skill.
 
 - `improve` / `degrade` → the Output block, then `LOG.md`.
-- `noise` → back to Before Launching. An unsized design cannot separate a null
-  result from an underpowered one, so re-size from the observed paired sd
-  before recording anything as no effect.
+- `noise` → back to Before Launching, to re-size before recording anything as
+  no effect.
 - `broken`, and any run that is plausible but wrong → `debug-ml-research`.
 - `unknown` → find the artifact before re-running anything. When the run was a
   cluster job, that is `dev-hpc`: a hydra task exception exits zero and `sacct`
@@ -183,11 +182,18 @@ Every verdict has an exit, and three of them leave this skill.
 
 ## Output
 
-- Hypothesis:
+- Pre-registration: `notes/design-<comparison>.md`, or `none` and why
+- Predicted / observed:
 - Evidence:
 - Verdict:
 - Caveats:
 - Next check:
+
+`Predicted / observed` is the line the pre-registration exists for: without it
+the prediction is recorded and never read, which is indistinguishable from
+never having made one. `none` is an honest answer for an exploratory run — a
+missing pre-registration is a caveat on the result, not a reason to omit the
+field.
 
 If the project keeps a `LOG.md` (`context-project-docs`), offer to prepend the filled block there using the canonical LOG ordering — newest entry at top, one entry per run.
 
