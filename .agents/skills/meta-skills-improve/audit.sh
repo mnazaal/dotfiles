@@ -116,10 +116,14 @@ check_gate 'arxiv fetch' '"name":"WebFetch","input":\{"url":"[^"]*arxiv\.org' re
 check_gate 'handoff written' 'session-handoff:begin' session-handoff
 check_gate 'structured question' '"name":"AskUserQuestion"' plan-interview
 check_gate 'subagent spawn' '"name":"(Task|Agent)","input"' agent-orchestration
-# Anchored on the runners `capabilitiesOf` classifies as `test-command`, so the
-# denominator is the same event the gate fires on. Gated 2026-08-26; sessions
-# before that date measure the ungated baseline this change is meant to move.
-check_gate 'test run' '"command":"[^"]*(pytest|unittest|vitest|jest|mocha|rspec)' dev-verification
+# Approximates the gate: `capabilitiesOf` fires when a whitespace-delimited
+# token's BASENAME equals a runner, so the anchor needs the same boundaries or
+# it counts `cat pytest.log` and `rm -rf .pytest_cache` as test runs. Measured
+# 2026-08-23: the unbounded form selected 124 sessions against 118 here, a
+# one-way inflation that understates compliance. Still an approximation — the
+# gate tokenizes, this greps — so read it as a floor. Gated 2026-08-23;
+# sessions before that date measure the ungated baseline.
+check_gate 'test run' '"command":"([^"]*[ /])?(pytest|unittest|vitest|jest|mocha|rspec)([ \\"]|$)' dev-verification
 
 echo
 echo "=== 5. where in the session each skill fires ==="
