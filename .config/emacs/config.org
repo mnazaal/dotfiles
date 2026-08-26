@@ -551,6 +551,7 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
   :ensure nil
   :config
   (dolist (pkg '(("" "fullpage")
+                 ("" "parskip")
                  ("" "xcolor")))
     (add-to-list 'org-latex-packages-alist pkg))
   :custom
