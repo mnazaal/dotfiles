@@ -1,6 +1,6 @@
 ---
 name: dev-ponytail
-description: Use for minimal software solutions: YAGNI, simplest correct code, shortest path, dependency choices, architecture, refactors, tooling, deletion, avoid bloat/boilerplate/over-engineering.
+description: Use for minimal software solutions: YAGNI, simplest correct code, shortest path, dependency choices, architecture, refactors, tooling, deletion, avoid bloat/boilerplate/over-engineering. Load before adding a script, check, or tool to a repo, and before porting tooling from a sibling project.
 ---
 
 # Skill: Dev Ponytail
@@ -16,6 +16,9 @@ description: Use for minimal software solutions: YAGNI, simplest correct code, s
 ## Rules
 
 - Prefer deletion over addition.
+- Porting a solution from a sibling project ports its premise too. Check the
+  premise holds here before copying the mechanism: machinery that exists because
+  that repo lacked something this one has is dead weight.
 - No backward compatibility unless explicitly requested: no deprecation shims,
   legacy aliases, or versioned config fallbacks — delete the old surface and fix
   call sites. (`dev-python`'s re-export shim for a code move is a diff-size
