@@ -160,11 +160,27 @@ This should be loaded before the =server= package to make sure the dashboard is 
 
 ** server                                                             :emacs:
 Start emacs blazingly fast. May have some issues with the =dashboard= package.
+
+Every instance starts a server of its own rather than deferring to one already
+running. =server-running-p= answers "is *a* server holding this socket", which is
+true in a second Emacs, but AUCTeX tests =server-process= — "did *this* Emacs
+start one" — and calls =server-start= unconditionally when it is nil (see
+=TeX-source-correlate-start-server= under [[*tex][tex]]). With both instances named
+=server= that call cannot succeed, and the second one warns "Unable to start the
+Emacs server" every time a viewer is launched.
+
+So the first instance keeps the default name, which is what a bare =emacsclient=
+resolves to (the tmux =C-e= binding, anything using =EDITOR=), and later ones
+take a PID suffix. Reaching those needs =emacsclient -s server-<pid>=; the
+=%(emacs-server)= expander under [[*tex][tex]] fills that in for sioyek's inverse search so
+a click lands in the Emacs that opened the document.
+
 #+begin_src emacs-lisp
 (use-package server
   :config
-  (unless (server-running-p)
-    (server-start)))
+  (when (server-running-p)
+    (setq server-name (format "server-%d" (emacs-pid))))
+  (server-start))
 #+end_src
 
 ** recentf                                                       :navigation:
@@ -1522,7 +1538,8 @@ Commands worth remembering:
 Note =preview-latex= (=C-c C-p C-d=) is not usable here: it renders images and so
 needs a graphical frame.
 - In sioyek, a mouse click jumps back to the corresponding source line (its
-  =--inverse-search= calls =emacsclient=, so the [[*server][server]] must be running).
+  =--inverse-search= calls =emacsclient -s=, so this instance's [[*server][server]] must be
+  running).
 
 More AUCTeX shortcuts are listed [[https://tex.stackexchange.com/questions/20843/useful-shortcuts-or-key-bindings-or-predefined-commands-for-emacsauctex/21026#21026][here]].
 
@@ -1543,6 +1560,24 @@ Notes on the settings:
   packages. =TeX-auto-save= caches that parse between sessions.
 - =TeX-source-correlate-mode= is what passes =--synctex=1= through to the
   engine; without it neither forward nor backward search works.
+- =%(emacs-server)= is a custom entry in =TeX-expand-list=; it expands to this
+  instance's =server-name=, so the =--inverse-search= command sioyek stores
+  points at the socket of the Emacs that opened the document rather than at
+  whichever one happens to own the default =server= name. See [[*server][server]] for why
+  each instance gets its own.
+- No window flag is passed, and that is deliberate — it is what gives one
+  sioyek window per manuscript. sioyek first looks for a window already
+  displaying this PDF and reuses it, so repeated =C-c C-v= on one paper updates
+  its window in place; failing that it honours =should_launch_new_window 1= from
+  =prefs_user.config= and opens a new one. The two flags that look applicable
+  are both wrong here:
+  - =--reuse-window= exists to *override* =should_launch_new_window=. It forced
+    every document into the first window, so two papers open at once fought over
+    one view — and since =inverse_search_command= is stored per window, whichever
+    Emacs ran =C-c C-v= last also captured every inverse-search click.
+  - =--new-window= creates a window unconditionally, contrary to its =--help=
+    text, which claims it reuses an existing window showing the same file. Each
+    =C-c C-v= on the same paper would open another window.
 - sioyek needs to be new enough: commit =5a262027= (2026-07-22) introduced a
   regression that segfaulted it whenever an open PDF was rewritten — exactly the
   live-reload case — fixed upstream by =fe698ba=. Build it through
@@ -1574,11 +1609,12 @@ Notes on the settings:
   (TeX-electric-math '("$" . "$"))
   (LaTeX-electric-left-right-brace t)
   (TeX-view-program-selection '((output-pdf "Sioyek")))
+  (TeX-expand-list '(("%(emacs-server)" (lambda () server-name))))
   (TeX-view-program-list
    '(("Sioyek"
-      ("sioyek --reuse-window %o"
+      ("sioyek %o"
        (mode-io-correlate
-        " --forward-search-file \"%b\" --forward-search-line %n --inverse-search \"emacsclient +%2 %1\""))
+        " --forward-search-file \"%b\" --forward-search-line %n --inverse-search \"emacsclient -s %(emacs-server) +%2 %1\""))
       "sioyek")))
   :hook
   (LaTeX-mode . TeX-source-correlate-mode)
