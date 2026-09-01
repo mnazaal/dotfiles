@@ -9,7 +9,7 @@ description: Use when committing work or choosing integration path: stage correc
 
 - If anything looks like a private email/user's personal directories/password/secret/API token etc, stop and notify the user immediately.
 - Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included.
-- AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides Claude Code's built-in commit-heredoc template, which defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
+- AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides any harness's built-in commit template that defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
 - Staging is the user's record of what they have actually read. Stage what you are told to stage; never stage on the user's behalf to make a commit look complete.
 - Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial. Evidence must reflect the *committed* state: inspect the staged diff and ensure no relevant unstaged or untracked changes are required for the check to pass.
 - Do not amend a pushed commit without explicit user confirmation.

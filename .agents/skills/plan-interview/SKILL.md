@@ -1,6 +1,6 @@
 ---
 name: plan-interview
-description: Load BEFORE asking the user two or more clarifying questions, or any single question that would change the scope, approach, or design of the work — including before a structured question tool call (e.g. AskUserQuestion) carrying more than one question, on a plan, implementation approach, research direction, or workflow change. A lone factual or confirmatory question does not need it. Also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
+description: Load BEFORE asking the user two or more clarifying questions, any single question that would change the scope, approach, or design of the work, or any question laying out options for the user to choose among — including before a structured question tool call, on a plan, implementation approach, research direction, or workflow change. A lone factual or confirmatory question does not need it. Also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
 ---
 
 # Skill: Plan Interview
@@ -15,14 +15,16 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 
 - Work the open decisions as a tree and interview in rounds: the frontier is
   every question whose prerequisites are already settled. Ask the whole
-  frontier in one round — numbered, each with a recommended/default answer —
-  then wait for the answers. A question whose answer depends on another
-  question still open this round belongs to a later round, not this one.
+  frontier in one round — numbered, each in the Question Shape below — then
+  wait for the answers. A question whose answer depends on another question
+  still open this round belongs to a later round, not this one.
 - If the user asks for one question at a time, honor that pacing instead.
-- A harness's structured question tool (e.g. AskUserQuestion) is a delivery
-  mechanism, not a substitute for this skill: one round per call, batching
-  only independent questions, each with its recommended default marked as
-  such; an oversized round splits across calls, dependent questions never do.
+- When the harness has a structured question tool, deliver decision questions
+  through it rather than as chat prose — one channel, one look. Chat is the
+  fallback and keeps the same Question Shape.
+- The structured question tool is a delivery mechanism, not a substitute for
+  this skill: one round per call, batching only independent questions; an
+  oversized round splits across calls, dependent questions never do.
 - Facts are yours, decisions are the user's: when a frontier question waits on
   a fact from the environment, inspect or dispatch a subagent without blocking
   the round — only questions downstream of the missing fact wait.
@@ -53,12 +55,30 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
   glossary — no implementation details.
 - Stop when the remaining uncertainty is low enough to produce a plan, next action, or handoff.
 
+## Question Shape
+
+Every decision question — anything beyond a lone factual check — is asked in
+one fixed shape, in chat and in a structured question tool alike:
+
+1. **The decision**, in one line: what is being chosen and what it blocks.
+2. **The options**, as a short lettered list — a, b, c — each letter paired
+   with a name so an answer can say "(b) the soft hook" unambiguously. Each
+   option gets one line of what choosing it means, and its main pro and con.
+   Include "other/neither" only when it is a real option.
+3. **Recommendation last**: the option you would pick and the one or two
+   reasons that decide it. A question you cannot attach a recommendation to is
+   not ready to ask — inspect or probe first.
+
+In a structured question tool, the options map onto the tool's option slots
+(pro and con in each description) with the recommendation marked on its
+option; in chat, this is the shape of each numbered question in a round.
+
 ## Workflow
 
 1. State the object being interviewed: plan, design, change, research direction, or decision.
 2. Map the open decisions as a tree and find the frontier, highest-risk first.
-3. Ask the frontier as one round of numbered questions, each with a
-   recommended/default answer.
+3. Ask the frontier as one round of numbered questions, each in the Question
+   Shape above.
 4. Wait for the user's answers.
 5. Recompute the tree — settled answers unblock dependent questions — and ask
    the next round, until scope, constraints, risks, dependencies, and success

@@ -25,6 +25,10 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - Fit additions into a skill's existing headings; add a new heading only for a genuinely distinct concern.
 - Do not encode one-off session details.
 - Do not duplicate global instructions unless the skill needs a local reminder.
+- Keep skills harness-agnostic: `~/.agents/skills` is shared across harnesses,
+  so anything naming one harness's tools, hooks, config files, or invocation
+  flags belongs in that harness's own configuration, with at most a
+  harness-neutral pointer in the skill.
 - Do not conflict with higher-priority system, developer, or global instructions.
 - Preserve safety, verification, citation, read/write, and protected-storage policies.
 - Ask before editing skill files unless the user explicitly requested edits.
@@ -127,7 +131,7 @@ Create a new skill only if:
 - It does not mostly duplicate an existing skill.
 - It would be used often enough to matter.
 - It can route cleanly to related skills.
-- Keep every skill callable and auto-routable in the active platform; put platform-specific invocation flags in the platform configuration skill rather than general skill prose.
+- Keep every skill callable and auto-routable in the active harness.
 
 ## Anti-Patterns
 

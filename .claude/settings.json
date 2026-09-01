@@ -81,8 +81,8 @@
           {
             "type": "command",
             "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] && \"$f\" >/dev/null 2>&1; exit 0"
-          }
-          ,{
+          },
+          {
             "type": "command",
             "command": "f=\"$HOME/.local/scripts/sandbox\"; if [ -x \"$f\" ] && [ -e /run/.containerenv ]; then if ! out=$(\"$f\" -p agent-claude --verify-pins 2>&1); then printf '%s\\n' \"$out\"; printf '%s\\n' \"$out\" >&2; exit 1; fi; fi; exit 0"
           }
@@ -96,6 +96,15 @@
           {
             "type": "command",
             "command": "f=\"$HOME/.claude/hooks/guardrails.ts\"; if [ -f \"$f\" ] && bun \"$f\"; then exit 0; fi; printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Claude guardrail hook unavailable; confirm manually\"}}'"
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.agents/skills/plan-interview/SKILL.md\"; command -v jq >/dev/null || exit 0; { [ -s \"$f\" ] && cat \"$f\" || printf '%s' 'Load the plan-interview skill and follow its Question Shape before asking.'; } | jq -Rs '{hookSpecificOutput:{hookEventName:\"PreToolUse\",additionalContext:(\"plan-interview skill (follow its Question Shape):\\n\"+.)}}'; exit 0"
           }
         ]
       }

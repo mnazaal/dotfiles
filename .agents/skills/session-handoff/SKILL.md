@@ -15,12 +15,13 @@ you, say so and offer, rather than writing.
 
 ## Workflow
 
-0. **Confirm you were asked.** Writing or replacing this block mutates a standing
-   document, and is exactly as unrequested as committing it would be — the
-   authorization gate in step 6 applies here too, not only to the commit. If the
-   existing block is merely *stale* because this session committed, branched, or
-   closed an item it lists, correct those specific lines, say which and why, and
-   stop; a stale line is a defect, but rewriting the block to fix one is not
+0. **Confirm you were asked.** The explicit handoff request is the authorization
+   for this whole workflow — the block write AND the step-6 commit; without it
+   you have neither, because writing or replacing this block mutates a
+   standing document exactly as committing it would. If the existing block is
+   merely *stale* because this session committed, branched, or closed an item
+   it lists, correct those specific lines, say which and why, and stop; a
+   stale line is a defect, but rewriting the block to fix one is not
    maintenance and destroys a record the user did not ask you to touch.
 1. Write the handoff into a delimited block at the TOP of `PLAN.md`, directly
    below the title — **replace the block, never append a second one.** A handoff
@@ -65,11 +66,19 @@ you, say so and offer, rather than writing.
    those gaps. This step is explicit because the writer holds maximum context
    and is therefore the worst-placed reader to notice what is missing — that is
    precisely how a record ends up complete and unusable (`understand-project`).
-6. Offer to commit the durable changes (`dev-git`); commit only with explicit
-   user authorization. The block is written BEFORE its own commit lands, so it
-   cannot claim a clean tree: describe the repo as it will be after that commit
-   and name the commit as pending. Otherwise the next session's first act is
-   discovering that the handoff misreported state.
+6. Commit as the final act (`dev-git`). The handoff request itself authorizes
+   this commit and is the staging instruction `dev-git` expects: it covers
+   exactly the files this workflow wrote, routed, or promoted (steps 1–4),
+   staged by name — dirty files it did not touch stay out, and a routed file
+   already carrying unrelated edits gets `dev-git`'s split procedure so only
+   this workflow's hunks land. The user's next act is closing the session,
+   and a handoff left uncommitted forces them to send one more "yes, commit"
+   message. Skip only if the user said not to commit, and then name the
+   commit as pending. The block is written BEFORE its own commit lands, so it
+   cannot claim a clean tree: describe the repo as it will be after that
+   commit.
+   Otherwise the next session's first act is discovering that the handoff
+   misreported state.
 
 ## Resume (reverse direction)
 
