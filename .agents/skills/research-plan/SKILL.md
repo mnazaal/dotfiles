@@ -39,6 +39,13 @@ to `research-session`; if decisions are unresolved, route to `plan-interview`.
   decision log's `Revisit when:` already uses.
 - Pin upstream API surfaces exactly (module paths, function names); flag
   anything unverified as a scaffold-time task rather than guessing.
+- Pin an imported method's SEMANTICS as tightly as its API surface: what its
+  output actually is (a scalar? a three-valued test?), what object it tests,
+  and what its own authors say it cannot conclude. Read the source rather than
+  an abstract or a prior note — a design resting on assumed semantics fails
+  the way one resting on a guessed signature does, but silently and much
+  later. A locally stored paper the plan depends on is unread until someone
+  has opened it.
 - Name the load-bearing ablation: the experiment separating the claimed
   mechanism from the nearest cheap heuristic — pitted against the *strongest
   fair* form of that heuristic (a win over a strawman baseline is a false

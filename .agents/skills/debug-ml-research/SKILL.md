@@ -1,6 +1,6 @@
 ---
 name: debug-ml-research
-description: Use for silent ML research failures: code runs, loss changes, logs plausible, but experiment is wrong; data/loss/eval mismatch, overfit tiny data, synthetic recovery, convention bugs, leakage, diffusion/probabilistic failures.
+description: Use when an ML result is surprising or unexplained — a number better than expected, a metric that moved when nothing should have changed, a mechanism you are about to assert but have not measured. Also for silent failures where code runs and logs look plausible but the experiment is wrong: data/loss/eval mismatch, overfit tiny data, synthetic recovery, convention bugs, leakage, diffusion/probabilistic failures.
 ---
 
 # Skill: Debug ML Research

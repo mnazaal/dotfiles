@@ -1,6 +1,6 @@
 ---
 name: research-paper
-description: Use for one research paper: read, discuss, analyze, ingest PDF/URL/arXiv/DOI/pasted text, extract contribution, method, evidence, limitations, critique, follow-up papers.
+description: Use for one research paper: read, discuss, analyze, ingest PDF/URL/arXiv/DOI/pasted text, extract contribution, method, evidence, limitations, critique, follow-up papers. Also BEFORE a plan, design, or risk entry depends on what a method does, assumes, or cannot conclude — read the source rather than an abstract or a prior note, including papers already stored locally.
 ---
 
 # Skill: Research Paper

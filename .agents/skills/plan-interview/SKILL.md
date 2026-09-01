@@ -44,6 +44,12 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
   Customer vs. User is ambiguous), stop and ask which precise meaning they
   intend before proceeding. Check for an existing CONTEXT.md first — defer to
   established terminology over inventing new terms.
+- Before coining or adopting a label, check it against the terms of art in
+  the project's OWN field: a word that is merely descriptive elsewhere can
+  already name a specific concept here (e.g. "instrument" in causal
+  inference). Prefer the source literature's own word over a new umbrella
+  term, and record the rejected candidate with its reason in `CONTEXT.md` so
+  it is not reintroduced.
 - In ML contexts these overloaded terms trip the same rule proactively —
   they read fine in both technical and colloquial senses, which is exactly
   how they slip through: likelihood, inference, bias, regression, validation,
