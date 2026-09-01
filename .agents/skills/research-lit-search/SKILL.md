@@ -13,11 +13,7 @@ description: Use for literature search: related work, paper search, field survey
 - Citation and reference edges are the recall lever, not an option. A sweep that made zero citation/reference-edge calls has not been run, however many keyword queries it issued.
 - Do not over-rank unverified or weakly relevant papers.
 - Preserve query strings, source metadata, and uncertainty.
-- Search the user's own corpus FIRST, before the external sweep — it is the cheapest recall step, not an optional extra. Named paths, all bound in the agent sandbox:
-  - `~/projects/*/notes/lit-*` — prior lit maps and novelty gates, one set per project.
-  - `~/org/agents/` — cross-project and pre-project surveys, the one agent-writable area of the Org store (`AGENTS.md`). Search the whole directory: new maps are flat `lit-<topic>.org`, but earlier ones sit a few levels down under a legacy per-topic layout.
-  - `~/org/roam/org/` — the user's own topic notes.
-  Report which paths you checked and what they already covered. Two distinct failures this prevents: re-deriving a subfield's anchor papers once per project, and dropping a paper that an earlier cross-project survey found but no project ever inherited. A "new" direction often already lives in an adjacent project the user is running.
+- Search the user's own corpus FIRST, before the external sweep — it is the cheapest recall step, not an optional extra: prior projects' literature notes and the personal note store, at the locations the global instructions and `context-project-docs` define. Prefer semantic retrieval if a semantic-search tool is configured; fall back to text search. Report which corpora you checked and what they already covered. Two distinct failures this prevents: re-deriving a subfield's anchor papers once per project, and dropping a paper that an earlier cross-project survey found but no project ever inherited.
 
 ## Workflow
 
@@ -38,9 +34,9 @@ method), the output is sharper than a field map:
 - State the defensible delta as the *combination* no single paper has, and lead with it.
 - Assess scooping risk: which labs/authors are adjacent and iterating, and on which leg.
 - Record an explicit "what NOT to re-pursue" — answered searches and dead ends — so a later
-  session does not re-run them. Name the sink: the project's `notes/lit-<topic>` when the work
-  has a project, otherwise `~/org/agents/lit-<topic>.org`. A dead end recorded only in chat is
-  a dead end that gets re-run.
+  session does not re-run them. Name the sink: the project's literature notes when the work
+  has a project, otherwise the cross-project store (locations per the global instructions and
+  `context-project-docs`). A dead end recorded only in chat is a dead end that gets re-run.
 - Expect concept-occupied, machinery-open. Ask what each nearest neighbor failed to build, not whether the idea is taken — it usually is.
 - End on a verdict: survives/pursue (with any narrowed framing) vs. scooped/pivot.
 - A kill verdict closes the gate, not the literature. One sufficient counterexample kills a claim, so a kill survives thin coverage — but it establishes nothing about what the field cannot do. If the project continues, re-open with the limitation question, whose stopping condition is breadth enough to separate an incidental limitation from a structural one.

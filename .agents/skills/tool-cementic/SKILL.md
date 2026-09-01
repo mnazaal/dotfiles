@@ -17,8 +17,9 @@ cementic watches directories, extracts/chunks/embeds documents (PDF/Markdown/tex
 - Config precedence: defaults < config file < `CEMENTIC_*` env vars < CLI flags. File resolution: `$CEMENTIC_CONFIG` > `./cementic.toml` > `~/.config/cementic/config.toml`.
 - `search` only queries a collection's **active** revision — a brand-new collection has none until `collection promote`.
 - `collection promote` blocks if the ready revision has any failed docs/chunks; `-f/--force` overrides.
-- `stop` only stops the source-watcher/pipeline-worker/embedding server — it does not manage Postgres.
-- Use `--json` on `status` / `config show` for parseable output.
+- `stop` only stops the source watcher and pipeline worker; the shared embedding daemon is deliberately left running (stop it with `cementic embedding stop`), and Postgres is never managed by cementic.
+- Use `--json` on `status` / `doctor` for parseable output; `config show` prints JSON already.
+- `cementic doctor` is the read-only readiness check (Postgres reachability, embedding runtime, config) — run it before debugging any of those by hand.
 - `extract | chunk | embed` piped together is the no-database debug path for inspecting what would be stored.
 - Boundary: use cementic for full-text semantic retrieval/indexing. Use `tool-pzi` for BibTeX metadata, citekeys, and library maintenance; combine them only when both full text and citation metadata are requested.
 
@@ -26,19 +27,20 @@ cementic watches directories, extracts/chunks/embeds documents (PDF/Markdown/tex
 
 **First-time setup:**
 ```bash
+cementic doctor                    # read-only readiness diagnostics
 systemctl --user status cementic-postgres   # check if it's already running as a service
 # if the named container exists and you have host container-engine access:
 podman start cementic-postgres
-# if no service/container exists yet, create it from the cementic checkout:
-docker/podman compose up -d
+# if no service/container exists yet (no checkout needed):
+cementic init postgres ~/cementic-postgres && docker/podman compose up -d  # run compose in that dir
 cementic config init               # writes ~/.config/cementic/config.toml
 cementic config show               # verify effective config (merged, redacted)
 ```
 
 **Index a directory:**
 ```bash
-cementic start ~/papers --collection research
-cementic status -c research -v     # per-file progress
+cementic start ~/papers --collection papers
+cementic status -c papers -v       # per-file progress
 cementic status --json             # machine-readable overview
 ```
 
@@ -51,10 +53,11 @@ cementic search "graph theory" -n 5 -c math papers
 **Manage collections/revisions:**
 ```bash
 cementic collection list
-cementic collection revisions research
-cementic collection promote research           # switch search to the ready revision
-cementic collection promote research --force   # override failed-item block
-cementic collection remove research --force
+cementic collection revisions papers
+cementic collection promote papers           # switch search to the ready revision
+cementic collection promote papers --force   # override failed-item block
+cementic collection reindex papers           # rebuild ANN index after changing [index] config
+cementic collection remove papers --force
 ```
 
 **Debug the pipeline without a database:**
