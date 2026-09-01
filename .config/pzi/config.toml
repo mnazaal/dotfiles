@@ -6,7 +6,7 @@ api_listen_port = 8765
 # unpaywall_email = "your@email.com" # optional OA PDF lookup
 unpaywall_email_cmd = "pass show primary-gmail"
 semantic_scholar_api_key_cmd = "pass show semantic-scholar"
-# pdf_filename_format = "{{ firstCreator suffix=\" - \" }}{{ year suffix=\" - \" }}{{ title truncate=\"100\" }}"
+pdf_filename_format = '{{ firstCreator suffix="-" replaceFrom="\s+and\s+" replaceTo="-" replaceFrom2="\.$" replaceTo2="" }}{{ year suffix="-" }}{{ title truncate="100" }}'
 # pdf_file_path_style = "absolute" # or "relative" for paths relative to .bib
 # page_metadata_cmd = "paper-meta --json" # optional page HTML metadata hook
 # page_metadata_timeout_seconds = 5
@@ -16,5 +16,5 @@ citekey_format = 'auth.lower + "-" + shorttitle(1, 0).lower + "-" + year'
 [[bibs]]
 name = "main"
 path = "~/projects/bibliography/bibliography.bib"
-# papers_dir = "~/bibs/papers"  # defaults to <bib-dir>/papers/
+papers_dir = "~/Documents/Papers"
 default = true
