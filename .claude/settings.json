@@ -74,6 +74,7 @@
     ]
   },
   "model": "opus[1m]",
+  "cleanupPeriodDays": 3650,
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -110,8 +111,9 @@
       }
     ]
   },
+  "disableAgentView": true,
   "effortLevel": "high",
   "tui": "fullscreen",
   "diffTool": "auto",
-  "disableAgentView": true
+  "theme": "auto"
 }
