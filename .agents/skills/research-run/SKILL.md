@@ -103,6 +103,12 @@ cost of getting them wrong is the whole sweep.
   removed it.
 - **Pick a regime where the axis still bites.** Two arms saturated at a floor or
   ceiling give an uninformative comparison however many seeds you spend on it.
+- **Check a searched setting landed interior.** A value chosen at the edge of its
+  grid is best-of-grid, not tuned: the optimum is outside what you looked at.
+  Report interior-or-edge alongside the value, and widen before treating an edge
+  selection as settled. Same for a continuous search that stops on its constraint
+  boundary — that is a failed search rather than a result, and usually means the
+  objective is unbounded on the set being searched.
 - **Measure the oracle before building the comparison.** Put the ceiling arm —
   true graph, true parameters, whatever the objective's own optimum is — through
   the identical eval path first, and report every arm as excess over it. Without
@@ -145,6 +151,7 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - What config/commit/log path?
 - Is effect bigger than noise?
 - If non-significant: was the design ever powered for the minimum effect worth acting on (Before Launching)? Below that N the result is inconclusive, not "no effect".
+- A null correlation across a narrow predictor range is not evidence of no relationship. Check the range actually spanned against what the fitted relationship would predict across it; a real dependence is invisible when the predictor barely moved.
 - Report an interval on the *difference*, not two point estimates. With few seeds prefer a paired-difference CI or a bootstrap over quoting each arm's mean ± std and eyeballing the overlap — non-overlapping error bars is not the same test, in either direction.
 - Did pairing hold, or only nominally? Per-seed differences far larger than the effect are the tell, and they read identically to a heavy-tailed effect (next bullet) while being nuisance rather than unreliability. Separate them by reading the arms' RNG consumption, not the numbers (Before Launching).
 - Does the mean difference agree with the median and the win-rate? A significant mean with a near-zero median and a ~50% win-rate is a heavy-tailed effect: a few cases moved far in *both* directions. Report median, win-rate and the tail beside the mean, and word the finding as unreliability rather than a shift.

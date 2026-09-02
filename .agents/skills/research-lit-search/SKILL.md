@@ -12,6 +12,7 @@ description: Use for literature search: related work, paper search, field survey
 - Author expansion is secondary to citation/reference edges (an author edge is a weaker topical signal — people pivot subfields and co-author across topics). Use it to map who is active, not as the primary recall lever.
 - Citation and reference edges are the recall lever, not an option. A sweep that made zero citation/reference-edge calls has not been run, however many keyword queries it issued.
 - Do not over-rank unverified or weakly relevant papers.
+- Record what a paper ESTABLISHES, not what it is about. "A survey of X" is not a record; "orders X by data scope in §2, Definitions 2.4–2.9" is. A paper filed by topic cannot later tell you it already contains your contribution.
 - Preserve query strings, source metadata, and uncertainty.
 - Search the user's own corpus FIRST, before the external sweep — it is the cheapest recall step, not an optional extra: prior projects' literature notes and the personal note store, at the locations the global instructions and `context-project-docs` define. Prefer semantic retrieval if a semantic-search tool is configured; fall back to text search. Report which corpora you checked and what they already covered. Two distinct failures this prevents: re-deriving a subfield's anchor papers once per project, and dropping a paper that an earlier cross-project survey found but no project ever inherited.
 
