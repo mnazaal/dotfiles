@@ -56,7 +56,13 @@ of which can be made honestly once the numbers exist:
   prompt a re-run. If nothing would, the run is not a test of it.
 - **The analysis path.** The interval on the difference and the statistics
   reported beside the mean. Both live in the Checklist, which is read after the
-  numbers, and each is a live degree of freedom until it is fixed.
+  numbers, and each is a live degree of freedom until it is fixed. Then check the
+  statistic can take the values the prediction needs: evaluate it at the predicted
+  extremes before fixing it. A statistic censored by its own construction — a
+  fraction that saturates at 1 once the worst arm reaches zero, a ratio bounded by
+  a floor — cannot discriminate the hypothesis, and that is invisible until the
+  numbers exist. Same for a null control: state its criterion in the units the
+  mechanism moves, not whichever summary is at hand.
 - **The search bounds.** The hyperparameter ranges to be swept, as part of the
   hypothesis rather than a detail. An unbounded search is where the forking
   paths are.
@@ -103,6 +109,11 @@ cost of getting them wrong is the whole sweep.
   removed it.
 - **Pick a regime where the axis still bites.** Two arms saturated at a floor or
   ceiling give an uninformative comparison however many seeds you spend on it.
+- **Hold the resource fixed when ablating a loop count.** Ablating iterations,
+  refinement steps, epochs or restarts while leaving per-step cost alone makes
+  "more of the loop" also mean "more compute", and the contrast then measures
+  both. Fix the product — steps × per-step budget — so the arms differ in
+  structure and not in spend.
 - **Check a searched setting landed interior.** A value chosen at the edge of its
   grid is best-of-grid, not tuned: the optimum is outside what you looked at.
   Report interior-or-edge alongside the value, and widen before treating an edge

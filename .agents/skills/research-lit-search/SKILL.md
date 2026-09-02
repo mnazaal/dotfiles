@@ -39,6 +39,10 @@ method), the output is sharper than a field map:
   has a project, otherwise the cross-project store (locations per the global instructions and
   `context-project-docs`). A dead end recorded only in chat is a dead end that gets re-run.
 - Expect concept-occupied, machinery-open. Ask what each nearest neighbor failed to build, not whether the idea is taken — it usually is.
+- A null result licenses "no paper states this", never "nobody noticed this".
+  Elementary facts go unwritten because they are elementary, so absence is evidence
+  about the literature and not about what practitioners know. Claim the measurement
+  and its consequences; do not claim priority over a lemma.
 - End on a verdict: survives/pursue (with any narrowed framing) vs. scooped/pivot.
 - A kill verdict closes the gate, not the literature. One sufficient counterexample kills a claim, so a kill survives thin coverage — but it establishes nothing about what the field cannot do. If the project continues, re-open with the limitation question, whose stopping condition is breadth enough to separate an incidental limitation from a structural one.
 
