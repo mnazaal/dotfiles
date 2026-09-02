@@ -34,8 +34,8 @@ do not follow from general plotting sense.
   bar, and whether it is SD, SEM, or a bootstrap CI. They differ by large
   factors and are indistinguishable by eye, so an unlabelled bar is unreadable
   evidence.
-- Generated figures are build artifacts: regenerate, never hand-edit. The
-  generator stays outside a synced manuscript directory, and the committed
+- Generated figures and tables are build artifacts: regenerate, never hand-edit.
+  The generator stays outside a synced manuscript directory, and the committed
   artifact must be byte-deterministic — `research-manuscript-workflow` owns both
   rules.
 
@@ -66,6 +66,31 @@ it. Each rule with the shape its violation takes:
   *Violation:* the template's default `[b]`, which staggers a row as soon as
   one subfigure carries a caption and its neighbours do not.
 
+## Generated Tables
+
+A table is where the paper's numbers are actually read, so its failures are
+arithmetic rather than aesthetic. `research-manuscript-workflow` owns where a
+generated table lives, how it is committed, and what a provenance comment inside
+one may name; these are rules for what the producer emits.
+
+- **Emit a bare `tabular`, not a float.** The generator writes the rows; the
+  human-owned source keeps the float environment, placement, caption and label.
+  A generator emitting the whole float takes caption wording away from the
+  author, and takes it back on every regeneration.
+- **Mark which column is the comparison of interest.** A grid reports many cells
+  and exactly one of them was the question; the rest are descriptive. Marking it
+  is what stops the best cell being read as the result — `research-run` owns why
+  it has to be named before the runs rather than after.
+- **A cell reporting a comparison carries n and names its interval.** The same
+  rule as figures (Paper Figures); a table hides a missing one more easily,
+  because the number still looks complete without it.
+- **Bold marks the pre-registered winner, not the largest number.** Emphasis
+  chosen after seeing the cells is a selection the reader cannot see. Either drop
+  it, or state what was selected and over how many cells.
+- **Round to the interval, not to a fixed width.** Digits past the interval's
+  leading significant figure are noise typeset as precision: `0.6931 ± 0.05`
+  claims two digits the data does not support.
+
 ## Workflow
 
 1. Identify audience and output medium.
@@ -77,4 +102,4 @@ it. Each rule with the shape its violation takes:
 ## Related Skills
 
 - `research-run` for interpreting plots/metrics, and for why the paired difference is the quantity to plot.
-- `research-manuscript-workflow` for the figure pipeline: generator placement, committed artifacts, byte-determinism.
+- `research-manuscript-workflow` for the figure and table pipeline: generator placement, committed artifacts, byte-determinism.
