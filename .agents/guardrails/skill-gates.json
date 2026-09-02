@@ -68,6 +68,21 @@
       "message": "running an Overleaf sync target"
     },
     {
+      "skills": ["dev-viz", "research-manuscript-workflow"],
+      "trigger": { "type": "bash", "command": "make", "arg_contains": "manuscript-" },
+      "message": "regenerating a manuscript artifact"
+    },
+    {
+      "skills": ["dev-viz"],
+      "trigger": { "type": "write", "path_glob": "**/figures/**" },
+      "message": "editing a figure artifact or generator"
+    },
+    {
+      "skills": ["dev-viz"],
+      "trigger": { "type": "write", "path_glob": "**/tables/**" },
+      "message": "editing a table artifact or generator"
+    },
+    {
       "skills": ["dev-security"],
       "trigger": { "type": "write", "path_glob": "**/.envrc" },
       "message": "editing a direnv file"
