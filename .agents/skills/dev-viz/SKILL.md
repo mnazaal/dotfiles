@@ -1,6 +1,6 @@
 ---
 name: dev-viz
-description: Use for visualization code and manuscript figures: plots, charts, figures for a paper, column-width sizing, font matching, error bars and seed variability, dashboards, palettes, legends, matplotlib, seaborn, plotly, network graphs, pgfplots, colorblind-safe design, export formats.
+description: Use before writing or regenerating a manuscript figure or generated table, before plotting a result, and before referencing or captioning a float. Covers generated figure/table artifacts and the producers that write them, plots, charts, column-width sizing, font matching, error bars and seed variability, dashboards, palettes, legends, matplotlib, seaborn, plotly, network graphs, pgfplots, colorblind-safe design, export formats.
 ---
 
 # Skill: Dev Viz

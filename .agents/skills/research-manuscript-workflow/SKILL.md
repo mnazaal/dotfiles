@@ -253,6 +253,35 @@ on a rerun is a normal event and belongs in `LOG.md`; silently keeping the old
 label is the failure this prevents. `## Status` stays free prose for the
 claim as a whole.
 
+## Section Briefs
+
+The agent-owned half of a human-written section. The `.tex` holds the prose;
+a `notes/draft-<scope>` note holds everything that prose has to be true to,
+so drafting is a writing problem rather than a lookup problem. The ledger is
+organized by claim and this is organized by section — one note per scope
+(`context-project-docs` owns the `draft-` prefix), rewritten in place.
+
+Three parts:
+
+- **Number provenance.** One row per quantitative phrase the section will
+  make: the phrase as it will be written, the generated artifact or read-out
+  it comes from, and the exact value with its interval. A phrase with no row
+  is a number the author is about to invent, and a row whose artifact no
+  longer exists is the drift a compile will never catch.
+- **Scoping rules that bind those numbers.** Which result files are in scope,
+  which are excluded, and the single metric or score path the section may
+  quote — mixing two is how one section acquires two answers. State each rule
+  with the wrong number it already produced: a rule given as a preference gets
+  overridden, one given as a measured error does not.
+- **Standing wording constraints.** What is someone else's result and must be
+  cited rather than claimed, internal shorthand that must not reach the page,
+  and the narrower claim that survived review where a broader one did not.
+
+The brief is planning, not publishable source: it stays outside a synced
+`manuscript/` (Core Rule), and the author pastes prose from it rather than the
+agent writing into `.tex`. Where a brief and the ledger disagree, re-run the
+producer instead of picking one.
+
 ## Figure and Table Pipeline
 
 Rules:
@@ -322,7 +351,7 @@ Given human-owned `.tex`, use agents as reviewers and research assistants, not
 as direct manuscript editors.
 
 If asked for direct `.tex` edits, provide a human-applyable proposal instead,
-drafted in a project `notes/` working note rather than in `.tex`.
+drafted in the section's brief (Section Briefs) rather than in `.tex`.
 
 ## Prose and Narrative Review
 
