@@ -172,11 +172,16 @@ out=$(cd "$r" && "$script" 2>&1) || fail "non-zero exit on a clean tree"
 # The ref name is a timestamp. At second resolution two checkpoints inside one
 # second collided and the later silently OVERWROTE the earlier — destroying the
 # very state a recovery would want. Reproduced before this was fixed.
+# Name the namespace instead of inheriting it: the assertions below query one
+# explicitly, so leaving the prefix ambient made the block pass or fail on
+# whether the caller's shell happened to export the same value. It passed under
+# `renv claude` and failed from a plain shell, where the script falls back to
+# its default namespace and the query below then matches nothing.
 r=$(new_repo collision)
 printf 'FIRST\n' >"$r/tracked.txt"
-run_in "$r" || fail "non-zero exit on first same-second snapshot"
+run_in "$r" AGENT_BRANCH_PREFIX=claude || fail "non-zero exit on first same-second snapshot"
 printf 'SECOND\n' >"$r/tracked.txt"
-run_in "$r" || fail "non-zero exit on second same-second snapshot"
+run_in "$r" AGENT_BRANCH_PREFIX=claude || fail "non-zero exit on second same-second snapshot"
 [ "$(refs_of "$r" | wc -l)" -eq 2 ] ||
 	fail "two snapshots in one second collapsed into one ref (timestamp collision)"
 # Do not trust the two runs to have landed in the same wall-clock second — that
