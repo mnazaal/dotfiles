@@ -175,20 +175,6 @@ for profile in agent-claude agent-pi; do
 		"$home/.local/share/bun/bin:$home/.local/share/bun/bin:ro"
 done
 
-# A harness binary sits under agent.profile's blanket read-write ~/.local/share,
-# so a plain read-only bind for it is emitted BEFORE that parent and shadowed by
-# it — protection that reads real and is not. The pin has to land after. Both
-# harnesses, because either could rewrite the other's executable and persist
-# outside the sandbox. This is the same hole the bun bin pin closes.
-for profile in agent-claude agent-pi; do
-	assert_mount_order "$project" "$profile" \
-		"$home/.local/share:$home/.local/share" \
-		"$home/.local/share/claude:$home/.local/share/claude:ro"
-	assert_mount_order "$project" "$profile" \
-		"$home/.local/share:$home/.local/share" \
-		"$home/.local/share/bun/bin:$home/.local/share/bun/bin:ro"
-done
-
 # A bind re-exposing an ancestor of $HOME defeats the allowlist as completely as
 # binding $HOME itself, so the sandbox must refuse it.
 ancestor=$(dirname "$home")

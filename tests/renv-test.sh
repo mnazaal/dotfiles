@@ -82,36 +82,37 @@ expect pi "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi")"
 # --permission-mode: that is a flag of the CLI and not of the adapter, so passing
 # it through would abort the launch. The sandbox wrapper must survive, or the
 # editor path would run unconfined while looking identical.
-# The fixture symlinks $config/renv at the real repository, so these fixtures
-# need a config root of their own — writing them through that symlink would
-# deposit them in the working tree.
-acp_config="$tmp/acp-config"
-mkdir -p "$acp_config/renv"
-cat >"$acp_config/renv/sibling.sh" <<'SIB'
-AGENT_BRANCH_PREFIX="sibling"
-export AGENT_BRANCH_PREFIX
-RENV_WRAP=(sandbox -p agent-pi --)
-RENV_PRE_ARGS=(--permission-mode bypassPermissions)
-SIB
-cat >"$acp_config/renv/sibling-acp.sh" <<'ACP'
-# shellcheck source=/dev/null
-. "${XDG_CONFIG_HOME:-$HOME/.config}/renv/sibling.sh"
-unset RENV_PRE_ARGS
-ACP
-printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/sibling-acp"
-chmod +x "$bin/sibling-acp"
+# The SHIPPED editor launcher, not a stand-in. $config/renv is symlinked at the
+# real repository above, so this loads the pi-acp.sh that actually deploys: it
+# sources pi.sh for one definition of the policy, then drops the CLI-only
+# --permission-mode, which is a flag of the CLI and not of the adapter and would
+# abort the launch. The sandbox wrapper has to survive that, or the editor path
+# would run unconfined while looking identical to the terminal one.
+printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/pi-acp"
+chmod +x "$bin/pi-acp"
 
-rm -f "$capture"
-env -u XDG_CACHE_HOME HOME="$home" PATH="$bin:$PATH" XDG_CONFIG_HOME="$acp_config" \
-	RENV_CAPTURE="$capture" "$repo/.local/scripts/renv" sibling-acp --version
-out=$(cat "$capture")
-expect acp "$out" "prefix=sibling"
-expect acp "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/sibling-acp")"
+out=$(run pi-acp --version)
+expect pi-acp "$out" "prefix=pi"
+expect pi-acp "$out" "openrouter=test-openrouter-pi"
+expect pi-acp "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi-acp")"
 case "$out" in *--permission-mode*)
-	printf 'renv acp: the CLI-only --permission-mode reached the adapter\n' >&2
+	printf 'renv pi-acp: a CLI-only --permission-mode reached the adapter\n' >&2
 	exit 1
 	;;
 esac
+
+# claude-agent-acp.sh cannot be driven the same way: sourcing claude.sh starts
+# the Headroom proxy, which a test must not do. Assert the one line that carries
+# the contract instead -- weaker than running it, and named as such.
+claude_acp="$repo/.config/renv/claude-agent-acp.sh"
+grep -q '^unset RENV_PRE_ARGS$' "$claude_acp" || {
+	printf 'renv: %s no longer drops RENV_PRE_ARGS\n' "$claude_acp" >&2
+	exit 1
+}
+grep -q 'renv/claude\.sh"$' "$claude_acp" || {
+	printf 'renv: %s no longer sources its CLI sibling\n' "$claude_acp" >&2
+	exit 1
+}
 
 # --- fail closed when the wrapper itself is missing --------------------------
 # Without this, a PATH without `sandbox` would run the harness unconfined.
