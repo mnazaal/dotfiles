@@ -1184,6 +1184,13 @@ Access LLMs within Emacs.
   (agent-shell-thought-process-expand-by-default t)
   (agent-shell-write-inhibit-minor-modes
    '(aggressive-indent-mode apheleia-mode))
+  ;; Launch the ACP client through renv, the same door the terminal harnesses
+  ;; use, so no agent policy is duplicated here: the env file owns the branch
+  ;; prefix, the secrets and (later, if wanted) the sandbox wrapper. renv writes
+  ;; nothing to stdout, so it is transparent to the JSON-RPC stream. Swapping
+  ;; harnesses is a different agent-shell command plus its own renv env file —
+  ;; this config never learns what the agent is.
+  (agent-shell-anthropic-claude-acp-command '("renv" "claude-agent-acp"))
   :config
   (with-eval-after-load 'evil
     (evil-define-key 'insert agent-shell-mode-map (kbd "RET") #'newline)
