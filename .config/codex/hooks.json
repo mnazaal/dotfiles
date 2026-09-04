@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] && \"$f\" >/dev/null 2>&1; exit 0",
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); [ -n \"$out\" ] && { printf '%s\\n' \"$out\"; printf '%s\\n' \"$out\" >&2; }; exit 0",
             "timeout": 30,
             "statusMessage": "Snapshotting working tree"
           },
@@ -28,6 +28,12 @@
             "command": "bun \"$CODEX_HOME/hooks/guardrails.ts\"",
             "timeout": 30,
             "statusMessage": "Checking shared guardrails"
+          },
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); [ -n \"$out\" ] && { printf '%s\\n' \"$out\"; printf '%s\\n' \"$out\" >&2; }; exit 0",
+            "timeout": 30,
+            "statusMessage": "Snapshotting working tree"
           }
         ]
       }

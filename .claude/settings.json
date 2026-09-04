@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] && \"$f\" >/dev/null 2>&1; exit 0"
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); [ -n \"$out\" ] && printf '%s\\n' \"$out\"; exit 0"
           },
           {
             "type": "command",
@@ -106,6 +106,15 @@
           {
             "type": "command",
             "command": "f=\"$HOME/.agents/skills/plan-interview/SKILL.md\"; command -v jq >/dev/null || exit 0; { [ -s \"$f\" ] && cat \"$f\" || printf '%s' 'Load the plan-interview skill and follow its Question Shape before asking.'; } | jq -Rs '{hookSpecificOutput:{hookEventName:\"PreToolUse\",additionalContext:(\"plan-interview skill (follow its Question Shape):\\n\"+.)}}'; exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); [ -n \"$out\" ] && { printf '%s\\n' \"$out\" >&2; exit 1; }; exit 0"
           }
         ]
       }
