@@ -671,7 +671,7 @@ Save different locations within buffers for easy navigation.
   (bookmark-default-file (expand-file-name "bookmarks" org-directory)))
 #+end_src
 
-** vundo                                                           :text:
+** vundo                                                               :text:
 Visualise undo history as it is - a tree structure.
 - =C-x u= : View undo tree.
 - =d=     : While in undo tree - shows diffs in separate window.
@@ -1285,7 +1285,7 @@ adding one here would only restate the default.
   (setf (alist-get 'bash-ts-mode   apheleia-mode-alist) '(shfmt)))
 #+end_src
 
-** dape                                                          :coding:
+** dape                                                              :coding:
 Python debugger via Debug Adapter Protocol. Requires =debugpy=.
 - =C-c d d= : Start debug session.
 - =C-c d b= : Toggle breakpoint.
@@ -1373,7 +1373,7 @@ Keeping this since output is cleaner than after setting =magit-diff-refine-hunk=
   :hook (magit-mode . magit-delta-mode))
 #+end_src
 
-** vdiff                                              :visual:version_control:
+** vdiff                                             :visual:version_control:
 Side-by-side diffs, preferred over =ediff= for reviewing and staging changes.
 Evil users get vimdiff-style bindings from =evil-collection=; the vdiff command
 prefix map is on =,= in normal state.
@@ -1385,7 +1385,7 @@ prefix map is on =,= in normal state.
   (evil-define-key 'normal vdiff-mode-map "," vdiff-mode-prefix-map))
 #+end_src
 
-** vdiff-magit                                        :visual:version_control:
+** vdiff-magit                                       :visual:version_control:
 Review and stage hunks side-by-side from the =magit= buffer. =e= now opens a
 side-by-side =vdiff= for normal diffs and falls back to =ediff= for 3-way merge
 conflicts (so the =e= then =A=/=B= merge workflow above still applies).
