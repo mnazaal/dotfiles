@@ -9,8 +9,7 @@ sandbox -- ./configure && make     # confined to the current project
 sandbox -p dev -- npm test         # + dev toolchains (node/bun/git) read-only
 sandbox --rw ~/scratch -- ./untrusted-installer.sh
 sandbox --no-net -- python build.py
-sandbox --backend podman -- id     # override the default backend
-sandbox -n -- make                 # dry-run: print the backend command
+sandbox -n -- make                 # dry-run: print the podman command
 ```
 
 ## Model
@@ -22,26 +21,21 @@ invisible**. Secrets already in the environment pass through, so a caller (e.g.
 `renv`) can resolve them *before* entering the sandbox; the vaults themselves are
 never mounted.
 
-"Invisible" is literal: the container backends (`gvisor`/`podman`) only mount the
-allowlist, so the rest of the host simply isn't there.
+"Invisible" is literal: the container only mounts the allowlist, so the rest of
+the host simply isn't there.
 
-Both backends provide a writable private `/tmp` for scratch files. Host `/tmp` is
-not mounted; use `--rw DIR` for any explicit shared scratch directory.
+The container provides a writable private `/tmp` for scratch files. Host `/tmp`
+is not mounted; use `--rw DIR` for any explicit shared scratch directory.
 
 Guards: `sandbox` refuses to auto-bind `cwd` when it is `$HOME` or above (which
 would re-expose the whole home), and rejects `--rw`/`--ro` of `$HOME` or `/`.
 Network is shared by default; `--no-net` cuts it.
 
-## Backends
+## Runtime
 
-Select with `--backend` or `$SANDBOX_BACKEND`.
+A rootless podman container: namespace isolation, sharing the host kernel.
 
-| Backend | Isolation | Needs | Notes |
-|---------|-----------|-------|-------|
-| **gvisor** | host-kernel attack surface shrunk by a user-space kernel (runsc) | `runsc` on PATH (no root/KVM) | rootless container via `--runtime=runsc`; FS served through a gofer (a bit slower) |
-| **podman** (default) | namespaces (shared kernel) | rootless podman | same container, default runtime; lighter than gvisor |
-
-Both reuse the host userspace through read-only mounts (`/usr`, toolchains), an
+It reuses the host userspace through read-only mounts (`/usr`, toolchains), an
 `ubuntu:24.04` base image (`$SANDBOX_IMAGE`), `--userns=keep-id`, and
 `--network=host`. They need no root.
 
@@ -83,10 +77,7 @@ therefore the filesystem boundary. Network and MCP access remain enabled.
 
 ## One-time setup
 
-- **gvisor**: install `runsc` (single userspace binary, no root/KVM) →
-  <https://gvisor.dev/docs/user_guide/install/>. `sandbox` errors with this
-  pointer if it's missing.
-- **podman**: nothing — rootless podman works out of the box.
+- Nothing: rootless podman works out of the box.
 
 ## Limits / caveats
 
@@ -102,6 +93,8 @@ therefore the filesystem boundary. Network and MCP access remain enabled.
   interactive agent mid-task; add them only for unattended runs).
 - `~/.ssh` / `pass` are absent inside, so `git push` over SSH and `pass` reads
   won't work in the sandbox — do those outside, or pass a token via env.
-- Shared kernel for `podman`; `gvisor` re-implements the kernel in user
-  space for stronger escape resistance. A microVM (KVM) would be stronger still
-  but the host gates `/dev/kvm`.
+- The kernel is shared with the host, so this resists mistakes rather than a
+  determined kernel exploit. A user-space kernel (gVisor) or a microVM would be
+  stronger; the gVisor path was carried here for a year without ever being
+  selected or tested, so it was removed rather than left as untested code. The
+  microVM route stays closed while the host gates `/dev/kvm`.

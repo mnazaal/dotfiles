@@ -33,7 +33,7 @@ run() { # cwd [sandbox args...] -> dry-run argv
 	shift
 	(
 		cd "$cwd" || exit 1
-		HOME="$home" SANDBOX_BACKEND=podman SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+		HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
 			"$repo/.local/scripts/sandbox" --dry-run "$@" -- /bin/true
 	)
 }
@@ -131,19 +131,22 @@ assert_mounts 'agent with --rw <toplevel>' "$output" \
 # (unpinned 2026-08-18, reversing 4de2847): the user chose skill iteration speed
 # over the self-modification pin, and review happens at commit time. Assert the
 # unpin holds so a future edit cannot silently re-pin.
+# pi composes the shared `agent` base, so it reaches what claude reaches: the
+# read-only breadth below arrives from that base, not from this profile. Only
+# the writable paths are pi's own, and each must survive the enclosing
+# read-only ~/.config bind by being emitted after it.
 output=$(run "$project" -p agent-pi)
 assert_mounts agent-pi "$output" \
 	"$home/.agents:$home/.agents:ro" \
 	"$home/dotfiles:$home/dotfiles:ro" \
-	"$home/.config/pi:$home/.config/pi:ro" \
+	"$home/.config:$home/.config:ro" \
+	"$home/projects:$home/projects:ro" \
 	"$home/.config/pi/agent/sessions:$home/.config/pi/agent/sessions" \
 	"$home/.config/pi/agent/npm:$home/.config/pi/agent/npm" \
 	"$home/.config/pi/agent/mcp-cache.json:$home/.config/pi/agent/mcp-cache.json" \
 	"$home/.config/pi/agent/run-history.jsonl:$home/.config/pi/agent/run-history.jsonl" \
 	-- \
-	"$home/.config:$home/.config:ro" \
-	"$home/dotfiles:$home/dotfiles " \
-	"$home/projects:$home/projects"
+	"$home/dotfiles:$home/dotfiles "
 
 # The guardrail source must be read-only AND bound after the writable dotfiles
 # bind that contains it: $HOME/.agents is stow symlinks into $HOME/dotfiles, so

@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-# sandbox — run a command confined to an allowlist of directories.
-# Backends share one profile/allowlist front-end:
-#   gvisor           — rootless container via the runsc user-space kernel
-#   podman (default) — rootless container on the default runtime (no runsc)
-# A profile's allowlist becomes -v mounts; everything else under $HOME stays
-# invisible. See `sandbox --help`.
+# sandbox — run a command confined to an allowlist of directories, as a
+# rootless podman container. A profile's allowlist becomes -v mounts; everything
+# else under $HOME stays invisible. See `sandbox --help`.
 set -euo pipefail
 
 H=$HOME
-BACKEND=${SANDBOX_BACKEND:-podman}
 PROFILE_PATH=${SANDBOX_PROFILE_PATH:-${XDG_CONFIG_HOME:-$H/.config}/sandbox}
 IMAGE=${SANDBOX_IMAGE:-ubuntu:24.04}
 
@@ -34,9 +30,8 @@ OPTIONS
       --ro DIR              add a read-only  bind        (repeatable)
       --mask DIR            shadow DIR with an empty tmpfs, so a path nested
                             inside a broader --rw bind is absent (repeatable)
-      --backend NAME        gvisor | podman (default); or $SANDBOX_BACKEND
       --no-net              unshare the network (shared by default)
-  -n, --dry-run             print the backend command instead of running it
+  -n, --dry-run             print the podman command instead of running it
       --verify-pins         inside the sandbox: check every machinery pin is
                             actually read-only, then exit. Non-zero if any is not
   -h, --help                show this help
@@ -47,11 +42,7 @@ DESCRIPTION
   $HOME (ssh, gnupg, pass, other projects) is invisible. Secrets already in
   the environment pass through, so callers can resolve them beforehand.
 
-  Backends: `gvisor` runs the command in a rootless container via the
-  runsc runtime — a user-space kernel that shrinks the host kernel attack surface
-  (needs `runsc` on PATH; no root/KVM). `podman` is the same container on the
-  default runtime (no runsc). Env: $SANDBOX_BACKEND, $SANDBOX_IMAGE (container
-  base image), $SANDBOX_PROFILE_PATH.
+  Env: $SANDBOX_IMAGE (container base image), $SANDBOX_PROFILE_PATH.
 EOF
 }
 
@@ -90,12 +81,9 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 	esac
 }
 
-# --- backends ----------------------------------------------------------------
-
 run_podman() {
 	command -v podman >/dev/null 2>&1 || die 'podman not found in PATH' 127
 	local d
-	local pre=() # podman global flags (must precede `run`)
 	local name="${PROFILE_NAME:-sandbox}-$$"
 	local p=(run --rm --name "$name" --userns=keep-id --http-proxy=false -w "$PWD" --security-opt label=disable)
 	# Pass the NAME only: podman reads the value from this process's environment
@@ -109,14 +97,6 @@ run_podman() {
 	# Give commands normal scratch space without exposing the host's /tmp.
 	# shellcheck disable=SC2054  # commas are mount options within one element
 	p+=(--tmpfs /tmp:rw,nosuid,nodev,mode=1777)
-	if [ -n "$PODMAN_RUNTIME" ]; then
-		# gvisor (runsc): select the runtime and tell it to ignore cgroups (it
-		# cannot set them up rootlessly). When networking is on, use the host
-		# network stack instead of gVisor's netstack, which doesn't implement
-		# every socket op (else apps hit FailedToOpenSocket / DNS failures).
-		pre+=(--runtime "$PODMAN_RUNTIME" --runtime-flag=ignore-cgroups)
-		[ "$NET" -eq 1 ] && pre+=(--runtime-flag=network=host)
-	fi
 	if [ -t 0 ] && [ -t 1 ]; then p+=(-it); else p+=(-i); fi
 	if [ "$NET" -eq 1 ]; then p+=(--network=host); else p+=(--network=none); fi
 	[ -n "$SANDBOX_PATH_PREPEND" ] && p+=(--env "PATH=$SANDBOX_PATH_PREPEND:$PATH")
@@ -179,12 +159,12 @@ exec "$@"'
 
 	if [ "$DRYRUN" -eq 1 ]; then
 		printf 'podman'
-		printf ' %q' "${pre[@]}" "${p[@]}" "$IMAGE" \
+		printf ' %q' "${p[@]}" "$IMAGE" \
 			/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 		printf '\n'
 		exit 0
 	fi
-	exec podman "${pre[@]}" "${p[@]}" "$IMAGE" \
+	exec podman "${p[@]}" "$IMAGE" \
 		/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
 
@@ -204,8 +184,7 @@ NET=1 # 1 share network, 0 unshare
 DRYRUN=0
 VERIFY_PINS=0
 SANDBOX_PATH_PREPEND=""
-PODMAN_RUNTIME="" # gvisor backend sets this to the runsc path
-PROFILE_NAME=""   # first -p name, used as podman container name
+PROFILE_NAME="" # first -p name, used as podman container name
 declare -A _loaded=()
 
 cmd=()
@@ -226,10 +205,6 @@ while [ $# -gt 0 ]; do
 		;;
 	--mask)
 		MASK+=("$2")
-		shift 2
-		;;
-	--backend)
-		BACKEND=$2
 		shift 2
 		;;
 	--no-net)
@@ -267,7 +242,7 @@ done
 # A read-only bind is attached to an inode, so replacing the file orphans the
 # mount and silently disarms the pin for the life of the session — and replacing
 # is what `git checkout`, stow and every temp-then-rename editor write does. The
-# profile and the backend argv both still look correct afterwards, which is why
+# profile and the podman argv both still look correct afterwards, which is why
 # comparing those two (`make check-machinery-ro-sync`) cannot detect it. Only the
 # live mount namespace can, so ask it.
 if [ "$VERIFY_PINS" -eq 1 ]; then
@@ -360,7 +335,7 @@ else
 	RW+=("$PWD")
 fi
 
-# Dedupe mount destinations: a path can be bound only once, else podman/gvisor
+# Dedupe mount destinations: a path can be bound only once, else podman
 # fail with "duplicate mount destination" (e.g. cwd is a dir a profile also
 # RO-mounts, like running from ~/dotfiles). RW is deduped first so it wins over
 # RO — the current project / explicit --rw stays writable.
@@ -397,12 +372,4 @@ for name in "${SANDBOX_ENV[@]}"; do
 done
 SANDBOX_ENV=("${env_out[@]}")
 
-case "$BACKEND" in
-podman) run_podman ;;
-gvisor)
-	PODMAN_RUNTIME=$(command -v runsc) ||
-		die "gvisor backend needs 'runsc' (gVisor) on PATH — install it (no root/KVM): https://gvisor.dev/docs/user_guide/install/"
-	run_podman
-	;;
-*) die "unknown backend: $BACKEND   (known: podman, gvisor)" ;;
-esac
+run_podman

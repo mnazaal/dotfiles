@@ -30,7 +30,7 @@ chmod +x "$bin/podman"
 	cd "$project"
 	HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$profiles" \
 		SANDBOX_CAPTURE="$capture" SAFE_VALUE=visible UNRELATED_SECRET=must-not-reach-container \
-		"$repo/.local/scripts/sandbox" --backend podman -p scoped -- /bin/true
+		"$repo/.local/scripts/sandbox" -p scoped -- /bin/true
 )
 
 args=$(<"$capture")
@@ -85,7 +85,7 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 			HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
 			ANTHROPIC_BASE_URL=http://127.0.0.1:8787 ENABLE_TOOL_SEARCH=false \
 			DISABLE_AUTOUPDATER=1 EDITOR=nvim UNRELATED_SECRET=must-not-reach-container \
-			"$repo/.local/scripts/sandbox" --backend podman -p "$profile" -- /bin/true
+			"$repo/.local/scripts/sandbox" -p "$profile" -- /bin/true
 	)
 
 	args=$(<"$capture")
