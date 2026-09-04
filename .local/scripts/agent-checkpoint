@@ -18,17 +18,28 @@ set -uo pipefail
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 [ -n "$(git status --porcelain 2>/dev/null)" ] || exit 0
 
+# An unborn HEAD (a repo with no commits yet) has no tree to read and no commit
+# to point at. That is where work is LEAST recoverable, so snapshot it anyway,
+# parentless, instead of falling through to the silent no-op below.
+if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
+	parent=(-p HEAD)
+else
+	parent=()
+fi
+
 idx=$(mktemp -u 2>/dev/null) || exit 0
 tree=$(
 	export GIT_INDEX_FILE="$idx"
-	git read-tree HEAD 2>/dev/null || exit 1
+	if [ ${#parent[@]} -gt 0 ]; then
+		git read-tree HEAD 2>/dev/null || exit 1
+	fi
 	git add -A 2>/dev/null || exit 1
 	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
 [ -n "$tree" ] || exit 0
 
-sha=$(git commit-tree "$tree" -p HEAD -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) || exit 0
+sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) || exit 0
 [ -n "$sha" ] || exit 0
 
 git update-ref \

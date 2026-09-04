@@ -128,4 +128,22 @@ rc=0
 chmod -R u+w "$r/.git"
 [ "$rc" -eq 0 ] || fail "exited $rc when .git was unwritable; must always exit 0"
 
+# --- 9. A repo with no commits still gets a checkpoint -----------------------
+# An unborn HEAD is where work is LEAST recoverable: there is no history to fall
+# back on, so a silent no-op here loses everything the agent has written.
+r="$tmp/unborn"
+mkdir -p "$r"
+git init -q "$r"
+git -C "$r" config core.hooksPath "$tmp/nohooks"
+git -C "$r" config user.email t@example.invalid
+git -C "$r" config user.name fixture
+printf 'precious\n' >"$r/new.txt"
+run_in "$r" || fail "non-zero exit in a repo with no commits"
+ref=$(refs_of "$r")
+[ -n "$ref" ] || fail "an unborn HEAD should still create a checkpoint"
+git -C "$r" ls-tree -r --name-only "$ref" | grep -qx 'new.txt' ||
+	fail "checkpoint omitted the only file in a repo with no commits"
+[ "$(git -C "$r" rev-list --count "$ref")" = "1" ] ||
+	fail "checkpoint on an unborn HEAD should be parentless"
+
 printf 'agent-checkpoint: all behaviors pass\n'
