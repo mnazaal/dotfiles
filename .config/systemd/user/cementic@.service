@@ -1,0 +1,67 @@
+# cementic indexing for one collection: source watcher, pipeline worker and an
+# embedding wedge check, in one unit.
+#
+#   echo 'CEMENTIC_DIRS=/u/71/ibrahin1/data/Documents/Papers' \
+#     > ~/.config/cementic/papers.dirs.env
+#   systemctl --user enable --now cementic@papers.service
+#
+# The three background jobs share one restart: `wait -n` returns as soon as any
+# of them ends, the unit exits, and Restart=always brings all three back. That
+# is affordable because a worker restart is cheap -- it requeues anything left
+# `processing` at startup, every batch is committed, and the vector upsert is
+# idempotent, so at most one batch of 32 is redone.
+#
+# The third job is the wedge check. A llama-server that survives suspend with a
+# lost GPU context keeps answering /health while the embedding call hangs, and
+# cementic cannot recover from that on its own: a worker's reconnect returns
+# the same client whenever /v1/models reports the expected fingerprint, which a
+# wedged server still does. Breaking the loop ends the unit; the server is in
+# this cgroup because the worker spawned it (llama_cpp.daemon_autostart = true,
+# which this unit depends on), so the restart replaces it too. The first curl is
+# why an idle machine is left alone: the server is on demand, so a closed port
+# means no embedding work, not a wedge. /embedding is llama.cpp's native
+# endpoint and takes no model id, so nothing here goes stale when the embedding
+# fingerprint changes.
+#
+# /bin/bash, not /bin/sh: dash has no `wait -n`.
+#
+# The interpreter is the checkout's .venv, not the uv-tool install on PATH, and
+# that is not a style choice: the extractor fingerprint includes the PyMuPDF
+# versions. The .venv holds the locked 1.27.1/0.3.4 this corpus was extracted
+# with; the uv-tool venv resolved 1.28.2, whose different fingerprint opens a
+# new extractor profile and re-extracts all 23,064 documents. Check
+# `extractor_profiles.config_json` before changing this line.
+#
+# A second collection is a second instance, and the two share one llama-server
+# on port 11555. Whichever worker started it owns it, so that instance's restart
+# takes the server from the other, which recovers by autostarting a replacement
+# -- one failed batch and a model reload. If that churn ever matters, move the
+# server into its own unit and set daemon_autostart = false.
+#
+# Logs:  journalctl --user -u cementic@papers -f   (all three jobs interleaved)
+
+[Unit]
+Description=cementic indexing (%i)
+Documentation=https://github.com/mnazaal/cementic
+# The quadlet unit goes active before Postgres finishes its healthcheck, so
+# this orders the start, it does not guarantee readiness. The worker logs,
+# requeues its batch and backs off if it is early; Restart=always covers the rest.
+After=cementic-postgres.service
+Wants=cementic-postgres.service
+
+[Service]
+EnvironmentFile=%h/.config/cementic/%i.dirs.env
+ExecStart=/bin/bash -c '\
+  %h/projects/cementic/.venv/bin/python -m cementic.runner source-watcher --collection %i -- $CEMENTIC_DIRS & \
+  %h/projects/cementic/.venv/bin/python -m cementic.runner pipeline-worker --collection %i & \
+  while sleep 300; do \
+    curl -sf -m 5 -o /dev/null http://127.0.0.1:11555/health || continue; \
+    curl -sf -m 90 -o /dev/null -X POST http://127.0.0.1:11555/embedding \
+      -H "Content-Type: application/json" -d "{\\"content\\":\\"ping\\"}" || break; \
+  done & \
+  wait -n'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
