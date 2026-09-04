@@ -168,4 +168,21 @@ r=$(new_repo quietnoop)
 out=$(cd "$r" && "$script" 2>&1) || fail "non-zero exit on a clean tree"
 [ -z "$out" ] || fail "expected silence on a clean tree, got: $out"
 
+# --- 12. Two snapshots in the same second both survive -----------------------
+# The ref name is a timestamp. At second resolution two checkpoints inside one
+# second collided and the later silently OVERWROTE the earlier — destroying the
+# very state a recovery would want. Reproduced before this was fixed.
+r=$(new_repo collision)
+printf 'FIRST\n' >"$r/tracked.txt"
+run_in "$r" || fail "non-zero exit on first same-second snapshot"
+printf 'SECOND\n' >"$r/tracked.txt"
+run_in "$r" || fail "non-zero exit on second same-second snapshot"
+[ "$(refs_of "$r" | wc -l)" -eq 2 ] ||
+	fail "two snapshots in one second collapsed into one ref (timestamp collision)"
+# Both states must be recoverable, and the newest ref by name must be the newest
+# snapshot — the ordering every reader of these refs depends on.
+newest=$(refs_of "$r" | sort | tail -1)
+[ "$(git -C "$r" show "$newest:tracked.txt")" = "SECOND" ] ||
+	fail "the newest ref by name is not the newest snapshot"
+
 printf 'agent-checkpoint: all behaviors pass\n'
