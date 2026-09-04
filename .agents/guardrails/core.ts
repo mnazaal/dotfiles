@@ -191,10 +191,29 @@ function skipNiceArgs(toks: string[], i: number): number {
   return i;
 }
 
+function skipXargsArgs(toks: string[], i: number): number {
+  // Value-taking options, so `xargs -n 1 rm -rf` does not read `1` as the
+  // command. Attached forms (-I{}, -n1) and flags (-0, -r, -t) fall through.
+  const valueOpts = new Set([
+    "-a", "--arg-file", "-d", "--delimiter", "-E", "-I", "--replace", "-i",
+    "-L", "--max-lines", "-l", "-n", "--max-args", "-P", "--max-procs",
+    "-s", "--max-chars",
+  ]);
+  while (i < toks.length) {
+    const a = toks[i];
+    if (a === "--") return i + 1;
+    if (valueOpts.has(a)) { i += 2; continue; }
+    if (a.startsWith("-")) { i++; continue; }
+    return i;
+  }
+  return i;
+}
+
 function skipWrapperArgs(wrapper: string, toks: string[], i: number): number {
   if (wrapper === "env") return skipEnvArgs(toks, i);
   if (wrapper === "timeout") return skipTimeoutArgs(toks, i);
   if (wrapper === "nice") return skipNiceArgs(toks, i);
+  if (wrapper === "xargs") return skipXargsArgs(toks, i);
   while (i < toks.length && toks[i].startsWith("-") && toks[i] !== "--") i++;
   if (toks[i] === "--") i++;
   while (i < toks.length && isAssignment(toks[i])) i++;
@@ -436,6 +455,12 @@ export function createGuard(agent: string) {
           t => !t.startsWith("/") && !t.startsWith("~") && !t.startsWith("$"),
         );
         const TOPLEVEL = "recursive-force-rm-toplevel";
+        // No target in the argv means the list arrives on stdin -- the
+        // `find ... | xargs rm -rf` idiom. What it would delete is unknowable
+        // here, so it takes the same treatment as an unresolvable cwd below.
+        if (targets.length === 0) {
+          return { reason: "rm -rf with targets from stdin", category: TOPLEVEL };
+        }
         if (!hereKnown && relative) {
           return { reason: "rm -rf with an unresolvable cwd", category: TOPLEVEL };
         }
@@ -450,6 +475,13 @@ export function createGuard(agent: string) {
       if (command === "find") {
         if (findPolicy === "always") return { reason: "find — prefer grepika/read tools", category: "find" };
         if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) return { reason: "find with -exec/-delete", category: "find" };
+      }
+      // `eval` never reaches the shell-runner branch below: it takes its script
+      // as ordinary arguments rather than behind -c, so `eval 'rm -rf ~'`
+      // arrives as one quoted token that tokenize() strips to a single argument.
+      if (command === "eval") {
+        const inner = args.join(" ");
+        if (inner) { const nested = dangerReason(inner, here); if (nested) return nested; }
       }
       if (SHELL_RUNNERS.has(command)) {
         const inner = dashCArg(args);

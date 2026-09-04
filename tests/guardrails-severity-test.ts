@@ -138,6 +138,26 @@ const TABLE: Row[] = [
   // resolving `dotfiles` against the event cwd gives <cwd>/dotfiles, not ~/dotfiles.
   { command: "cd ~ && rm -rf dotfiles", expected: "deny", note: "relative target after cd home" },
   { command: "cd /tmp && rm -rf project", expected: "deny", note: "relative target after cd" },
+
+  // --- rm reached through a pipeline or eval ----------------------------------
+  // `find ... | xargs rm -rf` is what a model actually writes, and until xargs
+  // was a recognized wrapper the segment parsed as an `xargs` command: none of
+  // the rm rules above ran at all, so even the top-level deny was unreachable.
+  // Targets arriving on stdin cannot be resolved here, so they take the
+  // top-level tier rather than the in-project one -- a false deny costs a
+  // rerun, a false allow costs the repository.
+  { command: "find . -type d -name build | xargs rm -rf", expected: "deny", note: "targets arrive on stdin" },
+  { command: "find . -print0 | xargs -0 rm -rf", expected: "deny", note: "-0 is a flag, not a target" },
+  { command: "xargs -n 1 rm -rf", expected: "deny", note: "-n takes a value, so `1` is not the command" },
+  // Controls: recognizing xargs must not gate benign pipelines, and a plain
+  // `rm` without -rf is still the ordinary non-recursive case.
+  { command: "find . -name '*.log' | xargs rm", expected: "allow", note: "not recursive-force" },
+  { command: "xargs ls", expected: "allow", note: "wrapper recognition must not gate benign commands" },
+
+  // `eval` takes its script as ordinary arguments rather than behind -c, so the
+  // shell-runner recursion never saw it and the whole command was invisible.
+  { command: "eval 'rm -rf ~'", expected: "deny", note: "quoted script through eval" },
+  { command: "eval rm -rf /", expected: "deny", note: "unquoted script through eval" },
   { command: "cd .. && rm -rf project", expected: "deny", note: "relative target after cd up" },
   {
     command: "cd build && rm -rf src",
