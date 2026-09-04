@@ -1,6 +1,7 @@
 .env*
 .venv*
 .agent-shell
+.ai.code.files
 .lean-ctx
 .opencode
 .kiro

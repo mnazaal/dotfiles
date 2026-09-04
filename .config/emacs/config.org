@@ -494,6 +494,39 @@ Perform encryption on org headings with the =crypt= tag.
   (org-crypt-disable-auto-save t))
 #+end_src
 
+** org-fc                                         :personal_management:notes:
+Spaced repetition over headings tagged =:fc:= anywhere under =org-directory=.
+
+=C-c v= opens the transient: =r= reviews, =d= is the dashboard, =i= followed by
+a type initializes the heading at point as a card. Write cards in the compact
+shape — heading is the front, body is the back, no =Back= subheading — which is
+also the shape an Anki export expects.
+
+Chosen over =org-srs= because review history stays OUT of the notes: the
+heading keeps one small =:REVIEW_DATA:= table updated in place, and the
+append-only log goes to a TSV under =user-emacs-directory=. It also has more
+card types (text input, vocab, four cloze flavours). The trade is scheduling:
+=sm2-v2= here is pure elisp and works immediately, whereas its FSRS algorithm
+shells out to =python/algo_fsrs6.py=, which imports the =py_fsrs= git
+submodule that =package-vc= does NOT clone. To switch to FSRS later, fetch the
+submodule in the package checkout first.
+
+Indexing shells out to =gawk= and =find=, which is why it stays fast over a
+large =~/org=.
+
+#+begin_src emacs-lisp
+(use-package org-fc
+  :vc (:url "https://github.com/l3kn/org-fc" :branch "main")
+  :defer t
+  :custom
+  (org-fc-directories (list org-directory))
+  (org-fc-algorithm 'sm2-v2)
+  :config
+  (require 'org-fc-transient)
+  :bind
+  ("C-c v" . org-fc-transient))
+#+end_src
+
 ** org-roam                                       :personal_management:notes:
 # TODO: Figure out why the BibTeX note capture template does not create new lines.
 
@@ -1180,6 +1213,35 @@ Access LLMs within Emacs.
   ("C-c s" . agent-shell-sidebar-toggle)
   (:map agent-shell-mode-map
         ([remap kill-buffer] . agent-shell-sidebar-reset)))
+#+end_src
+
+** ai-code                                                           :coding:
+Transient hub over the agent CLIs, used here only as a front end to the
+=agent-shell= session configured above — it starts, switches and sends, and
+does not manage the process itself.
+
+The workflow it is installed for: write =;; TODO: ...= where the change
+belongs, then =C-c x i= to send it with the enclosing function/region as
+context. =C-c x c= changes code under point, =C-c x q= asks without editing.
+Handled TODOs are toggled to =DONE:= by rerunning the command on the line.
+
+Turn review stays in magit: =magit-diff-range= against the newest
+=refs/agent-checkpoint/claude/*= ref shows what the last turn changed, and
+=magit-reset-worktree= restores from one.
+
+Note it writes prompt history under =.ai.code.files/= at the git root, which
+is globally ignored in =.config/git/ignore=.
+
+#+begin_src emacs-lisp
+(use-package ai-code
+  :init
+  (setq ai-code-auto-test-type nil)
+  :config
+  (ai-code-set-backend 'agent-shell)
+  (with-eval-after-load 'evil (ai-code-backends-infra-evil-setup))
+  (with-eval-after-load 'magit (ai-code-magit-setup-transients))
+  :bind
+  ("C-c x" . ai-code-menu))
 #+end_src
 
 ** tree-sitter                                                       :coding:
