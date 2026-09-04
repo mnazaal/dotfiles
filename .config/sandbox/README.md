@@ -55,7 +55,7 @@ harnesses use the same profile namespace:
 | `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
 | `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
 | `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state |
-| `agent-pi` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
+| `agent-pi` | `~/.config/sandbox/` | `use agent` + pi's own writable state; both harnesses reach the same places, and the difference is a decision rather than a side effect of composition |
 
 ## Coding agents (via renv)
 
@@ -67,13 +67,13 @@ command). Comment that line out to disable. Fails closed: if the wrapper errors,
 the harness never launches unconfined.
 
 ```sh
-renv claude         # launches confined (default backend), no extra steps
+renv claude         # launches confined, no extra steps
 ```
 
-`renv pi` keeps bare `pi` unchanged. It supplies the ASTA MCP key, confines
-Git activity to `pi/*`, and invokes pi with
-`--sandbox danger-full-access --ask-for-approval never`; the outer sandbox is
-therefore the filesystem boundary. Network and MCP access remain enabled.
+`renv pi` keeps bare `pi` unchanged. It supplies the ASTA MCP key and confines
+Git activity to `pi/*`; the outer sandbox is the filesystem boundary. pi's own
+permission extension decides tool calls inside it. Network and MCP access remain
+enabled.
 
 ## One-time setup
 

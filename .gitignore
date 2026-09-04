@@ -60,8 +60,6 @@ __pycache__/
 !.claude/hooks/
 !.claude/skills
 
-
-
 # Standing plan and personal notes — local working documents, deliberately untracked
 PLAN.md
 wip.org

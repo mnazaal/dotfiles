@@ -30,9 +30,12 @@ if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	# on the stable rollout channel, and a proxy that never binds looks like
 	# "Connection refused" in the client, not like a flag error.
 	_hr_log="${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log"
+	# </dev/null matters on the ACP path: that launch is a child of the editor,
+	# whose stdin is the JSON-RPC pipe. A background process holding it open can
+	# consume frames meant for the adapter.
 	nohup headroom proxy --port "$HEADROOM_PORT" --mode "${HEADROOM_MODE:-cache}" \
 		--lossless \
-		>"$_hr_log" 2>&1 &
+		</dev/null >"$_hr_log" 2>&1 &
 	_hr_pid=$!
 	# A proxy that dies during startup — a flag the installed version has moved
 	# behind a rollout channel, a port already taken — is otherwise invisible:

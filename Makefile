@@ -95,8 +95,8 @@ check-guardrails-native-sync:
 # Drift check for the machinery paths the sandbox must pin read-only. Policy
 # lists them in sensitive-paths.json; machinery-ro.profile is what enforces them
 # at launch. A rename in one file and not the other unprotects the path with no
-# symptom: the sandbox silently drops binds whose source is missing, and no test
-# covers 17 of the 21 pins. Only ~/dotfiles entries are checked — the others are
+# symptom: the sandbox silently drops binds whose source is missing, and most
+# pins have no test of their own. Only ~/dotfiles entries are checked — the others are
 # the stow-deployed links, whose targets these pins already cover.
 check-machinery-ro-sync:
 	@set -eu; \

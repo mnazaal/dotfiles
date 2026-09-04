@@ -31,6 +31,14 @@ RO_LAST+=(
 	# vector: agent.profile's blanket RW ~/.local/share shadows dev's read-only
 	# bun bind, leaving the bun bin dir writable AND on PATH. Pin it.
 	"$H/.local/share/bun/bin"
+	# Same shadowing, and the same class of hole: a harness binary living under
+	# the blanket read-write bind. ~/.local/bin/claude resolves into this
+	# directory, so without the pin either agent could rewrite the other's
+	# executable and persist outside the sandbox. agent-claude used to declare it
+	# in the plain read-only pass, which is emitted BEFORE the read-write parent —
+	# protection that read as real and was not. It belongs here, where the pins
+	# are emitted last and actually win.
+	"$H/.local/share/claude"
 )
 
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv
@@ -40,9 +48,8 @@ RO_LAST+=(
 # would only stop tampering — the encrypted store, the keyring and every mail
 # file would stay readable, and a warm gpg-agent socket would still decrypt. An
 # empty tmpfs makes them absent instead, which is what the never-bound stores
-# already get. Lives here, not in agent.profile, because agent.profile is
-# composed by agent-claude alone: a harness that later grows a broad bind must
-# inherit this without a second edit.
+# already get. Lives here rather than in agent.profile so that any harness
+# growing a broad bind inherits it without a second edit.
 MASK+=(
 	"$H/.local/share/gnupg"
 	"$H/.local/share/pass"

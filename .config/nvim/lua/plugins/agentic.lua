@@ -7,7 +7,13 @@ local function options()
     provider = default_provider,
     acp_providers = {
       [default_provider] = {
-        command = "pi-acp",
+        -- Through renv, like every other agent launch: it sets the branch
+        -- prefix the shared git hooks read, resolves secrets, and wraps the
+        -- process in the sandbox profile. Launching the binary directly ran it
+        -- unconfined, and with an empty prefix the hooks read the session as a
+        -- human and would let it commit to main.
+        command = "renv",
+        args = { "pi-acp" },
       },
     },
   }

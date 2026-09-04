@@ -99,6 +99,12 @@ message.
   it there would loosen an agent that cannot recover uncommitted work. Wiring a
   checkpoint for an agent is what earns it this tier; nothing else does.
 
+## Retired harnesses
+
+Removing a harness does not remove its secrets. When one is dropped, delete its
+credential file in the same pass as its config, or keep the path in
+`credentials` until the file is gone — the guard list and the disk have to agree.
+
 ## Native permission layers
 
 Beyond the shared hook, Claude also enforces the credential list at its own

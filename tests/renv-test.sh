@@ -77,6 +77,42 @@ expect pi "$out" "prefix=pi"
 expect pi "$out" "openrouter=test-openrouter-pi"
 expect pi "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi")"
 
+# --- the editor's ACP launcher ------------------------------------------------
+# It sources its CLI sibling for one policy definition, then drops the sibling's
+# --permission-mode: that is a flag of the CLI and not of the adapter, so passing
+# it through would abort the launch. The sandbox wrapper must survive, or the
+# editor path would run unconfined while looking identical.
+# The fixture symlinks $config/renv at the real repository, so these fixtures
+# need a config root of their own — writing them through that symlink would
+# deposit them in the working tree.
+acp_config="$tmp/acp-config"
+mkdir -p "$acp_config/renv"
+cat >"$acp_config/renv/sibling.sh" <<'SIB'
+AGENT_BRANCH_PREFIX="sibling"
+export AGENT_BRANCH_PREFIX
+RENV_WRAP=(sandbox -p agent-pi --)
+RENV_PRE_ARGS=(--permission-mode bypassPermissions)
+SIB
+cat >"$acp_config/renv/sibling-acp.sh" <<'ACP'
+# shellcheck source=/dev/null
+. "${XDG_CONFIG_HOME:-$HOME/.config}/renv/sibling.sh"
+unset RENV_PRE_ARGS
+ACP
+printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/sibling-acp"
+chmod +x "$bin/sibling-acp"
+
+rm -f "$capture"
+env -u XDG_CACHE_HOME HOME="$home" PATH="$bin:$PATH" XDG_CONFIG_HOME="$acp_config" \
+	RENV_CAPTURE="$capture" "$repo/.local/scripts/renv" sibling-acp --version
+out=$(cat "$capture")
+expect acp "$out" "prefix=sibling"
+expect acp "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/sibling-acp")"
+case "$out" in *--permission-mode*)
+	printf 'renv acp: the CLI-only --permission-mode reached the adapter\n' >&2
+	exit 1
+	;;
+esac
+
 # --- fail closed when the wrapper itself is missing --------------------------
 # Without this, a PATH without `sandbox` would run the harness unconfined.
 # A PATH that keeps bun (the policy checker needs it) but drops the real
