@@ -20,6 +20,9 @@ mkdir -p \
 	"$home/.config/codex" "$home/.config/opencode" "$home/.config/pi" \
 	"$home/.config/pi/agent/sessions" "$home/.config/pi/agent/npm" \
 	"$home/.local/share/opencode" \
+	"$home/.local/share/gnupg" "$home/.local/share/pass" \
+	"$home/.local/share/password-store" "$home/.local/share/keyrings" \
+	"$home/.local/share/mail" "$home/.local/share/zsh" \
 	"$home/.local/state/codex" "$home/.local/state/headroom" \
 	"$home/.local/state/nvim" "$home/.local/state/opencode" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
@@ -254,3 +257,27 @@ case "$missing_report" in
 esac
 
 chmod u+w "$ro_pin"
+
+# Host credential/mail stores are masked with an empty tmpfs so they are ABSENT,
+# not merely unwritable. The masks live in machinery-ro, which EVERY agent-*
+# profile composes, so assert all four rather than just the one profile whose
+# blanket ~/.local/share bind exposes them today — a harness that later grows a
+# broad bind must inherit the protection without a second edit.
+for profile in agent-claude agent-codex agent-opencode agent-pi; do
+	output=$(run "$project" -p "$profile")
+	assert_mounts "$profile masks credential and mail stores" "$output" \
+		"--tmpfs $home/.local/share/gnupg:ro" \
+		"--tmpfs $home/.local/share/pass:ro" \
+		"--tmpfs $home/.local/share/password-store:ro" \
+		"--tmpfs $home/.local/share/keyrings:ro" \
+		"--tmpfs $home/.local/share/mail:ro" \
+		"--tmpfs $home/.local/share/zsh:ro"
+done
+
+# The masks must shadow a bind that is still there: if the blanket read-write
+# bind were narrowed away instead, these assertions would pass for the wrong
+# reason and stop testing the mask at all.
+output=$(run "$project" -p agent-claude)
+assert_mounts 'agent-claude still binds ~/.local/share read-write' "$output" \
+	"$home/.local/share:$home/.local/share "
+printf 'sandbox profiles: credential and mail masks pass\n'

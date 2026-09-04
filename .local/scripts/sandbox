@@ -32,6 +32,8 @@ OPTIONS
                             a profile may `use OTHER` to compose.
       --rw DIR              add a read-write bind        (repeatable)
       --ro DIR              add a read-only  bind        (repeatable)
+      --mask DIR            shadow DIR with an empty tmpfs, so a path nested
+                            inside a broader --rw bind is absent (repeatable)
       --backend NAME        gvisor | podman (default); or $SANDBOX_BACKEND
       --no-net              unshare the network (shared by default)
   -n, --dry-run             print the backend command instead of running it
@@ -129,6 +131,11 @@ run_podman() {
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
 	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
+	# Shadow a path a broader RW bind above would otherwise expose, with an empty
+	# read-only tmpfs. Unlike RO_LAST, which leaves the real contents readable, a
+	# mask makes the path ABSENT — the treatment the credential stores already get
+	# by never being bound at all. Emitted after every -v so the mask lands on top.
+	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--tmpfs "$d:ro,nosuid,nodev,mode=0000"); fi; done
 
 	# Fail closed: assert every pin is genuinely read-only INSIDE the container
 	# before the sandboxed command gets control. Emitting the -v above is a
@@ -178,7 +185,7 @@ exec "$@"'
 # writable one stays read-only. Plain RO is emitted first, where an overlapping
 # RW bind wins — which is why the read-only $H/.agents bind does not protect
 # its stow targets under the writable $H/dotfiles bind.
-declare -a RW=() RO=() RW_FILES=() RO_LAST=()
+declare -a RW=() RO=() RW_FILES=() RO_LAST=() MASK=()
 # Only these non-secret host variables cross the sandbox boundary by default.
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
@@ -205,6 +212,10 @@ while [ $# -gt 0 ]; do
 		;;
 	--ro)
 		RO+=("$2")
+		shift 2
+		;;
+	--mask)
+		MASK+=("$2")
 		shift 2
 		;;
 	--backend)
@@ -270,6 +281,19 @@ if [ "$VERIFY_PINS" -eq 1 ]; then
 			pin_status=1
 		fi
 	done
+	# Ask the kernel whether each mask is a mount point. An empty listing proves
+	# nothing here: mode=0000 makes a masked directory unreadable, so `ls` returns
+	# nothing whether the tmpfs applied or not, and inferring success from that is
+	# the fail-open this check exists to remove.
+	mask_ok=0
+	for d in "${MASK[@]}"; do
+		if awk -v p="$d" '$5 == p { found = 1 } END { exit !found }' /proc/self/mountinfo; then
+			mask_ok=$((mask_ok + 1))
+		else
+			printf 'sandbox: mask NOT APPLIED, so the real contents are exposed: %s\n' "$d" >&2
+			pin_status=1
+		fi
+	done
 	if [ "${#RO_LAST[@]}" -eq 0 ]; then
 		printf 'sandbox: no machinery pins declared — the profile did not compose\n' >&2
 		exit 1
@@ -282,6 +306,7 @@ if [ "$VERIFY_PINS" -eq 1 ]; then
 		# writable distinguishes the two.
 		printf 'sandbox: %d of %d machinery pins present and not writable\n' \
 			"$pin_checked" "${#RO_LAST[@]}"
+		printf 'sandbox: %d of %d secret masks applied\n' "$mask_ok" "${#MASK[@]}"
 	else
 		# Different causes, different remedies. A writable pin means its bind was
 		# orphaned by the file being replaced, which a relaunch fixes. A missing
@@ -309,7 +334,7 @@ is_home_or_ancestor() {
 
 # Reject binds that would re-expose all of $HOME or /, including ancestors of
 # $HOME such as /home. Such a bind defeats the allowlist just as completely.
-for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}"; do
+for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}" "${MASK[@]}"; do
 	rd=$(readlink -f "$d" 2>/dev/null || printf '%s' "$d")
 	if [ "$rd" = "/" ] || is_home_or_ancestor "$rd"; then
 		die "refusing to bind '$d' — it re-exposes all of \$HOME or /"
@@ -331,13 +356,15 @@ fi
 # RO — the current project / explicit --rw stays writable.
 _rp() { readlink -f "$1" 2>/dev/null || printf '%s' "$1"; }
 declare -A _seen=()
-dedupe() { # $1 = array name; drop entries whose realpath already appeared
+declare -A _seen_mask=()
+dedupe() { # $1 = array name, $2 = seen-map name; drop repeated realpaths
 	local -n _a=$1
+	local -n _s=${2:-_seen}
 	local out=() x k
 	for x in "${_a[@]}"; do
 		k=$(_rp "$x")
-		[ -z "${_seen[$k]:-}" ] || continue
-		_seen[$k]=1
+		[ -z "${_s[$k]:-}" ] || continue
+		_s[$k]=1
 		out+=("$x")
 	done
 	_a=("${out[@]}")
@@ -346,6 +373,7 @@ dedupe RW
 dedupe RW_FILES
 dedupe RO
 dedupe RO_LAST
+dedupe MASK _seen_mask
 
 # Profiles are trusted shell snippets, but environment names still need to be
 # valid before indirect expansion below.
