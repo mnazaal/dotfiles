@@ -46,7 +46,7 @@ Sensible defaults.
   (scroll-bar-mode nil)
   (blink-cursor-mode nil)
   (read-file-name-completion-ignore-case t)
-(use-package-compute-statistics t)
+  (use-package-compute-statistics t)
   (column-number-mode nil)
   (large-file-warning-threshold (* 64 1024 1024)) ;; 64 MB
   (read-process-output-max (* 1 1024 1024)) ;; 1 MB
@@ -1212,6 +1212,35 @@ Note that the tree-sitter ABI version used by emacs should match that of the sys
   :custom
   (treesit-auto-install nil)
   :hook (after-init . global-treesit-auto-mode))
+#+end_src
+
+** treesit-fold                                               :visual:coding:
+#TODO Does not work
+
+#+begin_src emacs-lisp
+(use-package treesit-fold
+  :vc (:url "https://github.com/emacs-tree-sitter/treesit-fold" :branch "master"))
+#+end_src
+
+
+** kirigami                                                          :visual:
+#TODO Does not work
+
+#+begin_src emacs-lisp
+(use-package kirigami
+  :custom
+  (kirigami-show-menu-bar t)
+  (kirigami-show-context-menu t)
+  :config
+  (with-eval-after-load 'evil
+    (define-key evil-normal-state-map "zo" 'kirigami-open-fold)
+    (define-key evil-normal-state-map "zO" 'kirigami-open-fold-rec)
+    (define-key evil-normal-state-map "zc" 'kirigami-close-fold)
+    (define-key evil-normal-state-map "za" 'kirigami-toggle-fold)
+    (define-key evil-normal-state-map "zr" 'kirigami-open-folds)
+    (define-key evil-normal-state-map "zm" 'kirigami-close-folds))
+  :init
+  (kirigami-global-mode 1))
 #+end_src
 
 ** python                                                     :coding:python:
