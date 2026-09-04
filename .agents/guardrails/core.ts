@@ -20,6 +20,26 @@ import { homedir } from "node:os";
 
 const HOME = homedir();
 
+/**
+ * Is this process inside the container sandbox? Machinery is unwritable at the
+ * kernel there -- machinery-ro pins every path read-only and `sandbox
+ * --verify-pins` re-checks that on every user prompt -- so denying it in bash
+ * blocks the reads sensitive-paths.json explicitly allows ("blocked for
+ * write/bash but allowed for normal read tools") while adding no protection.
+ * The workaround it drives, splitting a path across string concatenation,
+ * defeats the rule outright, so the rule mostly filters honest calls. Outside
+ * the sandbox there is no such boundary and the rule stands.
+ *
+ * Deliberately not an environment variable: an agent can set one of those, and
+ * this would become the confinement-tampering hole the guard exists to close.
+ * Callers pass `inSandbox` explicitly; only tests do.
+ */
+function detectSandbox(): boolean {
+  return existsSync("/run/.containerenv") || existsSync("/.dockerenv");
+}
+
+export type GuardOptions = { inSandbox?: boolean };
+
 export type Decision = { decision: "deny" | "ask" | "allow"; reason?: string };
 export type Operation = "read" | "write" | "bash" | "fetch" | "unknown";
 export type ToolEvent = {
@@ -297,7 +317,7 @@ function hasProtectedSegment(path: string, operation: Operation = "unknown"): bo
 
 // --- guard factory ----------------------------------------------------------
 
-export function createGuard(agent: string) {
+export function createGuard(agent: string, opts: GuardOptions = {}) {
   const sp = loadJson("sensitive-paths.json");
   const dc = loadJson("dangerous-commands.json");
 
@@ -307,6 +327,9 @@ export function createGuard(agent: string) {
   // malformed setting must not read as an unprotected default.
   const machinery: string[] = perAgent(sp.machinery_enabled, agent) !== false ? [...(sp.machinery ?? [])] : [];
   const segments = new Set<string>(sp.sensitive_segments ?? []);
+  // Bash-only relaxation. Typed write/edit tool calls still consult `machinery`
+  // in every mode, and credentials are never relaxed in any mode.
+  const bashMachinery: string[] = (opts.inSandbox ?? detectSandbox()) ? [] : machinery;
 
   const ESCALATORS = new Set<string>(dc.escalators ?? []);
   const DESTRUCTIVE = new Set<string>(dc.destructive ?? []);
@@ -324,7 +347,7 @@ export function createGuard(agent: string) {
   }
 
   // path guard ---------------------------------------------------------------
-  function blocked(path: string, operation: Operation = "unknown"): string | undefined {
+  function blocked(path: string, operation: Operation = "unknown", machineryList: string[] = machinery): string | undefined {
     for (const s of credentials) {
       const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
       if (path === r || path.startsWith(r + "/")) return s;
@@ -335,7 +358,7 @@ export function createGuard(agent: string) {
       for (const g of protectedWriteGlobs) {
         if (globMatch(g, normalized)) return `protected write glob (${g})`;
       }
-      for (const s of machinery) {
+      for (const s of machineryList) {
         const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
         if (path === r || path.startsWith(r + "/")) return s;
       }
@@ -344,7 +367,7 @@ export function createGuard(agent: string) {
 
   function blockedCommand(command: string, cwd: string): string | undefined {
     const norm = command.replaceAll("${HOME}", HOME).replaceAll("$HOME", HOME).replaceAll("~/", `${HOME}/`);
-    for (const s of [...credentials, ...machinery]) {
+    for (const s of [...credentials, ...bashMachinery]) {
       const abs = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
       if (norm.includes(s) || norm.includes(abs)) return s;
     }
@@ -363,7 +386,7 @@ export function createGuard(agent: string) {
       if (tok.startsWith("-") || tok.includes("=")) continue;
       if (searching && i > 0 && PATTERN_FLAGS.has(tokens[i - 1])) continue;
       for (const comp of tok.replace(/\\/g, "/").split("/")) if (segments.has(comp)) return comp;
-      const r = blocked(resolveAny(tok, cwd), "bash");
+      const r = blocked(resolveAny(tok, cwd), "bash", bashMachinery);
       if (r) return r;
     }
   }
@@ -738,8 +761,8 @@ export function toolEventFromInput(tool: string | undefined, input: Record<strin
   return event;
 }
 
-export function createGuardrails(agent: string) {
-  const guard = createGuard(agent);
+export function createGuardrails(agent: string, opts: GuardOptions = {}) {
+  const guard = createGuard(agent, opts);
   const skillGate = createSkillGate();
 
   function missingSkillReason(skills: string[], messages: string[]): string {

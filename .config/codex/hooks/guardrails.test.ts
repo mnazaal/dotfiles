@@ -244,3 +244,33 @@ test("secret-bearing project files require dev-security", () => {
     expect(rails.evaluate({ tool: "write", paths: [path], cwd }).skills).toEqual(["dev-security"]);
   }
 });
+
+// Machinery in a BASH command relaxes inside the sandbox only, where
+// machinery-ro pins the same paths read-only at the kernel and
+// `sandbox --verify-pins` re-checks that every prompt. `inSandbox` is passed
+// explicitly so this pins behaviour rather than wherever the suite happens to
+// run; nothing reads an environment variable for it, because an agent can set
+// one of those.
+test("machinery is denied in bash outside the sandbox, allowed inside", () => {
+  const path = "~/dotfiles/.agents/guardrails/core.ts";
+  const outside = createGuardrails("claude", { inSandbox: false });
+  const inside = createGuardrails("claude", { inSandbox: true });
+
+  expect(outside.evaluate({ tool: "bash", command: `cat ${path}`, cwd }).decision).toBe("deny");
+  expect(inside.evaluate({ tool: "bash", command: `cat ${path}`, cwd }).decision).toBe("allow");
+
+  // The relaxation is bash-only: a typed write to machinery stays denied in
+  // both modes, which is what actually protects the enforcement stack.
+  for (const rails of [outside, inside]) {
+    expect(rails.evaluate({ tool: "write", paths: [path], cwd }).decision).toBe("deny");
+  }
+});
+
+test("credentials are never relaxed by the sandbox check", () => {
+  const secret = "~/.local/share/pass/aalto.gpg";
+  for (const inSandbox of [true, false]) {
+    const rails = createGuardrails("claude", { inSandbox });
+    expect(rails.evaluate({ tool: "bash", command: `cat ${secret}`, cwd }).decision).toBe("deny");
+    expect(rails.evaluate({ tool: "read", paths: [secret], cwd }).decision).toBe("deny");
+  }
+});
