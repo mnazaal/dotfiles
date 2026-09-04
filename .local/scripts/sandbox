@@ -135,7 +135,17 @@ run_podman() {
 	# read-only tmpfs. Unlike RO_LAST, which leaves the real contents readable, a
 	# mask makes the path ABSENT — the treatment the credential stores already get
 	# by never being bound at all. Emitted after every -v so the mask lands on top.
-	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--tmpfs "$d:ro,nosuid,nodev,mode=0000"); fi; done
+	#
+	# notmpcopyup is load-bearing, not tuning. Podman turns tmpcopyup ON by default
+	# for --tmpfs, so the shadowed directory is COPIED into the tmpfs: the mask
+	# becomes a RAM-backed replica of the store it exists to hide, and container
+	# creation blocks until the copy finishes. Measured on this host: the masked
+	# maildir is 12 GB / 122k files, the copy ran past podman's 240s creation
+	# timeout, and EVERY launch died with "container creation timeout: internal
+	# libpod error" — with crun still copying into RAM after podman gave up, since
+	# the timeout abandons the copier rather than killing it. Drop the option and
+	# both defects return.
+	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--tmpfs "$d:ro,nosuid,nodev,mode=0000,notmpcopyup"); fi; done
 
 	# Fail closed: assert every pin is genuinely read-only INSIDE the container
 	# before the sandboxed command gets control. Emitting the -v above is a

@@ -280,15 +280,20 @@ chmod u+w "$ro_pin"
 # profile composes, so assert all four rather than just the one profile whose
 # blanket ~/.local/share bind exposes them today — a harness that later grows a
 # broad bind must inherit the protection without a second edit.
+# The option separators arrive backslash-escaped: --dry-run prints every argv
+# token through printf %q. Assert notmpcopyup, not merely the path: podman defaults
+# tmpcopyup ON, which copies the shadowed store into the tmpfs and turns the
+# mask into a RAM replica that also stalls container creation past podman's
+# 240s timeout. A path-only assertion passes in exactly that broken state.
 for profile in agent-claude agent-codex agent-opencode agent-pi; do
 	output=$(run "$project" -p "$profile")
 	assert_mounts "$profile masks credential and mail stores" "$output" \
-		"--tmpfs $home/.local/share/gnupg:ro" \
-		"--tmpfs $home/.local/share/pass:ro" \
-		"--tmpfs $home/.local/share/password-store:ro" \
-		"--tmpfs $home/.local/share/keyrings:ro" \
-		"--tmpfs $home/.local/share/mail:ro" \
-		"--tmpfs $home/.local/share/zsh:ro"
+		"--tmpfs $home/.local/share/gnupg:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+		"--tmpfs $home/.local/share/pass:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+		"--tmpfs $home/.local/share/password-store:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+		"--tmpfs $home/.local/share/keyrings:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+		"--tmpfs $home/.local/share/mail:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+		"--tmpfs $home/.local/share/zsh:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup"
 done
 
 # The masks must shadow a bind that is still there: if the blanket read-write
