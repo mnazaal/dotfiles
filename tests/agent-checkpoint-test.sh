@@ -179,11 +179,32 @@ printf 'SECOND\n' >"$r/tracked.txt"
 run_in "$r" || fail "non-zero exit on second same-second snapshot"
 [ "$(refs_of "$r" | wc -l)" -eq 2 ] ||
 	fail "two snapshots in one second collapsed into one ref (timestamp collision)"
-# Both states must be recoverable, and the newest ref by name must be the newest
-# snapshot — the ordering every reader of these refs depends on.
-newest=$(refs_of "$r" | sort | tail -1)
+# Do not trust the two runs to have landed in the same wall-clock second — that
+# would pass by accident whenever they straddle a boundary. Assert the property
+# that makes a collision impossible instead: nanosecond names, fixed width.
+for n in $(refs_of "$r" | sed 's|.*/||'); do
+	case $n in
+	*[!0-9]*) fail "checkpoint ref name is not numeric: $n" ;;
+	esac
+	[ "${#n}" -eq 19 ] ||
+		fail "checkpoint ref name is ${#n} digits, expected 19 (seconds+nanoseconds): $n"
+done
+# The newest ref by the script's OWN selector must be the newest snapshot: this
+# is the ordering the dedup guard and every reader depend on.
+newest=$(git -C "$r" for-each-ref --sort=-refname --count=1 \
+	--format='%(objectname)' 'refs/agent-checkpoint/claude/')
 [ "$(git -C "$r" show "$newest:tracked.txt")" = "SECOND" ] ||
-	fail "the newest ref by name is not the newest snapshot"
+	fail "for-each-ref --sort=-refname did not return the newest snapshot"
+
+# A second-resolution name left over from before the nanosecond change must
+# still lose to a nanosecond one, or the first checkpoint after the upgrade
+# would dedup against a stale ref.
+git -C "$r" update-ref "refs/agent-checkpoint/claude/1700000000" "$newest"
+newest_after=$(git -C "$r" for-each-ref --sort=-refname --count=1 \
+	--format='%(refname)' 'refs/agent-checkpoint/claude/')
+case $newest_after in
+*/1700000000) fail "a legacy second-resolution ref outranked a nanosecond one" ;;
+esac
 
 # --- 13. An unchanged tree does not create a second ref ----------------------
 # Measured on the real repo before this guard: 241 refs over 114 distinct trees.

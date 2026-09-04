@@ -70,9 +70,10 @@ sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT
 # earlier. %N is zero-padded to a fixed 9 digits, so refs keep sorting
 # lexicographically in chronological order — including against the shorter
 # second-resolution names written before this change.
-git update-ref \
-	"refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}/$(date +%s%N)" \
-	"$sha" 2>/dev/null || warn "could not update the checkpoint ref"
+git update-ref "$prefix/$(date +%s%N)" "$sha" 2>/dev/null ||
+	# The commit object IS written at this point; only the ref failed. It is
+	# dangling, so name it — `git fsck --lost-found` finds it until gc runs.
+	warn "could not update the checkpoint ref; snapshot is dangling at $sha"
 
 printf 'checkpoint %s\n' "$sha"
 exit 0
