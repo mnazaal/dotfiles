@@ -7,9 +7,6 @@
 # secrets, same sandbox profile, defined once.
 #
 # The adapter speaks JSON-RPC over stdio; keep anything added here on stderr.
-#
-# Opencode needs no equivalent file: its ACP mode is a subcommand of the same
-# binary, so `renv opencode acp` already loads opencode.sh unchanged.
 # shellcheck source=/dev/null
 . "${XDG_CONFIG_HOME:-$HOME/.config}/renv/pi.sh"
 

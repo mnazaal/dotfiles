@@ -9,7 +9,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ROLES = "build docs-verify eval-review idea-critic writer-critic".split()
 PLATFORMS = {
     "claude": (ROOT / ".claude/agents", ROLES),
-    "opencode": (ROOT / ".config/opencode/agents", ROLES),
     # pi's agents/ is a subagent roster only; `build` is the one primary-mode role.
     "pi": (ROOT / ".config/pi/agent/agents", [role for role in ROLES if role not in {"build"}]),
 }

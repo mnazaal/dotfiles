@@ -4,7 +4,6 @@ set -euo pipefail
 ERROR_PREFIX="GIT PRE-PUSH HOOK ERROR:"
 
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
-[[ -z "$PREFIX" && "${OPENCODE:-0}" == "1" ]] && PREFIX="opencode"
 [[ -n "$PREFIX" ]] || exit 0
 is_zero() { [[ "$1" =~ ^0+$ ]]; }
 

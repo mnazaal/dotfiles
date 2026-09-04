@@ -2,10 +2,8 @@
  * Guardrail core — the single implementation of the agent bash/path guards.
  *
  * Consumed at runtime by all agent harnesses:
- *   - Claude  : .claude/hooks/guardrails.ts          (bun CLI PreToolUse hook)
- *   - Codex   : .config/codex/hooks/guardrails.ts    (bun CLI hooks)
- *   - pi      : .config/pi/agent/extensions/guardrails.ts
- *   - opencode: .config/opencode/plugins/guardrails.ts
+ *   - Claude : .claude/hooks/guardrails.ts          (bun CLI PreToolUse hook)
+ *   - pi     : .config/pi/agent/extensions/guardrails.ts
  *
  * Data lives in sibling JSON files (sensitive-paths.json, dangerous-commands.json);
  * this file owns the LOGIC. No third-party deps — only node/bun builtins — so it
@@ -669,7 +667,7 @@ export function createSkillGate() {
       capabilities.add("academic-source");
     }
     // Delegation is a tool call, not a command or a path, so it is keyed on the
-    // tool name: Task/Agent (Claude), task (opencode), pi's subagents package.
+    // tool name: Task/Agent (Claude), pi's subagents package.
     // Exact names rather than tokens -- a tool called TaskOutput must not trip it.
     if (["task", "agent", "subagent", "delegate"].includes((input.tool ?? "").toLowerCase()) || toolTokens.includes("subagent")) {
       capabilities.add("subagent-spawn");
@@ -768,9 +766,6 @@ export function createGuardrails(agent: string, opts: GuardOptions = {}) {
   function missingSkillReason(skills: string[], messages: string[]): string {
     const listed = skills.join(", ");
     const event = [...new Set(messages)].join("; ");
-    if (agent === "codex") {
-      return `skill gate: ${event}. Read ~/.agents/skills/<name>/SKILL.md for the required skill(s): ${listed}, then retry.`;
-    }
     return `skill gate: ${event}. Load required skill(s): ${listed}, then retry.`;
   }
 
@@ -802,12 +797,12 @@ export function createGuardrails(agent: string, opts: GuardOptions = {}) {
 }
 
 /** Canonical skill-file path — the only pattern that yields a load receipt. */
-const SKILL_FILE_RE = /(?:^|\/)(?:\.agents|\.claude|\.opencode|\.config\/(?:codex|opencode))\/skills\/([a-z0-9][a-z0-9-]*)\/SKILL\.md$/i;
+const SKILL_FILE_RE = /(?:^|\/)(?:\.agents|\.claude)\/skills\/([a-z0-9][a-z0-9-]*)\/SKILL\.md$/i;
 
 /**
  * Return skill-load receipts from a concrete native Skill call, a read of a
  * canonical configured skill path, or a shell command that references one
- * (bash-only harnesses such as Codex load skills via shell reads; mirroring
+ * (a bash-only harness loads skills via shell reads; mirroring
  * blockedCommand, a mention of the canonical path is the evidence — gates are
  * workflow nudges, not a security boundary). It deliberately ignores arbitrary
  * prose/payload strings that merely name a skill.
@@ -839,10 +834,10 @@ export function skillReceipts(tool: string | undefined, input: Record<string, un
 
 /**
  * Per-session skill-receipt store, at $XDG_STATE_HOME/<agent>/guardrails/<id>.json.
- * Hook processes are short-lived — Codex spawns a fresh one per tool call — so
- * receipts only survive through this file. The adapter derives `id` (a hash of
- * the transcript path for Claude, the session id for Codex); `undefined` means
- * the host offered nothing to key on, and then nothing is persisted.
+ * Hook processes are short-lived — one per tool call — so receipts only survive
+ * through this file. The adapter derives `id` (a hash of the transcript path
+ * for Claude); `undefined` means the host offered nothing to key on, and then
+ * nothing is persisted.
  */
 export function skillStateStore(agent: string, id: string | undefined) {
   const root = process.env.XDG_STATE_HOME ?? resolve(HOME, ".local/state");

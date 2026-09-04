@@ -48,7 +48,6 @@ __pycache__/
 .pytest_cache/
 
 # Local agent/tool state
-.opencode/
 .kiro/
 
 # Claude Code: track the curated config, ignore runtime/state and local overrides
@@ -61,8 +60,6 @@ __pycache__/
 !.claude/hooks/
 !.claude/skills
 
-# Machine-local render of .config/codex/config.toml.template
-.config/codex/config.toml
 
 
 # Standing plan and personal notes — local working documents, deliberately untracked

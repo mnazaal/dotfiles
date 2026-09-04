@@ -1,8 +1,13 @@
 {
-  "_comment": "Command-name sets for the bash guard. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude, Codex, pi, and opencode via their adapters. Data only — the logic lives in core.ts. See README.md. Add a dangerous command here once; all agents pick it up.",
-
-  "escalators": ["sudo", "doas", "pkexec", "su", "run0", "machinectl"],
-
+  "_comment": "Command-name sets for the bash guard. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts), used by Claude and pi via their adapters. Data only \u2014 the logic lives in core.ts. See README.md. Add a dangerous command here once; all agents pick it up.",
+  "escalators": [
+    "sudo",
+    "doas",
+    "pkexec",
+    "su",
+    "run0",
+    "machinectl"
+  ],
   "destructive": [
     "mkfs",
     "mkfs.ext2",
@@ -24,7 +29,6 @@
     "vgcreate",
     "lvcreate"
   ],
-
   "command_wrappers": [
     "command",
     "builtin",
@@ -37,9 +41,13 @@
     "xargs",
     "timeout"
   ],
-
-  "shell_runners": ["sh", "bash", "zsh", "dash", "ksh"],
-
+  "shell_runners": [
+    "sh",
+    "bash",
+    "zsh",
+    "dash",
+    "ksh"
+  ],
   "find_exec_primaries": [
     "-exec",
     "-execdir",
@@ -48,22 +56,22 @@
     "-ok",
     "-okdir"
   ],
-
   "git_ref_write_subcmds": [
     "update-ref",
     "symbolic-ref",
     "fast-import",
     "replace"
   ],
-
-  "git_global_value_opts": ["-C", "--git-dir", "--work-tree", "--namespace"],
-
+  "git_global_value_opts": [
+    "-C",
+    "--git-dir",
+    "--work-tree",
+    "--namespace"
+  ],
   "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
   "find_policy": {
     "claude": "off",
-    "codex": "off",
-    "pi": "exec",
-    "opencode": "exec"
+    "pi": "exec"
   },
   "_severity": "Per-category decision for command rules. A string applies to every agent; an object keys by agent like find_policy. An unlisted category resolves to 'ask', so this is fail-safe.",
   "severity": {
@@ -74,15 +82,11 @@
     "recursive-force-rm-toplevel": "deny",
     "world-writable": {
       "claude": "allow",
-      "codex": "allow",
-      "pi": "ask",
-      "opencode": "ask"
+      "pi": "ask"
     },
     "recursive-force-rm": {
       "claude": "allow",
-      "codex": "allow",
-      "pi": "ask",
-      "opencode": "ask"
+      "pi": "ask"
     }
   }
 }

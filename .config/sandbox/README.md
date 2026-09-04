@@ -61,11 +61,11 @@ harnesses use the same profile namespace:
 | `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
 | `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
 | `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state |
-| `agent-codex` / `agent-opencode` / `agent-pi` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
+| `agent-pi` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + shared policy (ro) + that harness's own state; deliberately not `agent` — they get only their own control plane, not every `$HOME` config |
 
 ## Coding agents (via renv)
 
-The harness env files (`~/.config/renv/{claude,codex,opencode,pi}.sh`) own the sandbox
+The harness env files (`~/.config/renv/{claude,pi}.sh`) own the sandbox
 decision — `renv` knows nothing about it. They set
 `RENV_WRAP=(sandbox -p agent-<cmd> --)`; `renv` then runs the harness under that
 wrapper (a generic feature — an env file may set `RENV_WRAP` to any prefix
@@ -74,15 +74,12 @@ the harness never launches unconfined.
 
 ```sh
 renv claude         # launches confined (default backend), no extra steps
-renv codex          # confined Codex; outer sandbox is authoritative
 ```
 
-`renv codex` keeps bare `codex` unchanged. It supplies Codex's existing ASTA
-MCP key, confines Git activity to `codex/*`, and invokes Codex with
+`renv pi` keeps bare `pi` unchanged. It supplies the ASTA MCP key, confines
+Git activity to `pi/*`, and invokes pi with
 `--sandbox danger-full-access --ask-for-approval never`; the outer sandbox is
 therefore the filesystem boundary. Network and MCP access remain enabled.
-Copy `~/.config/codex/config.toml.template` to the ignored local
-`~/.config/codex/config.toml` before first use.
 
 ## One-time setup
 
@@ -98,9 +95,9 @@ Copy `~/.config/codex/config.toml.template` to the ignored local
 - Environment: only the `SANDBOX_ENV` allowlist crosses the boundary (a small
   base set plus what the profile appends; pinned by `tests/sandbox-env-test.sh`).
   Allowlisted secrets resolved by `renv` (API keys) do ride along by design.
-- Codex must see its login state to authenticate. Its `auth.json` is mounted
-  read-only and blocked by the in-process guardrail, but is not a secret
-  boundary against the Codex process itself.
+- An agent must see its own login state to authenticate, so its credential
+  file is mounted read-only and blocked by the in-process guardrail. That is
+  not a secret boundary against the agent process itself.
 - No resource caps by default (a too-tight `--memory`/`--pids-limit` would kill an
   interactive agent mid-task; add them only for unattended runs).
 - `~/.ssh` / `pass` are absent inside, so `git push` over SSH and `pass` reads

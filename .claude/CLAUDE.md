@@ -4,8 +4,7 @@
 
 ## Claude Code specifics
 
-The shared rules above are written tool-agnostically (for the opencode/pi
-agents). Map their tool names onto Claude Code as follows:
+The shared rules above are written tool-agnostically (for the pi agent). Map their tool names onto Claude Code as follows:
 
 - **Code search** — use the native `Grep`/`Glob` tools, and the `Explore`
   subagent for broad fan-out searches. Avoid raw `rg`/`grep`/`find` via `Bash`
@@ -20,7 +19,7 @@ agents). Map their tool names onto Claude Code as follows:
 - **Papers** — use the configured academic-paper verification tool before citing
   a paper; never cite an unverified paper.
 - **Subagents** — delegate via the `Task` tool. The agents in `~/.claude/agents/`
-  are the equivalent of the opencode/pi subagents.
+  are the equivalent of pi's subagents.
 - **Python tests** — run `pytest` / `pytest <path>` only. Never `python -m
   pytest`, `.venv/bin/python -m pytest`, or `uv run pytest`. Use `uv` for
   environment/dependency management only.

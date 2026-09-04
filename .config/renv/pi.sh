@@ -3,7 +3,7 @@
 # Loaded by renv before running `pi`
 
 # Confine this agent's git history to pi/* branches (enforced by the shared
-# git hooks in ~/.config/git/hooks). Mirrors opencode's OPENCODE=1 convention.
+# git hooks in ~/.config/git/hooks).
 AGENT_BRANCH_PREFIX="pi"
 RENV_REQUIRE_GUARDRAILS=1
 

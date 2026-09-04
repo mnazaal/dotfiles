@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Skill receipts must survive across hook processes, at an exact path and JSON
-# shape, for both harnesses that persist them. Claude keys by sha256 of the
-# transcript path, Codex by the raw session id; Codex is a fresh process per
-# tool call, so without persistence no gate would ever see a receipt.
+# shape. Claude keys by sha256 of the transcript path and spawns a fresh hook
+# process per tool call, so without persistence no gate would ever see a
+# receipt.
 #
 # The failure this guards is silent and stricter, not looser: receipts that stop
 # persisting do not open the guards, they turn every skill gate into a deny
@@ -15,7 +15,6 @@ trap 'rm -rf "$tmp"' EXIT
 
 state="$tmp/state"
 transcript="$tmp/session.jsonl"
-session="test-session-1234"
 
 emit() { # harness-hook payload...
 	printf '%s\n' "$2" | XDG_STATE_HOME="$state" bun "$repo/$1" >/dev/null
@@ -57,21 +56,5 @@ grep -q '"dev-viz"' "$claude_file" && {
 # No transcript path means no persistence, and must not crash the hook.
 emit ".claude/hooks/guardrails.ts" \
 	"$(printf '{"tool_name":"Skill","tool_input":{"name":"dev-git"},"cwd":"%s"}' "$repo")"
-
-# --- codex: keyed by the raw session id --------------------------------------
-emit ".config/codex/hooks/guardrails.ts" \
-	"$(printf '{"session_id":"%s","hook_event_name":"PreToolUse","tool_name":"Skill","tool_input":{"name":"dev-git"},"cwd":"%s"}' "$session" "$repo")"
-
-codex_file="$state/codex/guardrails/$session.json"
-[ -f "$codex_file" ] || {
-	printf 'codex: no receipt at the session-keyed path %s\n' "$codex_file" >&2
-	exit 1
-}
-has_skill "$codex_file" dev-git codex
-
-emit ".config/codex/hooks/guardrails.ts" \
-	"$(printf '{"session_id":"%s","hook_event_name":"PreToolUse","tool_name":"Skill","tool_input":{"name":"dev-hpc"},"cwd":"%s"}' "$session" "$repo")"
-has_skill "$codex_file" dev-git "codex after second call"
-has_skill "$codex_file" dev-hpc "codex after second call"
 
 printf 'guardrails skill state: all behaviors pass\n'

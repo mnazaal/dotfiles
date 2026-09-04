@@ -1,13 +1,13 @@
 local M = {}
 
-local default_provider = "opencode-acp"
+local default_provider = "pi-acp"
 
 local function options()
   return {
     provider = default_provider,
     acp_providers = {
       [default_provider] = {
-        command = "opencode",
+        command = "pi-acp",
       },
     },
   }

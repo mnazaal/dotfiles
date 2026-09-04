@@ -23,10 +23,9 @@ import { createGuardrails } from "../.agents/guardrails/core.ts";
 const cwd = "/tmp/project";
 
 // Severity comes from shared data — the adapters differ only in how they
-// RENDER a decision (codex denies on any non-allow, opencode throws). Rows may
-// declare a deliberate per-agent split; anything off-table failing for one
-// agent but not another means the data has drifted.
-const AGENTS = ["claude", "codex", "pi", "opencode"] as const;
+// RENDER a decision. Rows may declare a deliberate per-agent split; anything
+// off-table failing for one agent but not another means the data has drifted.
+const AGENTS = ["claude", "pi"] as const;
 
 // Treat every gated skill as already loaded. Command severity short-circuits
 // before skill gates, so the `ask` rows are unaffected either way — but a
@@ -46,11 +45,9 @@ type Agent = (typeof AGENTS)[number];
 type Severity = "deny" | "ask" | "allow";
 
 // A row expects either one severity for every harness, or a per-agent split.
-// The split is not cosmetic: `ask` means "prompt" to claude and pi but "hard
-// block" to codex and opencode, so reclassifying a row to `allow` loosens the
-// latter from blocked to permitted. Rows that rely on agent-checkpoint for
-// their safety therefore stay `ask` wherever no checkpoint is wired -- which
-// since 2026-08-19 means pi and opencode, not codex.
+// The split is not cosmetic: rows that rely on agent-checkpoint for their
+// safety stay `ask` wherever no checkpoint is wired -- which means pi until its
+// own per-turn snapshot is registered.
 type Expected = Severity | ({ default: Severity } & Partial<Record<Agent, Severity>>);
 
 const expectedFor = (e: Expected, agent: Agent): Severity =>
@@ -104,16 +101,16 @@ const TABLE: Row[] = [
 
   // --- candidates for allow: the sandbox already contains these -----------------
   // Recursive force rm inside the project is recoverable via agent-checkpoint,
-  // which claude and codex have wired -- hence the per-agent split. The split
-  // tracks which agents snapshot per turn, not which harness is trusted.
+  // which claude has wired -- hence the per-agent split. The split tracks which
+  // agents snapshot per turn, not which harness is trusted.
   {
     command: "rm -rf build",
-    expected: { claude: "allow", codex: "allow", default: "ask" },
+    expected: { claude: "allow", default: "ask" },
     note: "inside the project, checkpoint covers it",
   },
   {
     command: "rm -rf ./build/cache",
-    expected: { claude: "allow", codex: "allow", default: "ask" },
+    expected: { claude: "allow", default: "ask" },
     note: "nested inside the project",
   },
 
@@ -161,17 +158,17 @@ const TABLE: Row[] = [
   { command: "cd .. && rm -rf project", expected: "deny", note: "relative target after cd up" },
   {
     command: "cd build && rm -rf src",
-    expected: { claude: "allow", codex: "allow", default: "ask" },
+    expected: { claude: "allow", default: "ask" },
     note: "cd tracking must not over-broaden: still inside the project",
   },
   {
     command: "chmod 777 script.sh",
-    expected: { claude: "allow", codex: "allow", default: "ask" },
+    expected: { claude: "allow", default: "ask" },
     note: "system paths are ro and the container is single-user; a lint concern, not a boundary",
   },
   {
     command: "find . -name '*.pyc' -exec rm {} ;",
-    expected: { claude: "allow", codex: "allow", default: "ask" },
+    expected: { claude: "allow", default: "ask" },
     note: "find_policy off for the checkpointed agents; a nudge the sandbox already contains",
   },
 

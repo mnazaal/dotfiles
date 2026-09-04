@@ -4,10 +4,9 @@ set -euo pipefail
 ERROR_PREFIX="GIT PRE-COMMIT HOOK ERROR:"
 
 # Coding-agent branch namespacing: agents may only touch <prefix>/* branches.
-# Prefix comes from AGENT_BRANCH_PREFIX (set by renv env files); fall back to
-# "opencode" for the OPENCODE=1 set by opencode's own runtime. Empty => human.
+# Prefix comes from AGENT_BRANCH_PREFIX, set by the renv env files.
+# Empty => human.
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
-[[ -z "$PREFIX" && "${OPENCODE:-0}" == "1" ]] && PREFIX="opencode"
 if [[ -n "$PREFIX" ]]; then
 	BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
 	if [[ -z "$BRANCH" ]]; then

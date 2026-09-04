@@ -93,8 +93,8 @@ fi
 # must not collide.
 r=$(new_repo namespaced)
 printf 'MODIFIED\n' >"$r/tracked.txt"
-run_in "$r" AGENT_BRANCH_PREFIX=codex || fail "non-zero exit with a prefix set"
-refs_of "$r" | grep -q '^refs/agent-checkpoint/codex/' ||
+run_in "$r" AGENT_BRANCH_PREFIX=pi || fail "non-zero exit with a prefix set"
+refs_of "$r" | grep -q '^refs/agent-checkpoint/pi/' ||
 	fail "checkpoint ref was not namespaced under the agent prefix"
 
 r=$(new_repo unprefixed)
@@ -229,8 +229,8 @@ run_in "$r" || fail "non-zero exit after a real change"
 # --- 15. Dedup is per agent, not global --------------------------------------
 # Two harnesses in one repo must each keep their own recovery trail, even when
 # they observe the same tree.
-run_in "$r" AGENT_BRANCH_PREFIX=codex || fail "non-zero exit for a second agent"
-refs_of "$r" | grep -q '^refs/agent-checkpoint/codex/' ||
+run_in "$r" AGENT_BRANCH_PREFIX=pi || fail "non-zero exit for a second agent"
+refs_of "$r" | grep -q '^refs/agent-checkpoint/pi/' ||
 	fail "a second agent was deduped against another agent's checkpoint"
 
 printf 'agent-checkpoint: all behaviors pass\n'

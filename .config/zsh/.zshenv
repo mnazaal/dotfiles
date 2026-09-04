@@ -55,7 +55,6 @@ export JULIA_DEPOT_PATH="$XDG_DATA_HOME/julia"
 export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
 export PI_OFFLINE=1
 export PI_SKIP_VERSION_CHECK=1
-export CODEX_HOME="$XDG_CONFIG_HOME/codex"
 # Headroom defaults its workspace to ~/.headroom. renv sets this for the proxy,
 # but only inside renv — so a bare `headroom savings|dashboard|inspect|perf`
 # read an empty workspace and reported nothing. Export it here so the CLI and

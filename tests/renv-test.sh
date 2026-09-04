@@ -21,12 +21,12 @@ EOF
 # Capture everything any harness cares about; each case asserts its own subset.
 cat >"$bin/sandbox" <<'EOF'
 #!/usr/bin/env bash
-printf 'prefix=%s\nasta=%s\nopenrouter=%s\ncodex_home=%s\ncache=%s\n' \
+printf 'prefix=%s\nasta=%s\nopenrouter=%s\ncache=%s\n' \
 	"${AGENT_BRANCH_PREFIX:-}" "${ASTA_MCP_API_KEY:-}" "${OPENROUTER_API_KEY:-}" \
-	"${CODEX_HOME:-}" "${XDG_CACHE_HOME:-}" >"$RENV_CAPTURE"
+	"${XDG_CACHE_HOME:-}" >"$RENV_CAPTURE"
 printf '%s\n' "$@" >>"$RENV_CAPTURE"
 EOF
-for h in codex opencode pi; do printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/$h"; done
+printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/pi"
 chmod +x "$bin"/*
 
 deploy_guardrails() { # [malformed]
@@ -39,7 +39,7 @@ deploy_guardrails() { # [malformed]
 
 run() { # harness [args...] -> capture on stdout
 	rm -f "$capture"
-	env -u CODEX_HOME -u XDG_CACHE_HOME \
+	env -u XDG_CACHE_HOME \
 		HOME="$home" PATH="$bin:$PATH" XDG_CONFIG_HOME="$config" RENV_CAPTURE="$capture" \
 		"$repo/.local/scripts/renv" "$@"
 	cat "$capture"
@@ -66,24 +66,12 @@ refuses() { # label harness -> renv must exit non-zero AND never reach the sandb
 }
 
 # --- guardrail preflight: fail closed before the wrapper runs ----------------
-refuses 'with no deployed guardrail assets' codex
+refuses 'with no deployed guardrail assets' pi
 deploy_guardrails '{not-json'
-refuses 'with malformed guardrail policy' codex
+refuses 'with malformed guardrail policy' pi
 deploy_guardrails
 
 # --- per-harness wiring ------------------------------------------------------
-out=$(run codex --version)
-expect codex "$out" "prefix=codex"
-expect codex "$out" "asta=test-asta-mcp"
-expect codex "$out" "codex_home=$config/codex"
-expect codex "$out" "$(printf -- '-p\nagent-codex\n--\n%s\n--sandbox\ndanger-full-access\n--ask-for-approval\nnever\n--version' "$bin/codex")"
-
-out=$(run opencode -c)
-expect opencode "$out" "prefix=opencode"
-expect opencode "$out" "openrouter=test-openrouter-opencode"
-expect opencode "$out" "cache=$home/.cache/opencode"
-expect opencode "$out" "$(printf -- '-p\nagent-opencode\n--\n%s\n-c' "$bin/opencode")"
-
 out=$(run pi --version)
 expect pi "$out" "prefix=pi"
 expect pi "$out" "openrouter=test-openrouter-pi"
@@ -95,8 +83,8 @@ expect pi "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi")"
 # sandbox, so this fails for the reason under test and not for a missing profile.
 rm "$bin/sandbox"
 bare="$bin:$(dirname "$(command -v bun)"):/usr/bin:/bin"
-if env -u CODEX_HOME HOME="$home" PATH="$bare" XDG_CONFIG_HOME="$config" \
-	RENV_CAPTURE="$capture" "$repo/.local/scripts/renv" codex --version >/dev/null 2>&1; then
-	printf 'renv ran codex unconfined with no sandbox on PATH\n' >&2
+if env HOME="$home" PATH="$bare" XDG_CONFIG_HOME="$config" \
+	RENV_CAPTURE="$capture" "$repo/.local/scripts/renv" pi --version >/dev/null 2>&1; then
+	printf 'renv ran pi unconfined with no sandbox on PATH\n' >&2
 	exit 1
 fi

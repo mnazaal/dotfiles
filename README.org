@@ -68,8 +68,8 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   <pkg>,update= updates in place. Never =pkgit -u= or =-f=: both delete a
   package's source tree from under themselves
 - =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=
-  (=renv codex= launches Codex in the dedicated filesystem sandbox; bare
-  =codex= retains its local conservative defaults)
+  (=renv claude= and =renv pi= launch each agent in its own filesystem
+  sandbox; the bare commands retain their local defaults)
 - =.local/scripts/notmuch-cron= and =.local/scripts/rss2email-cron= depend on =pass=
 - =.local/scripts/cal-sync-cron= depends on encrypted ICS URL files in password store
 - =.local/scripts/shell-share= depends on =ttyd=, =cloudflared=, and =tmux=

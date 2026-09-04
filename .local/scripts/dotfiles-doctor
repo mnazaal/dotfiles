@@ -172,7 +172,7 @@ else
 fi
 
 # Agent guard: a bun CLI (.claude/hooks/guardrails.ts) over the shared core in
-# ~/.agents/guardrails/ (core.ts + JSON data), used by Claude, pi, and opencode.
+# ~/.agents/guardrails/ (core.ts + JSON data), used by Claude and pi.
 # It fails open by design (a missing bun or moved file silently disables the guard
 # rather than locking out the tools), so surface breakage here. Checks the deployed
 # copies under $HOME, which is what the harness actually runs.

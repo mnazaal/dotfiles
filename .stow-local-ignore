@@ -6,5 +6,4 @@
 Makefile
 PLAN\.md
 .claude/settings.local.json
-^/\.config/codex/config\.toml$
 ^tests$

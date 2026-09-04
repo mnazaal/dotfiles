@@ -23,7 +23,6 @@ set -uo pipefail
 # argument 1 or AGENT_TRANSCRIPT_DIR to avoid touching this file at all.
 CANDIDATE_DIRS=(
 	"$HOME/.claude/projects"
-	"$HOME/.local/share/opencode/storage"
 	"$HOME/.config/agent/sessions"
 )
 

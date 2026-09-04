@@ -3,7 +3,7 @@
 # # Loaded by renv before running `claude`
 
 # Confine this agent's git history to claude/* branches (enforced by the shared
-# git hooks in ~/.config/git/hooks). Mirrors opencode's OPENCODE=1 convention.
+# git hooks in ~/.config/git/hooks).
 AGENT_BRANCH_PREFIX="claude"
 RENV_REQUIRE_GUARDRAILS=1
 

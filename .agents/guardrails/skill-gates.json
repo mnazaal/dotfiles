@@ -1,105 +1,241 @@
 {
-  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude, Codex, pi, and opencode; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?, arg_contains?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. `arg_contains` is a case-insensitive substring tested against the command's argument list, for gates keyed on a remote/target name rather than a subcommand. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate — never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
-
+  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude and pi; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?, arg_contains?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. `arg_contains` is a case-insensitive substring tested against the command's argument list, for gates keyed on a remote/target name rather than a subcommand. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate \u2014 never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
   "gates": [
     {
-      "skills": ["dev-git"],
-      "trigger": { "type": "bash", "command": "git", "subcommands": ["commit"] },
+      "skills": [
+        "dev-git"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "commit"
+        ]
+      },
       "message": "committing"
     },
     {
-      "skills": ["dev-git"],
-      "trigger": { "type": "bash", "command": "git", "subcommands": ["push"] },
+      "skills": [
+        "dev-git"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "push"
+        ]
+      },
       "message": "pushing"
     },
     {
-      "skills": ["dev-git-rescue"],
-      "trigger": { "type": "bash", "command": "git", "subcommands": ["rebase", "reflog", "bisect", "commit-tree", "update-ref", "filter-branch"] },
+      "skills": [
+        "dev-git-rescue"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "rebase",
+          "reflog",
+          "bisect",
+          "commit-tree",
+          "update-ref",
+          "filter-branch"
+        ]
+      },
       "message": "rewriting or recovering git history"
     },
     {
-      "skills": ["context-project-docs"],
-      "trigger": { "type": "write", "path_glob": "*.md", "at_root": true, "except": ["CHANGELOG.md"] },
+      "skills": [
+        "context-project-docs"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "*.md",
+        "at_root": true,
+        "except": [
+          "CHANGELOG.md"
+        ]
+      },
       "message": "editing a root-level project document"
     },
     {
-      "skills": ["context-project-docs"],
-      "trigger": { "type": "write", "path_glob": "**/notes/**" },
+      "skills": [
+        "context-project-docs"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/notes/**"
+      },
       "message": "editing a project working note"
     },
     {
-      "skills": ["meta-skills-improve"],
-      "trigger": { "type": "write", "path_glob": "**/.agents/skills/**/SKILL.md" },
+      "skills": [
+        "meta-skills-improve"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/.agents/skills/**/SKILL.md"
+      },
       "message": "editing a skill definition (SKILL.md)"
     },
     {
-      "skills": ["research-protocol"],
-      "trigger": { "type": "fetch", "domains": ["arxiv.org", "semanticscholar.org", "doi.org", "openreview.net", "aclanthology.org"] },
+      "skills": [
+        "research-protocol"
+      ],
+      "trigger": {
+        "type": "fetch",
+        "domains": [
+          "arxiv.org",
+          "semanticscholar.org",
+          "doi.org",
+          "openreview.net",
+          "aclanthology.org"
+        ]
+      },
       "message": "fetching from a paper source"
     },
     {
-      "skills": ["research-protocol"],
-      "trigger": { "type": "capability", "all_of": ["academic-source"] },
+      "skills": [
+        "research-protocol"
+      ],
+      "trigger": {
+        "type": "capability",
+        "all_of": [
+          "academic-source"
+        ]
+      },
       "message": "using an academic-paper verification tool"
     },
     {
-      "skills": ["dev-worktree"],
-      "trigger": { "type": "capability", "all_of": ["test-command", "git-worktree"] },
+      "skills": [
+        "dev-worktree"
+      ],
+      "trigger": {
+        "type": "capability",
+        "all_of": [
+          "test-command",
+          "git-worktree"
+        ]
+      },
       "message": "running tests inside a git worktree"
     },
     {
-      "skills": ["dev-verification"],
-      "trigger": { "type": "capability", "all_of": ["test-command"] },
+      "skills": [
+        "dev-verification"
+      ],
+      "trigger": {
+        "type": "capability",
+        "all_of": [
+          "test-command"
+        ]
+      },
       "message": "running a test command"
     },
     {
-      "skills": ["agent-orchestration"],
-      "trigger": { "type": "capability", "all_of": ["subagent-spawn"] },
+      "skills": [
+        "agent-orchestration"
+      ],
+      "trigger": {
+        "type": "capability",
+        "all_of": [
+          "subagent-spawn"
+        ]
+      },
       "message": "delegating to a subagent"
     },
     {
-      "skills": ["research-manuscript-workflow"],
-      "trigger": { "type": "bash", "command": "git", "arg_contains": "overleaf" },
+      "skills": [
+        "research-manuscript-workflow"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "arg_contains": "overleaf"
+      },
       "message": "running git against an Overleaf bridge remote"
     },
     {
-      "skills": ["research-manuscript-workflow"],
-      "trigger": { "type": "bash", "command": "make", "arg_contains": "overleaf" },
+      "skills": [
+        "research-manuscript-workflow"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "make",
+        "arg_contains": "overleaf"
+      },
       "message": "running an Overleaf sync target"
     },
     {
-      "skills": ["dev-viz", "research-manuscript-workflow"],
-      "trigger": { "type": "bash", "command": "make", "arg_contains": "manuscript-" },
+      "skills": [
+        "dev-viz",
+        "research-manuscript-workflow"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "make",
+        "arg_contains": "manuscript-"
+      },
       "message": "regenerating a manuscript artifact"
     },
     {
-      "skills": ["dev-viz"],
-      "trigger": { "type": "write", "path_glob": "**/figures/**" },
+      "skills": [
+        "dev-viz"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/figures/**"
+      },
       "message": "editing a figure artifact or generator"
     },
     {
-      "skills": ["dev-viz"],
-      "trigger": { "type": "write", "path_glob": "**/tables/**" },
+      "skills": [
+        "dev-viz"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/tables/**"
+      },
       "message": "editing a table artifact or generator"
     },
     {
-      "skills": ["dev-security"],
-      "trigger": { "type": "write", "path_glob": "**/.envrc" },
+      "skills": [
+        "dev-security"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/.envrc"
+      },
       "message": "editing a direnv file"
     },
     {
-      "skills": ["dev-security"],
-      "trigger": { "type": "write", "path_glob": "**/*.pem" },
+      "skills": [
+        "dev-security"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/*.pem"
+      },
       "message": "writing a key or certificate file"
     },
     {
-      "skills": ["dev-security"],
-      "trigger": { "type": "write", "path_glob": "**/*credential*" },
+      "skills": [
+        "dev-security"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/*credential*"
+      },
       "message": "editing a credentials file"
     },
     {
-      "skills": ["dev-security"],
-      "trigger": { "type": "write", "path_glob": "**/secrets.*" },
+      "skills": [
+        "dev-security"
+      ],
+      "trigger": {
+        "type": "write",
+        "path_glob": "**/secrets.*"
+      },
       "message": "editing a secrets file"
     }
   ]

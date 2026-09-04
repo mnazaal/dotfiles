@@ -16,24 +16,17 @@ project="$tmp/project"
 # source does not exist at launch, so every path an assertion names — required OR
 # forbidden — must be created here, or that assertion can never fire.
 mkdir -p \
-	"$home/.agents" "$home/.cache/opencode" \
-	"$home/.config/codex" "$home/.config/opencode" "$home/.config/pi" \
+	"$home/.agents" "$home/.config/pi" \
 	"$home/.config/pi/agent/sessions" "$home/.config/pi/agent/npm" \
-	"$home/.local/share/opencode" \
 	"$home/.local/share/gnupg" "$home/.local/share/pass" \
 	"$home/.local/share/password-store" "$home/.local/share/keyrings" \
 	"$home/.local/share/mail" "$home/.local/share/zsh" \
-	"$home/.local/state/codex" "$home/.local/state/headroom" \
-	"$home/.local/state/nvim" "$home/.local/state/opencode" \
+	"$home/.local/state/headroom" "$home/.local/state/nvim" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
-	"$home/dotfiles/.config/codex/hooks" \
 	"$home/projects/demo/src" "$project"
-touch "$home/.config/codex/config.toml" \
-	"$home/.config/pi/agent/mcp-cache.json" \
-	"$home/.config/pi/agent/run-history.jsonl" \
-	"$home/dotfiles/.config/codex/hooks.json" \
-	"$home/dotfiles/.config/codex/config.toml.template"
+touch "$home/.config/pi/agent/mcp-cache.json" \
+	"$home/.config/pi/agent/run-history.jsonl"
 
 run() { # cwd [sandbox args...] -> dry-run argv
 	local cwd=$1
@@ -121,18 +114,13 @@ output=$(run "$home/projects/demo/src" -p agent --rw "$home/projects/demo")
 assert_mounts 'agent with --rw <toplevel>' "$output" \
 	" $home/projects/demo:$home/projects/demo "
 
-# Codex writes its state DB (state_5.sqlite and the sqlite -wal/-shm files it
-# creates beside it) straight into CODEX_HOME, so that directory is writable; the
-# machinery inside it is pinned at its repository source instead, since every
-# pinned path is reached through a stow symlink into the repository.
-#
-# config.toml must NOT get a bind of its own. The directory bind above already
-# makes it writable, and Codex rewrites it atomically — temp file beside it, then
-# rename over the target. A file bind makes that target its own mount point, so
-# the rename fails (EXDEV against the parent's mount) and Codex reports
-# "failed to persist config.toml" on any config write, including recording the
-# trust decision for a new project. Forbidding it without a trailing space
-# catches the read-only form too.
+# An agent that rewrites a config file atomically — temp file beside it, then
+# rename over the target — must not have that file bound individually: a file
+# bind makes the target its own mount point, the rename fails with EXDEV against
+# the parent's mount, and the agent reports a persistence error on every config
+# write. Bind the containing directory instead, and pin any machinery inside it
+# at its repository source, since every pinned path is reached through a stow
+# symlink into the repository.
 #
 # ~/.agents is stow symlinks into ~/dotfiles/.agents, so binding only the former
 # leaves AGENTS.md and every skill dangling whenever cwd is not ~/dotfiles — the
@@ -143,35 +131,6 @@ assert_mounts 'agent with --rw <toplevel>' "$output" \
 # (unpinned 2026-08-18, reversing 4de2847): the user chose skill iteration speed
 # over the self-modification pin, and review happens at commit time. Assert the
 # unpin holds so a future edit cannot silently re-pin.
-output=$(run "$project" -p agent-codex)
-assert_mounts agent-codex "$output" \
-	"$home/.config/codex:$home/.config/codex" \
-	"$home/.local/state/codex:$home/.local/state/codex" \
-	"$home/.agents:$home/.agents:ro" \
-	"$home/dotfiles/.agents:$home/dotfiles/.agents:ro" \
-	"$home/dotfiles/.config/codex/hooks:$home/dotfiles/.config/codex/hooks:ro" \
-	"$home/dotfiles/.config/codex/hooks.json:$home/dotfiles/.config/codex/hooks.json:ro" \
-	"$home/dotfiles/.config/codex/config.toml.template:$home/dotfiles/.config/codex/config.toml.template:ro" \
-	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro" \
-	-- \
-	"$home/.config/codex:$home/.config/codex:ro" \
-	"$home/.config/codex/config.toml:$home/.config/codex/config.toml" \
-	"$home/dotfiles/.agents/skills:$home/dotfiles/.agents/skills:ro" \
-	"$home/.config:$home/.config:ro"
-
-output=$(run "$project" -p agent-opencode)
-assert_mounts agent-opencode "$output" \
-	"$home/.agents:$home/.agents:ro" \
-	"$home/dotfiles:$home/dotfiles:ro" \
-	"$home/.config/opencode:$home/.config/opencode:ro" \
-	"$home/.local/share/opencode:$home/.local/share/opencode" \
-	"$home/.local/state/opencode:$home/.local/state/opencode" \
-	"$home/.cache/opencode:$home/.cache/opencode" \
-	-- \
-	"$home/.config:$home/.config:ro" \
-	"$home/dotfiles:$home/dotfiles " \
-	"$home/projects:$home/projects"
-
 output=$(run "$project" -p agent-pi)
 assert_mounts agent-pi "$output" \
 	"$home/.agents:$home/.agents:ro" \
@@ -192,7 +151,7 @@ assert_mounts agent-pi "$output" \
 # inside ~/dotfiles auto-binds the repo read-write, which is the harder case —
 # the machinery-ro fragment must still pin the sources read-only afterwards, for
 # EVERY harness profile, not just the ones composing `agent`.
-for profile in agent-claude agent-codex agent-opencode agent-pi; do
+for profile in agent-claude agent-pi; do
 	assert_mount_order "$home/dotfiles" "$profile" \
 		"$home/dotfiles:$home/dotfiles" \
 		"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
@@ -285,7 +244,7 @@ chmod u+w "$ro_pin"
 # tmpcopyup ON, which copies the shadowed store into the tmpfs and turns the
 # mask into a RAM replica that also stalls container creation past podman's
 # 240s timeout. A path-only assertion passes in exactly that broken state.
-for profile in agent-claude agent-codex agent-opencode agent-pi; do
+for profile in agent-claude agent-pi; do
 	output=$(run "$project" -p "$profile")
 	assert_mounts "$profile masks credential and mail stores" "$output" \
 		"--tmpfs $home/.local/share/gnupg:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
