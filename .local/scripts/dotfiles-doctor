@@ -34,6 +34,19 @@ CHECKS:
 EOF
 }
 
+# Inside the container sandbox only an allowlist of paths is mounted, so $HOME
+# itself is absent and the deployment checks below cannot be answered there: a
+# path that was deliberately never bound is not a broken deployment. Report
+# those as skipped rather than failed, so `make check` is runnable from inside
+# and reports everything it genuinely can measure. Binding the handful of files
+# instead would verify three deployed paths while the rest stayed invisible —
+# a partial gate that reads as a complete one.
+sandboxed=0
+if [[ -e /run/.containerenv || -e /.dockerenv ]]; then
+	sandboxed=1
+fi
+skip() { printf 'skip: %s (not verifiable inside the sandbox)\n' "$1"; }
+
 strict=0
 repo=""
 while [[ $# -gt 0 ]]; do
@@ -91,6 +104,8 @@ for file in \
 	"$HOME/.config/zsh/plugins.zsh"; do
 	if [[ -r "$file" ]]; then
 		ok "zsh file readable: ${file#$HOME/}"
+	elif [[ "$sandboxed" -eq 1 ]]; then
+		skip "zsh file: ${file#$HOME/}"
 	else
 		fail "zsh file missing or unreadable: $file"
 	fi
