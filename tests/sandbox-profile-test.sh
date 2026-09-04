@@ -78,6 +78,15 @@ assert_mount_order() { # cwd profile earlier-mount later-mount
 		exit 1
 		;;
 	esac
+	# An absent pin and an early pin both leave the path unprotected, but they
+	# are different faults with different repairs: the sandbox drops a bind whose
+	# source does not exist, and without this case that reads as a mis-ordering.
+	case "$output" in *"$later"*) ;; *)
+		printf '%s profile never binds %s (pin removed, or its source is missing)\n' \
+			"$profile" "$later" >&2
+		exit 1
+		;;
+	esac
 	rest=${output#*"$earlier"}
 	case "$rest" in *"$later"*) ;; *)
 		printf '%s profile binds %s before %s; the writable bind would win\n' \

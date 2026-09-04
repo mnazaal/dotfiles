@@ -188,6 +188,28 @@ if command -v bun >/dev/null 2>&1; then
 else
 	fail "bun missing — Claude agent guard hook fails open"
 fi
+# Read-only pins whose source lives outside the repository: the sandbox binds a
+# path only if it exists, so a relocated toolchain turns a pin into nothing at
+# all. Nothing else notices — the profile still lists it and the tests still
+# pass, because a fixture creates its own copy.
+pins_profile="$repo/.config/sandbox/machinery-ro.profile"
+if [[ -r "$pins_profile" ]]; then
+	while IFS= read -r pin; do
+		pin_path="${pin/#\$H/$HOME}"
+		case "$pin_path" in
+		"$HOME"/dotfiles/*) continue ;; # covered by check-machinery-ro-sync
+		esac
+		if [[ -e "$pin_path" ]]; then
+			ok "sandbox pin resolves: ${pin_path/#$HOME/\~}"
+		else
+			warn "sandbox pin has no source, so it binds nothing: ${pin_path/#$HOME/\~}"
+		fi
+	done < <(awk '/^RO_LAST\+=\(/{f=1;next} f&&/^\)/{f=0} f' "$pins_profile" |
+		grep -oE '"\$H/[^"]+"' | tr -d '"')
+else
+	warn "machinery-ro profile unreadable: $pins_profile"
+fi
+
 for asset in core.ts sensitive-paths.json dangerous-commands.json; do
 	if [[ -f "$HOME/.agents/guardrails/$asset" ]]; then
 		ok "guardrail asset present: $asset"
