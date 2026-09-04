@@ -146,4 +146,26 @@ git -C "$r" ls-tree -r --name-only "$ref" | grep -qx 'new.txt' ||
 [ "$(git -C "$r" rev-list --count "$ref")" = "1" ] ||
 	fail "checkpoint on an unborn HEAD should be parentless"
 
+# --- 10. A failed snapshot says so on stderr ---------------------------------
+# Exit 0 is required (behavior 8) but must not mean silence: the guardrail
+# `allow` tier for world-writable and recursive-force-rm is earned by this
+# script working. A checkpoint that silently stops leaves that premise false
+# with no signal, so the failure has to reach the transcript.
+r=$(new_repo loudfail)
+printf 'MODIFIED\n' >"$r/tracked.txt"
+chmod -R a-w "$r/.git"
+err=$(cd "$r" && "$script" 2>&1 >/dev/null) || true
+chmod -R u+w "$r/.git"
+case $err in
+*'NOT recoverable'*) ;;
+*) fail "a failed checkpoint must warn on stderr; got: ${err:-<silence>}" ;;
+esac
+
+# --- 11. The legitimate no-ops stay silent -----------------------------------
+# Only failure is loud. A clean tree is not a failure, and warning on every
+# turn would train the user to ignore the one message that matters.
+r=$(new_repo quietnoop)
+out=$(cd "$r" && "$script" 2>&1) || fail "non-zero exit on a clean tree"
+[ -z "$out" ] || fail "expected silence on a clean tree, got: $out"
+
 printf 'agent-checkpoint: all behaviors pass\n'

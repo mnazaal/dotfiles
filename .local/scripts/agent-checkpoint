@@ -15,6 +15,16 @@
 # Never fails: this runs every turn, so every path ends in exit 0.
 set -uo pipefail
 
+# Exit 0 on every path (this runs each turn; wedging the session is worse than
+# the prompts it replaces) — but never in silence. The guardrail `allow` tier
+# for world-writable and recursive-force-rm is earned by this script working,
+# so a checkpoint that stops working must say so where the turn can see it.
+warn() {
+	printf 'agent-checkpoint: %s: uncommitted work is NOT recoverable this turn\n' \
+		"$1" >&2
+	exit 0
+}
+
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 [ -n "$(git status --porcelain 2>/dev/null)" ] || exit 0
 
@@ -27,7 +37,7 @@ else
 	parent=()
 fi
 
-idx=$(mktemp -u 2>/dev/null) || exit 0
+idx=$(mktemp -u 2>/dev/null) || warn "could not create a temporary index"
 tree=$(
 	export GIT_INDEX_FILE="$idx"
 	if [ ${#parent[@]} -gt 0 ]; then
@@ -37,14 +47,15 @@ tree=$(
 	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
-[ -n "$tree" ] || exit 0
+[ -n "$tree" ] || warn "could not write a tree (unreadable or unwritable repo?)"
 
-sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) || exit 0
-[ -n "$sha" ] || exit 0
+sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) ||
+	warn "could not commit the snapshot tree"
+[ -n "$sha" ] || warn "commit-tree produced no object"
 
 git update-ref \
 	"refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}/$(date +%s)" \
-	"$sha" 2>/dev/null || exit 0
+	"$sha" 2>/dev/null || warn "could not update the checkpoint ref"
 
 printf 'checkpoint %s\n' "$sha"
 exit 0
