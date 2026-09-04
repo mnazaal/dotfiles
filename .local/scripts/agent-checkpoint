@@ -49,6 +49,18 @@ tree=$(
 rm -f "$idx" 2>/dev/null || true
 [ -n "$tree" ] || warn "could not write a tree (unreadable or unwritable repo?)"
 
+# Nothing changed since this agent's last checkpoint: the newest ref already
+# holds this exact tree. Skip it. Measured on the real repo before this guard,
+# 241 refs held only 114 distinct trees — turns that read, answer, or fail leave
+# the tree identical, so without this the trail counts turns instead of states.
+# Per agent, not global: two harnesses in one repo each keep their own trail.
+prefix="refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}"
+last=$(git for-each-ref --sort=-refname --count=1 --format='%(objectname)' \
+	"$prefix/" 2>/dev/null)
+if [ -n "$last" ] && [ "$(git rev-parse -q --verify "$last^{tree}" 2>/dev/null)" = "$tree" ]; then
+	exit 0
+fi
+
 sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) ||
 	warn "could not commit the snapshot tree"
 [ -n "$sha" ] || warn "commit-tree produced no object"

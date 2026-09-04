@@ -185,4 +185,31 @@ newest=$(refs_of "$r" | sort | tail -1)
 [ "$(git -C "$r" show "$newest:tracked.txt")" = "SECOND" ] ||
 	fail "the newest ref by name is not the newest snapshot"
 
+# --- 13. An unchanged tree does not create a second ref ----------------------
+# Measured on the real repo before this guard: 241 refs over 114 distinct trees.
+# Most turns (and every turn that only reads) leave the tree identical, so
+# without this the ref count tracks turns rather than states.
+r=$(new_repo dedup)
+printf 'MODIFIED\n' >"$r/tracked.txt"
+run_in "$r" || fail "non-zero exit on first snapshot"
+first=$(refs_of "$r" | wc -l)
+[ "$first" -eq 1 ] || fail "expected exactly one ref after the first snapshot"
+run_in "$r" || fail "non-zero exit on repeat snapshot"
+[ "$(refs_of "$r" | wc -l)" -eq 1 ] ||
+	fail "an unchanged tree created a second checkpoint ref"
+
+# --- 14. A changed tree still creates a new ref ------------------------------
+# The dedup guard must compare trees, not just "have we ever checkpointed".
+printf 'MODIFIED AGAIN\n' >"$r/tracked.txt"
+run_in "$r" || fail "non-zero exit after a real change"
+[ "$(refs_of "$r" | wc -l)" -eq 2 ] ||
+	fail "a changed tree should create a second checkpoint ref"
+
+# --- 15. Dedup is per agent, not global --------------------------------------
+# Two harnesses in one repo must each keep their own recovery trail, even when
+# they observe the same tree.
+run_in "$r" AGENT_BRANCH_PREFIX=codex || fail "non-zero exit for a second agent"
+refs_of "$r" | grep -q '^refs/agent-checkpoint/codex/' ||
+	fail "a second agent was deduped against another agent's checkpoint"
+
 printf 'agent-checkpoint: all behaviors pass\n'
