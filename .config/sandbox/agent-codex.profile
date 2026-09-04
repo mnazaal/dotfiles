@@ -7,6 +7,7 @@ use machinery-ro
 
 RO+=(
   "$H/.agents"
+  "$H/dotfiles/.agents"
 )
 
 # Codex records local project/trust state in config.toml; the guardrails hook
@@ -15,5 +16,4 @@ RW+=(
   "$H/.local/state/codex"
   "$H/.config/codex"
 )
-RW_FILES+=( "$H/.config/codex/config.toml" )
 SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "CODEX_HOME" "ASTA_MCP_API_KEY" )

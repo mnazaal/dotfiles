@@ -124,21 +124,38 @@ assert_mounts 'agent with --rw <toplevel>' "$output" \
 # Codex writes its state DB (state_5.sqlite and the sqlite -wal/-shm files it
 # creates beside it) straight into CODEX_HOME, so that directory is writable; the
 # machinery inside it is pinned at its repository source instead, since every
-# pinned path is reached through a stow symlink into the repository. Skills are
-# deliberately NOT pinned (unpinned 2026-08-18, reversing 4de2847): the user
-# chose skill iteration speed over the self-modification pin, and review happens
-# at commit time. Assert the unpin holds so a future edit cannot silently re-pin.
+# pinned path is reached through a stow symlink into the repository.
+#
+# config.toml must NOT get a bind of its own. The directory bind above already
+# makes it writable, and Codex rewrites it atomically — temp file beside it, then
+# rename over the target. A file bind makes that target its own mount point, so
+# the rename fails (EXDEV against the parent's mount) and Codex reports
+# "failed to persist config.toml" on any config write, including recording the
+# trust decision for a new project. Forbidding it without a trailing space
+# catches the read-only form too.
+#
+# ~/.agents is stow symlinks into ~/dotfiles/.agents, so binding only the former
+# leaves AGENTS.md and every skill dangling whenever cwd is not ~/dotfiles — the
+# cwd auto-bind was the sole reason the targets ever resolved. Skills stay
+# writable in the case that matters (cwd ~/dotfiles, where the read-write cwd
+# bind wins over this read-only one), and are merely readable elsewhere, where
+# they were previously invisible. They are still deliberately NOT pinned
+# (unpinned 2026-08-18, reversing 4de2847): the user chose skill iteration speed
+# over the self-modification pin, and review happens at commit time. Assert the
+# unpin holds so a future edit cannot silently re-pin.
 output=$(run "$project" -p agent-codex)
 assert_mounts agent-codex "$output" \
 	"$home/.config/codex:$home/.config/codex" \
-	"$home/.config/codex/config.toml:$home/.config/codex/config.toml" \
 	"$home/.local/state/codex:$home/.local/state/codex" \
+	"$home/.agents:$home/.agents:ro" \
+	"$home/dotfiles/.agents:$home/dotfiles/.agents:ro" \
 	"$home/dotfiles/.config/codex/hooks:$home/dotfiles/.config/codex/hooks:ro" \
 	"$home/dotfiles/.config/codex/hooks.json:$home/dotfiles/.config/codex/hooks.json:ro" \
 	"$home/dotfiles/.config/codex/config.toml.template:$home/dotfiles/.config/codex/config.toml.template:ro" \
 	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro" \
 	-- \
 	"$home/.config/codex:$home/.config/codex:ro" \
+	"$home/.config/codex/config.toml:$home/.config/codex/config.toml" \
 	"$home/dotfiles/.agents/skills:$home/dotfiles/.agents/skills:ro" \
 	"$home/.config:$home/.config:ro"
 

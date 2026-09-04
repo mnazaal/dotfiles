@@ -12,6 +12,10 @@ agents). Map their tool names onto Claude Code as follows:
   for code discovery.
 - **File inspection/edit** — prefer `Read`/`Edit`/`Write` for edits. `cat`/`head`/
   `tail` for quick inspection are pre-allowed in `settings.json` and fine to use.
+  Never pair `cd` with a relative file read in one Bash command — use an absolute
+  path. For `grep`/`rg`/`diff`/`git`/`cp`/`mv`, Claude Code 2.1.259+ always
+  prompts for that shape while any `Read()` deny rule exists, even under
+  `bypassPermissions`.
 - **Docs** — use `WebFetch`/`WebSearch` for library/API docs.
 - **Papers** — use the configured academic-paper verification tool before citing
   a paper; never cite an unverified paper.
