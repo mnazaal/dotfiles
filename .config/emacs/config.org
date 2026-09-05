@@ -1216,6 +1216,9 @@ Access LLMs within Emacs.
   :vc (:url "https://github.com/cmacrae/agent-shell-sidebar" :branch "main")
   :custom
   (agent-shell-sidebar-width "35%")
+  :config
+  (setq agent-shell-sidebar-default-config
+        (agent-shell-anthropic-make-claude-code-config))
   :bind
   ("C-c s" . agent-shell-sidebar-toggle)
   (:map agent-shell-mode-map
