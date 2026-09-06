@@ -5,6 +5,16 @@ repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
+# Copy the checkout the way `cp -a` would, minus device/socket/fifo nodes.
+# Run from inside a sandboxed agent session, the repo contains ~18 paths that the
+# sandbox has masked with a bind mount of /dev/null -- .gitconfig, .zshrc, .env,
+# .claude/commands and friends. They are character devices, `cp -a` tries to
+# mknod them, and every one fails with EPERM, so the whole suite died here with
+# `Error 1`. Those paths do not exist on the host at all, so skipping them
+# reproduces the host tree rather than losing anything. rsync preserves the
+# internal symlinks (.claude/skills) that the assertions below depend on.
+copy_repo() { rsync -a --no-devices --no-specials "$1/" "$2"; }
+
 home="$tmp/home"
 outside="$tmp/unrelated-target"
 mkdir -p "$home" "$outside"
@@ -56,7 +66,7 @@ done
 renamed_home="$tmp/renamed-home"
 renamed_repo="$tmp/renamed-repo"
 mkdir -p "$renamed_home"
-cp -a "$repo" "$renamed_repo"
+copy_repo "$repo" "$renamed_repo"
 
 make --no-print-directory -C "$renamed_repo" link HOME="$renamed_home" >/dev/null
 mv "$renamed_repo/.agents/skills/dev-scout" "$renamed_repo/.agents/skills/dev-scout-renamed"
@@ -78,7 +88,7 @@ make --no-print-directory -C "$renamed_repo" clean DEEP=1 HOME="$renamed_home" >
 nested_home="$tmp/nested-home"
 source="$nested_home/dotfiles"
 mkdir -p "$nested_home"
-cp -a "$repo" "$source"
+copy_repo "$repo" "$source"
 
 make --no-print-directory -C "$source" link HOME="$nested_home" >/dev/null
 make --no-print-directory -C "$source" clean HOME="$nested_home" >/dev/null
