@@ -90,8 +90,13 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 	esac
 }
 
-# Fail closed: assert every pin is genuinely read-only INSIDE the boundary
-# before the sandboxed command gets control. Emitting a read-only bind is a
+# Assert every pin that IS PRESENT is genuinely read-only INSIDE the boundary
+# before the sandboxed command gets control. Fail-closed on the writable case
+# only: a pin that is absent prints a warning and the command still runs, because
+# refusing would brick the launcher whenever an optional tool is uninstalled.
+# That asymmetry is deliberate but it is not "fail closed", and describing it as
+# such hid the gap -- an absent pin is not bound, and its parent may be writable,
+# so the path can be created inside and persist to the host. Emitting a read-only bind is a
 # request; this is the only place the kernel's answer is read. `test -w` reports
 # false on a read-only bind for both files and directories, so no mountinfo
 # parsing is needed. Shared verbatim by both emitters, since it runs inside the
