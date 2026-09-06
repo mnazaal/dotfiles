@@ -407,13 +407,19 @@ if ! awk -F: -v u="$(id -u)" '$3 == u { found = 1 } END { exit !found }' /etc/pa
 	# written in that runtime. podman's --userns=keep-id synthesized the entry.
 	case "$output" in
 	*--ro-bind-data*/etc/passwd*)
-		case "$output" in
-		*--ro-bind-data*/etc/group*) ;;
-		*)
-			printf 'bwrap: /etc/group is not reconstructed alongside /etc/passwd\n' >&2
-			exit 1
-			;;
-		esac
+		# /etc/group only when the gid actually resolves. It is a SEPARATE lookup
+		# that fails separately -- on this host the primary gid resolves through no
+		# source at all -- and requiring both is what once suppressed the passwd
+		# entry entirely.
+		if getent group "$(id -g)" >/dev/null 2>&1; then
+			case "$output" in
+			*--ro-bind-data*/etc/group*) ;;
+			*)
+				printf 'bwrap: the gid resolves but /etc/group is not reconstructed\n' >&2
+				exit 1
+				;;
+			esac
+		fi
 		;;
 	*)
 		printf 'bwrap: this uid is not in /etc/passwd and no entry is supplied; os.userInfo() throws\n' >&2
@@ -483,6 +489,46 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 		exit 1
 	fi
 	printf 'sandbox profiles: the environment allowlist holds on a real launch\n'
+
+	# The identity reconstruction must not depend on the GROUP lookup succeeding.
+	# On this host the primary GID resolves through no source at all while the uid
+	# resolves fine, and coupling the two silently reintroduced the very
+	# os.userInfo() failure the reconstruction exists to prevent.
+	if ! awk -F: -v u="$(id -u)" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null &&
+		getent passwd "$(id -u)" >/dev/null 2>&1; then
+		inside_user=$(
+			cd "$project" || exit 1
+			HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
+				"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /usr/bin/id -un 2>/dev/null
+		)
+		if [ -z "$inside_user" ]; then
+			printf 'bwrap: the uid does not resolve inside; os.userInfo() will throw\n' >&2
+			exit 1
+		fi
+		printf 'sandbox profiles: the uid resolves inside even though the gid does not\n'
+	fi
+
 else
 	printf 'sandbox profiles: SKIPPED the real-launch environment test (bwrap unavailable)\n'
+fi
+
+# --- every directory on the sandbox PATH must be a pin, not merely read-only ---
+# A writable directory on the sandbox's own PATH is a cross-session persistence
+# route: whatever is dropped there runs OUTSIDE the sandbox in every later
+# session. machinery-ro pins the bun bin dir for exactly that reason, but the
+# rule is general and had been applied one directory at a time. dev.profile also
+# prepends the resolved node bin dir, and a plain read-only bind there does not
+# survive agent.profile's blanket read-write ~/.local/share, which is emitted
+# after it. The observable form of "is a pin" is "emitted after the writable
+# binds", which is what assert_mount_order checks.
+if node_bin=$(command -v node 2>/dev/null); then
+	node_bin=$(dirname "$(readlink -f "$node_bin")")
+	for profile in agent-claude agent-pi; do
+		assert_mount_order "$project" "$profile" \
+			"$home/org/agents:$home/org/agents" \
+			"$node_bin:$node_bin:ro"
+	done
+	printf 'sandbox profiles: the prepended node bin dir is pinned, not merely read-only\n'
+else
+	printf 'sandbox profiles: SKIPPED the node bin pin check (no node on PATH)\n'
 fi

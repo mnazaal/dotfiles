@@ -256,12 +256,16 @@ run_bwrap() {
 	uid=$(id -u)
 	gid=$(id -g)
 	if ! awk -F: -v u="$uid" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null; then
+		# Independently, because they fail independently: on this host the primary
+		# GID (70000) resolves through NO source — `getent group` exits 2 with empty
+		# output — while the uid resolves fine. Coupling them meant a group lookup
+		# that never worked suppressed the passwd entry that did, which is the
+		# regression this comment exists to prevent recurring.
 		passwd_line=$(getent passwd "$uid" 2>/dev/null) || passwd_line=""
 		group_line=$(getent group "$gid" 2>/dev/null) || group_line=""
-		if [ -z "$passwd_line" ] || [ -z "$group_line" ]; then
-			printf 'sandbox: this uid is not in /etc/passwd and NSS did not resolve it;\n' >&2
+		if [ -z "$passwd_line" ]; then
+			printf 'sandbox: uid %s is not in /etc/passwd and NSS did not resolve it;\n' "$uid" >&2
 			printf 'sandbox: continuing without it — expect os.userInfo() to fail inside.\n' >&2
-			passwd_line=""
 		fi
 	fi
 
@@ -302,7 +306,10 @@ run_bwrap() {
 		# placeholder: the reconstruction is shown, and the line is not passed off as
 		# runnable.
 		if [ -n "$passwd_line" ]; then
-			p+=(--ro-bind-data PASSWD_FD /etc/passwd --ro-bind-data GROUP_FD /etc/group)
+			p+=(--ro-bind-data PASSWD_FD /etc/passwd)
+		fi
+		if [ -n "$group_line" ]; then
+			p+=(--ro-bind-data GROUP_FD /etc/group)
 		fi
 		printf 'bwrap'
 		printf ' %q' "${p[@]}" -- \
@@ -311,17 +318,20 @@ run_bwrap() {
 		exit 0
 	fi
 	if [ -n "$SANDBOX_PATH_PREPEND" ]; then PATH="$SANDBOX_PATH_PREPEND:$PATH"; fi
+	local passwd_fd group_fd
 	if [ -n "$passwd_line" ]; then
-		local passwd_fd group_fd
 		exec {passwd_fd}< <(
 			cat /etc/passwd
 			printf '%s\n' "$passwd_line"
 		)
+		p+=(--ro-bind-data "$passwd_fd" /etc/passwd)
+	fi
+	if [ -n "$group_line" ]; then
 		exec {group_fd}< <(
 			cat /etc/group
 			printf '%s\n' "$group_line"
 		)
-		p+=(--ro-bind-data "$passwd_fd" /etc/passwd --ro-bind-data "$group_fd" /etc/group)
+		p+=(--ro-bind-data "$group_fd" /etc/group)
 	fi
 	exec bwrap "${p[@]}" -- \
 		/bin/sh -c "$PREFLIGHT" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
