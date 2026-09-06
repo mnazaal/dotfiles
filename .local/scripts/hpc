@@ -237,11 +237,19 @@ git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
 git reset --hard "origin/$branch"
 
 rm -f "$exitfile"
-runcmd="$cmd"
+# Source .env into THIS shell rather than composing it into the launched command string.
+# `timeout` can only exec binaries, so a chain beginning with the `set` builtin made it fail
+# with 127 before anything ran -- and because that only happens when a project HAS a .env,
+# the path shipped unexercised. nohup/setsid inherit the environment, so <command> sees the
+# variables just the same, with one less layer of quoting. NB the enclosing script runs
+# under `set -euo pipefail`, so a malformed .env now aborts the launch loudly instead of
+# writing an exit file.
 if [[ -f "$target/.env" ]]; then
-  runcmd="set -a && . $(printf %q "$target/.env") && set +a && $runcmd"
+  set -a
+  . "$target/.env"
+  set +a
 fi
-nohup setsid bash -c "timeout $timeout_dur $runcmd; echo \$? > '$exitfile'" \
+nohup setsid bash -c "timeout $timeout_dur $cmd; echo \$? > '$exitfile'" \
   < /dev/null > "$logfile" 2>&1 &
 echo $! > "$pidfile"
 disown
