@@ -450,3 +450,39 @@ expect_engine 'environment beats the profile' podman \
 	"$(SANDBOX_ENGINE=podman run_default "$project" -p agent-pi)"
 
 printf 'sandbox profiles: engine selection is per profile, flag and env override\n'
+
+# --- the environment allowlist, exercised for real ----------------------------
+# Every assertion above uses --dry-run, which returns before the environment is
+# ever touched. That is exactly why a leak here went unnoticed: the allowlist is
+# applied on the launch path only, so only a real launch can test it.
+if bwrap --dev-bind / / /bin/true 2>/dev/null; then
+	envprof="$home/.config/sandbox"
+	mkdir -p "$envprof"
+	printf 'RO+=( "$H/.config" )\n' >"$envprof/envprobe.profile"
+	leaked=$(
+		cd "$project" || exit 1
+		export keep=LEAK_keep allowed=LEAK_allowed name=LEAK_name d=LEAK_d \
+			SECRET_CANARY=LEAK_secret
+		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
+			"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /usr/bin/env 2>&1 |
+			grep -cE '^(keep|allowed|name|d|SECRET_CANARY)=' || true
+	)
+	if [ "$leaked" != 0 ]; then
+		printf 'bwrap: %s non-allowlisted variable(s) crossed the boundary\n' "$leaked" >&2
+		exit 1
+	fi
+	# The same names must not break the launch either: a name colliding with one
+	# of the launcher's own variables must not corrupt the command it builds.
+	if ! (
+		cd "$project" || exit 1
+		export p=HOSTILE d=HOSTILE resolv=HOSTILE pins=HOSTILE cmd=HOSTILE
+		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
+			"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /bin/true
+	) 2>/dev/null; then
+		printf 'bwrap: an exported name collided with the launcher and broke the launch\n' >&2
+		exit 1
+	fi
+	printf 'sandbox profiles: the environment allowlist holds on a real launch\n'
+else
+	printf 'sandbox profiles: SKIPPED the real-launch environment test (bwrap unavailable)\n'
+fi

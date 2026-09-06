@@ -180,27 +180,6 @@ run_podman() {
 		/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
 
-# Only the allowlisted names cross into the sandbox. podman is told the NAME and
-# reads the value from this process; bwrap inherits the environment wholesale, so
-# the allowlist is applied by unsetting everything else HERE, in the launcher.
-# `--setenv NAME VALUE` would do it too and is what the manual reaches for, but it
-# puts every allowlisted secret into the bwrap argv, world-readable via `ps` for
-# the life of the session and printed verbatim by --dry-run — the same leak that
-# the podman path's bare `--env NAME` exists to avoid.
-strip_env_to_allowlist() {
-	local name keep allowed
-	while IFS= read -r name; do
-		keep=0
-		for allowed in "${SANDBOX_ENV[@]}"; do
-			if [ "$name" = "$allowed" ]; then
-				keep=1
-				break
-			fi
-		done
-		[ "$keep" -eq 1 ] || unset -v "$name" || true
-	done < <(compgen -e)
-}
-
 run_bwrap() {
 	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
 	local d target
@@ -289,6 +268,28 @@ run_bwrap() {
 	# /run/.containerenv nor /.dockerenv, which is what --verify-pins tests for.
 	p+=(--setenv SANDBOX_ENGINE bwrap)
 
+	# Only allowlisted names cross. bwrap inherits the environment wholesale, so
+	# everything else is dropped with --unsetenv, which takes a NAME and never a
+	# value -- the same reason the podman path passes a bare `--env NAME`. Do NOT
+	# do this by unsetting in the launcher instead: `unset -v "$name"` inside a
+	# function unsets the nearest enclosing LOCAL of that name, so an exported
+	# `keep` or `allowed` survived while an exported `p` destroyed this very argv
+	# array. Measured 2026-09-06; that is a class of bug rather than an instance,
+	# and --unsetenv removes the class by never touching this shell's state.
+	# Accepted cost: the NAMES of non-allowlisted variables become visible in argv
+	# via `ps`. Names only, never values.
+	local envname keep allowed
+	while IFS= read -r envname; do
+		keep=0
+		for allowed in "${SANDBOX_ENV[@]}"; do
+			if [ "$envname" = "$allowed" ]; then
+				keep=1
+				break
+			fi
+		done
+		[ "$keep" -eq 1 ] || p+=(--unsetenv "$envname")
+	done < <(compgen -e)
+
 	local pins=() d2
 	for d2 in "${RO_LAST[@]}"; do
 		if [ -e "$d2" ]; then pins+=("$d2"); fi
@@ -302,7 +303,6 @@ run_bwrap() {
 		exit 0
 	fi
 	if [ -n "$SANDBOX_PATH_PREPEND" ]; then PATH="$SANDBOX_PATH_PREPEND:$PATH"; fi
-	strip_env_to_allowlist
 	exec bwrap "${p[@]}" -- \
 		/bin/sh -c "$PREFLIGHT" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
