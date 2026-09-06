@@ -29,7 +29,23 @@ mkdir -p \
 touch "$home/.config/pi/agent/mcp-cache.json" \
 	"$home/.config/pi/agent/run-history.jsonl"
 
-run() { # cwd [sandbox args...] -> dry-run argv
+# The assertions below are about a specific emitter's argv, so they name the
+# engine rather than inheriting whatever the profile now defaults to. Which
+# engine each profile picks when nothing is passed is asserted separately, at the
+# end of this file.
+ENGINE_ARGS=(--engine podman)
+
+run() { # cwd [sandbox args...] -> dry-run argv for the engine under test
+	local cwd=$1
+	shift
+	(
+		cd "$cwd" || exit 1
+		HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+			"$repo/.local/scripts/sandbox" --dry-run "${ENGINE_ARGS[@]}" "$@" -- /bin/true
+	)
+}
+
+run_default() { # cwd [sandbox args...] -> dry-run argv with NO engine forced
 	local cwd=$1
 	shift
 	(
@@ -42,7 +58,11 @@ run() { # cwd [sandbox args...] -> dry-run argv
 run_bwrap() { # cwd [sandbox args...] -> dry-run argv from the bwrap emitter
 	local cwd=$1
 	shift
-	run "$cwd" --engine bwrap "$@"
+	run_default "$cwd" --engine bwrap "$@"
+}
+
+engine_of() { # first token of the emitted argv
+	printf '%s' "${1%% *}"
 }
 
 # Each bind is one shell-quoted argv token, so a writable bind is ' src:dst ' and
@@ -403,3 +423,30 @@ if ! awk -F: -v u="$(id -u)" '$3 == u { found = 1 } END { exit !found }' /etc/pa
 fi
 
 printf 'sandbox profiles: bwrap root reconstructs resolv.conf and passwd\n'
+
+# --- which engine each profile selects ---------------------------------------
+# pi is confined by bwrap and claude's legacy profile is still podman, so the
+# choice has to be per profile rather than global. Assert the precedence too: a
+# flag beats the environment beats the profile, or a debugging override would
+# silently do nothing.
+
+expect_engine() { # label expected-engine output
+	local got
+	got=$(engine_of "$3")
+	if [ "$got" != "$2" ]; then
+		printf '%s: engine is %s, expected %s\n' "$1" "$got" "$2" >&2
+		exit 1
+	fi
+}
+
+expect_engine 'agent-pi default' bwrap "$(run_default "$project" -p agent-pi)"
+expect_engine 'agent-claude default' podman "$(run_default "$project" -p agent-claude)"
+expect_engine 'no profile at all' podman "$(run_default "$project")"
+expect_engine 'flag beats the profile' podman \
+	"$(run_default "$project" -p agent-pi --engine podman)"
+expect_engine 'flag beats it before -p too' podman \
+	"$(run_default "$project" --engine podman -p agent-pi)"
+expect_engine 'environment beats the profile' podman \
+	"$(SANDBOX_ENGINE=podman run_default "$project" -p agent-pi)"
+
+printf 'sandbox profiles: engine selection is per profile, flag and env override\n'

@@ -8,10 +8,12 @@ set -euo pipefail
 H=$HOME
 PROFILE_PATH=${SANDBOX_PROFILE_PATH:-${XDG_CONFIG_HOME:-$H/.config}/sandbox}
 IMAGE=${SANDBOX_IMAGE:-ubuntu:24.04}
-# podman is the default until the bwrap path has been run for real (PLAN, phase
-# A of "pi containment"). The profiles are engine-neutral: both emitters consume
-# the same five accumulators, which is what makes the two forms comparable.
-ENGINE=${SANDBOX_ENGINE:-podman}
+# Engine choice is resolved after argument parsing, since a profile can express
+# one and is only loaded during it. Precedence, highest first: --engine, the
+# SANDBOX_ENGINE environment variable, the profile's PROFILE_ENGINE, podman.
+# Profiles stay engine-neutral in everything else: both emitters consume the same
+# five accumulators, which is what makes the two forms comparable.
+ENGINE_FLAG=""
 
 die() {
 	printf 'sandbox: %s\n' "$1" >&2
@@ -36,7 +38,7 @@ OPTIONS
       --mask DIR            shadow DIR with an empty tmpfs, so a path nested
                             inside a broader --rw bind is absent (repeatable)
       --no-net              unshare the network (shared by default)
-      --engine NAME         podman (default) or bwrap
+      --engine NAME         podman or bwrap; overrides the profile's choice
   -n, --dry-run             print the engine's command instead of running it
       --verify-pins         inside the sandbox: check every machinery pin is
                             actually read-only, then exit. Non-zero if any is not
@@ -321,7 +323,8 @@ NET=1 # 1 share network, 0 unshare
 DRYRUN=0
 VERIFY_PINS=0
 SANDBOX_PATH_PREPEND=""
-PROFILE_NAME="" # first -p name, used as podman container name
+PROFILE_NAME=""   # first -p name, used as podman container name
+PROFILE_ENGINE="" # a profile may name the engine its policy has been verified on
 declare -A _loaded=()
 
 cmd=()
@@ -345,7 +348,7 @@ while [ $# -gt 0 ]; do
 		shift 2
 		;;
 	--engine)
-		ENGINE="$2"
+		ENGINE_FLAG="$2"
 		shift 2
 		;;
 	--no-net)
@@ -379,6 +382,8 @@ done
 
 [ ${#cmd[@]} -gt 0 ] || [ "$VERIFY_PINS" -eq 1 ] ||
 	die 'usage: sandbox [options] [--] <command> [args...]' 2
+
+ENGINE=${ENGINE_FLAG:-${SANDBOX_ENGINE:-${PROFILE_ENGINE:-podman}}}
 
 # A read-only bind is attached to an inode, so replacing the file orphans the
 # mount and silently disarms the pin for the life of the session — and replacing
