@@ -241,26 +241,28 @@ run_bwrap() {
 
 	# An LDAP/sssd-backed user is absent from /etc/passwd, so the read-only bind
 	# above leaves the uid unresolvable and Node's os.userInfo() throws
-	# ERR_SYSTEM_ERROR — inside an agent written in exactly that runtime. podman
+	# ERR_SYSTEM_ERROR -- inside an agent written in exactly that runtime. podman
 	# hid this: --userns=keep-id synthesizes a passwd entry for the mapped user.
-	# Reproduce it by appending the line NSS resolves out here, where sssd is
-	# reachable, and pass it on a file descriptor so no generated file has to
-	# exist on disk or be cleaned up. --ro-bind-data rather than --file: /etc is
-	# bound read-only, so the entry has to arrive as a mount, not as a write.
-	local passwd_fd group_fd uid gid
+	#
+	# Resolve the lines ONCE, here, and check them. The first version of this
+	# called getent in the guard and AGAIN inside the process substitution, where a
+	# non-zero exit is invisible to the shell: a transient sssd failure between the
+	# two calls produced a syntactically valid /etc/passwd that simply lacked the
+	# user -- silently reintroducing the throw this code exists to prevent -- and a
+	# hang there blocked bwrap during setup with no message at all. What is left in
+	# the substitution below runs `cat` and `printf` only, so it cannot block on
+	# the directory.
+	local passwd_line="" group_line="" uid gid
 	uid=$(id -u)
 	gid=$(id -g)
-	if ! awk -F: -v u="$uid" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null &&
-		getent passwd "$uid" >/dev/null 2>&1; then
-		exec {passwd_fd}< <(
-			cat /etc/passwd
-			getent passwd "$uid"
-		)
-		exec {group_fd}< <(
-			cat /etc/group
-			getent group "$gid"
-		)
-		p+=(--ro-bind-data "$passwd_fd" /etc/passwd --ro-bind-data "$group_fd" /etc/group)
+	if ! awk -F: -v u="$uid" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null; then
+		passwd_line=$(getent passwd "$uid" 2>/dev/null) || passwd_line=""
+		group_line=$(getent group "$gid" 2>/dev/null) || group_line=""
+		if [ -z "$passwd_line" ] || [ -z "$group_line" ]; then
+			printf 'sandbox: this uid is not in /etc/passwd and NSS did not resolve it;\n' >&2
+			printf 'sandbox: continuing without it — expect os.userInfo() to fail inside.\n' >&2
+			passwd_line=""
+		fi
 	fi
 
 	p+=(--chdir "$PWD")
@@ -296,6 +298,12 @@ run_bwrap() {
 	done
 
 	if [ "$DRYRUN" -eq 1 ]; then
+		# A descriptor number would be meaningless outside this process, so print a
+		# placeholder: the reconstruction is shown, and the line is not passed off as
+		# runnable.
+		if [ -n "$passwd_line" ]; then
+			p+=(--ro-bind-data PASSWD_FD /etc/passwd --ro-bind-data GROUP_FD /etc/group)
+		fi
 		printf 'bwrap'
 		printf ' %q' "${p[@]}" -- \
 			/bin/sh -c "$PREFLIGHT" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
@@ -303,6 +311,18 @@ run_bwrap() {
 		exit 0
 	fi
 	if [ -n "$SANDBOX_PATH_PREPEND" ]; then PATH="$SANDBOX_PATH_PREPEND:$PATH"; fi
+	if [ -n "$passwd_line" ]; then
+		local passwd_fd group_fd
+		exec {passwd_fd}< <(
+			cat /etc/passwd
+			printf '%s\n' "$passwd_line"
+		)
+		exec {group_fd}< <(
+			cat /etc/group
+			printf '%s\n' "$group_line"
+		)
+		p+=(--ro-bind-data "$passwd_fd" /etc/passwd --ro-bind-data "$group_fd" /etc/group)
+	fi
 	exec bwrap "${p[@]}" -- \
 		/bin/sh -c "$PREFLIGHT" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
 }
