@@ -24,9 +24,3 @@ unset RENV_PRE_ARGS
 # works here because agent-shell binds `default-directory` to the project root
 # before spawning this process (agent-shell.el, `agent-shell-cwd`), so the
 # adapter starts inside the repository it will edit, one process per shell.
-#
-# UNVERIFIED as of 2026-09-04: nothing has run this yet. If a shell fails to
-# start, comment the line below to fall back to an unconfined adapter — the
-# guardrail hook and the permission prompts still apply either way — and report
-# what the process said.
-# unset RENV_WRAP

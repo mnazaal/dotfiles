@@ -1,4 +1,8 @@
 {
+  "cleanupPeriodDays": 3650,
+  "env": {
+    "AGENT_BRANCH_PREFIX": "claude"
+  },
   "permissions": {
     "allow": [
       "Read",
@@ -46,6 +50,7 @@
       "Read(./.env.*)",
       "Read(~/.claude/.credentials.json)",
       "Read(~/.config/pi/agent/auth.json)",
+      "Read(~/.config/onedrive/**)",
       "Edit(~/.ssh/**)",
       "Edit(~/.aws/**)",
       "Edit(~/.gnupg/**)",
@@ -56,6 +61,7 @@
       "Edit(~/.config/zsh/**)",
       "Edit(~/.claude/.credentials.json)",
       "Edit(~/.config/pi/agent/auth.json)",
+      "Edit(~/.config/onedrive/**)",
       "Edit(~/.gpg/**)",
       "Edit(~/.config/git/credentials)",
       "Edit(~/.netrc)",
@@ -70,7 +76,6 @@
     ]
   },
   "model": "opus[1m]",
-  "cleanupPeriodDays": 3650,
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -92,7 +97,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.claude/hooks/guardrails.ts\"; if [ -f \"$f\" ] && bun \"$f\"; then exit 0; fi; printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Claude guardrail hook unavailable; confirm manually\"}}'"
+            "command": "f=\"$HOME/.claude/hooks/guardrails.ts\"; if [ -f \"$f\" ] && bun \"$f\"; then exit 0; fi; printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"guardrail hook failed to run (missing bun, or policy JSON missing/malformed) — denied, fail closed; see stderr\"}}'"
           }
         ]
       },
@@ -119,6 +124,6 @@
   "disableAgentView": true,
   "effortLevel": "high",
   "tui": "fullscreen",
-  "diffTool": "auto",
-  "theme": "auto"
+  "theme": "auto",
+  "diffTool": "auto"
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# renv wiring for every non-claude harness: which sandbox profile, branch
-# prefix, secrets and pre-args each launch carries, and that a launch dies
-# rather than running bare when its guardrail assets or its wrapper are absent.
+# renv wiring for every non-claude harness: which sandbox profile, secrets and
+# pre-args each launch carries, and that a launch dies rather than running bare
+# when its wrapper is absent.
 # `renv claude` keeps its own test: its --rw logic needs a git fixture.
 set -euo pipefail
 
@@ -21,21 +21,13 @@ EOF
 # Capture everything any harness cares about; each case asserts its own subset.
 cat >"$bin/sandbox" <<'EOF'
 #!/usr/bin/env bash
-printf 'prefix=%s\nasta=%s\nopenrouter=%s\ncache=%s\n' \
-	"${AGENT_BRANCH_PREFIX:-}" "${ASTA_MCP_API_KEY:-}" "${OPENROUTER_API_KEY:-}" \
+printf 'asta=%s\nopenrouter=%s\ncache=%s\n' \
+	"${ASTA_MCP_API_KEY:-}" "${OPENROUTER_API_KEY:-}" \
 	"${XDG_CACHE_HOME:-}" >"$RENV_CAPTURE"
 printf '%s\n' "$@" >>"$RENV_CAPTURE"
 EOF
 printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/pi"
 chmod +x "$bin"/*
-
-deploy_guardrails() { # [malformed]
-	mkdir -p "$home/.agents/guardrails"
-	touch "$home/.agents/guardrails/core.ts"
-	printf '%s\n' "${1-$(printf '{"credentials": []}')}" >"$home/.agents/guardrails/sensitive-paths.json"
-	printf '{"escalators": []}\n' >"$home/.agents/guardrails/dangerous-commands.json"
-	printf '{"gates": []}\n' >"$home/.agents/guardrails/skill-gates.json"
-}
 
 run() { # harness [args...] -> capture on stdout
 	rm -f "$capture"
@@ -65,15 +57,8 @@ refuses() { # label harness -> renv must exit non-zero AND never reach the sandb
 	}
 }
 
-# --- guardrail preflight: fail closed before the wrapper runs ----------------
-refuses 'with no deployed guardrail assets' pi
-deploy_guardrails '{not-json'
-refuses 'with malformed guardrail policy' pi
-deploy_guardrails
-
 # --- per-harness wiring ------------------------------------------------------
 out=$(run pi --version)
-expect pi "$out" "prefix=pi"
 expect pi "$out" "openrouter=test-openrouter-pi"
 expect pi "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi")"
 
@@ -92,7 +77,6 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/pi-acp"
 chmod +x "$bin/pi-acp"
 
 out=$(run pi-acp --version)
-expect pi-acp "$out" "prefix=pi"
 expect pi-acp "$out" "openrouter=test-openrouter-pi"
 expect pi-acp "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi-acp")"
 case "$out" in *--permission-mode*)
@@ -116,10 +100,8 @@ grep -q 'renv/claude\.sh"$' "$claude_acp" || {
 
 # --- fail closed when the wrapper itself is missing --------------------------
 # Without this, a PATH without `sandbox` would run the harness unconfined.
-# A PATH that keeps bun (the policy checker needs it) but drops the real
-# sandbox, so this fails for the reason under test and not for a missing profile.
 rm "$bin/sandbox"
-bare="$bin:$(dirname "$(command -v bun)"):/usr/bin:/bin"
+bare="$bin:/usr/bin:/bin"
 if env HOME="$home" PATH="$bare" XDG_CONFIG_HOME="$config" \
 	RENV_CAPTURE="$capture" "$repo/.local/scripts/renv" pi --version >/dev/null 2>&1; then
 	printf 'renv ran pi unconfined with no sandbox on PATH\n' >&2

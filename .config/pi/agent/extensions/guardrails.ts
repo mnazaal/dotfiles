@@ -2,7 +2,15 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../../.agents/guardrails/core.ts";
 
+// Throws if a policy JSON is missing or malformed; a throw at import aborts pi
+// with exit 1. That is the fail-closed launch renv's RENV_REQUIRE_GUARDRAILS
+// used to provide, now with no launcher in the way.
 const rails = createGuardrails("pi");
+
+// Confine this agent's git history to pi/* branches (the shared git hooks in
+// ~/.config/git/hooks read it). Set here, in the process every tool spawns
+// from, so no launcher has to: the bash tool spreads process.env per spawn.
+process.env.AGENT_BRANCH_PREFIX = "pi";
 
 export default function (pi: ExtensionAPI) {
   const loadedSkills = new Set<string>();

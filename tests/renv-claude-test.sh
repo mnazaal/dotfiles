@@ -47,8 +47,7 @@ EOF
 cat >"$bin/sandbox" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'prefix=%s\n' "${AGENT_BRANCH_PREFIX:-}" >"$RENV_CAPTURE"
-printf '%s\n' "$@" >>"$RENV_CAPTURE"
+printf '%s\n' "$@" >"$RENV_CAPTURE"
 EOF
 
 cat >"$bin/claude" <<'EOF'
@@ -79,7 +78,7 @@ expect() { # label, actual, expected
 }
 
 confined() { # rw-paths... -> expected capture
-	printf 'prefix=claude\n-p\nagent-claude\n'
+	printf -- '-p\nagent-claude\n'
 	for path in "$@"; do printf -- '--rw\n%s\n' "$path"; done
 	printf -- '--\n%s\n--permission-mode\nbypassPermissions\n--version\n' "$bin/claude"
 }
@@ -93,7 +92,7 @@ expect 'repo subdirectory' "$(run "$toplevel/sub")" "$(confined "$toplevel")"
 expect 'linked worktree' "$(run "$linked")" "$(confined "$linked" "$common")"
 
 expect 'non-git directory' "$(run "$tmp/untracked")" "$(
-	printf 'prefix=claude\n-p\nagent-claude\n--\n%s\n--version\n' "$bin/claude"
+	printf -- '-p\nagent-claude\n--\n%s\n--version\n' "$bin/claude"
 )"
 
 # A proxy that cannot start must stop the launch with its log named, not leave

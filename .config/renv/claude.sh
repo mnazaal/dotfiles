@@ -2,11 +2,6 @@
 # Claude Code environment variables
 # # Loaded by renv before running `claude`
 
-# Confine this agent's git history to claude/* branches (enforced by the shared
-# git hooks in ~/.config/git/hooks).
-AGENT_BRANCH_PREFIX="claude"
-RENV_REQUIRE_GUARDRAILS=1
-
 renv_secret ASTA_MCP_API_KEY asta-mcp
 
 # Route Claude Code through the local Headroom proxy. This is intentionally kept
@@ -24,7 +19,11 @@ HEADROOM_WORKSPACE_DIR="${HEADROOM_WORKSPACE_DIR:-${XDG_STATE_HOME:-$HOME/.local
 HEADROOM_MEMORY_DB_PATH="${HEADROOM_MEMORY_DB_PATH:-${HEADROOM_WORKSPACE_DIR}/memory.db}"
 export HEADROOM_WORKSPACE_DIR HEADROOM_MEMORY_DB_PATH
 
-if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
+# Every probe needs a deadline. A proxy that is alive but wedged — holding a TCP
+# connection stranded by a routing change, e.g. a VPN taking over the default
+# route — accepts the connection and never answers. Without --max-time this probe
+# blocks forever and the launch hangs before claude ever starts.
+if ! curl -fsS --max-time 5 "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	mkdir -p "${HEADROOM_WORKSPACE_DIR}"
 	# No --intercept-tool-results: since 0.36.1 headroom refuses to start with it
 	# on the stable rollout channel, and a proxy that never binds looks like
@@ -45,7 +44,7 @@ if ! curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 	_hr_ready=0
 	_hr_tries=30
 	while [ "$_hr_tries" -gt 0 ]; do
-		if curl -fsS "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
+		if curl -fsS --max-time 2 "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
 			_hr_ready=1
 			break
 		fi
@@ -67,8 +66,7 @@ ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
 # used unless tool search/deferral is explicitly enabled.
 ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
 
-export AGENT_BRANCH_PREFIX RENV_REQUIRE_GUARDRAILS HEADROOM_PORT \
-	HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_SEARCH
+export HEADROOM_PORT HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_SEARCH
 
 # --- Filesystem sandbox + permission mode -----------------------------------
 # Run this harness confined to an allowlist of dirs via `sandbox`, and let it

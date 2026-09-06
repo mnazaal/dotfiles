@@ -14,7 +14,8 @@
     "~/.local/share/gnupg",
     "~/.local/share/pass",
     "~/.claude/.credentials.json",
-    "~/.config/pi/agent/auth.json"
+    "~/.config/pi/agent/auth.json",
+    "~/.config/onedrive"
   ],
   "sensitive_segments": [
     ".ssh",

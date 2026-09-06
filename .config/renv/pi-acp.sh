@@ -9,7 +9,3 @@
 # The adapter speaks JSON-RPC over stdio; keep anything added here on stderr.
 # shellcheck source=/dev/null
 . "${XDG_CONFIG_HOME:-$HOME/.config}/renv/pi.sh"
-
-# UNVERIFIED as of 2026-09-04. If the shell fails to start, uncomment to fall
-# back to an unconfined adapter and report what the process said.
-# unset RENV_WRAP
