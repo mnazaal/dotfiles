@@ -2,79 +2,29 @@
 # Claude Code environment variables
 # # Loaded by renv before running `claude`
 
-renv_secret ASTA_MCP_API_KEY asta-mcp
-
-# Route Claude Code through the local Headroom proxy. This is intentionally kept
-# in renv instead of `headroom wrap claude` so dotfiles remain the source of
-# truth and the sandbox/secrets flow stays unchanged.
-HEADROOM_PORT="${HEADROOM_PORT:-8787}"
-HEADROOM_ANTHROPIC_BASE_URL="${HEADROOM_ANTHROPIC_BASE_URL:-http://127.0.0.1:${HEADROOM_PORT}}"
-
-# Pin Headroom's workspace + memory DB to a stable home. Otherwise the proxy
-# defaults the memory store to {cwd}/.headroom (server.py hardcodes Path.cwd()
-# for the DB and ignores HEADROOM_WORKSPACE_DIR for it), so it lands in whatever
-# project dir the agent happens to launch from. Absolute paths, exported before
-# the proxy spawns so the child inherits them, make the location cwd-independent.
-HEADROOM_WORKSPACE_DIR="${HEADROOM_WORKSPACE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/headroom}"
-HEADROOM_MEMORY_DB_PATH="${HEADROOM_MEMORY_DB_PATH:-${HEADROOM_WORKSPACE_DIR}/memory.db}"
-export HEADROOM_WORKSPACE_DIR HEADROOM_MEMORY_DB_PATH
-
-# Every probe needs a deadline. A proxy that is alive but wedged — holding a TCP
-# connection stranded by a routing change, e.g. a VPN taking over the default
-# route — accepts the connection and never answers. Without --max-time this probe
-# blocks forever and the launch hangs before claude ever starts.
-if ! curl -fsS --max-time 5 "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
-	mkdir -p "${HEADROOM_WORKSPACE_DIR}"
-	# No --intercept-tool-results: since 0.36.1 headroom refuses to start with it
-	# on the stable rollout channel, and a proxy that never binds looks like
-	# "Connection refused" in the client, not like a flag error.
-	_hr_log="${HEADROOM_WORKSPACE_DIR}/proxy-${HEADROOM_PORT}.log"
-	# </dev/null matters on the ACP path: that launch is a child of the editor,
-	# whose stdin is the JSON-RPC pipe. A background process holding it open can
-	# consume frames meant for the adapter.
-	nohup headroom proxy --port "$HEADROOM_PORT" --mode "${HEADROOM_MODE:-cache}" \
-		--lossless \
-		</dev/null >"$_hr_log" 2>&1 &
-	_hr_pid=$!
-	# A proxy that dies during startup — a flag the installed version has moved
-	# behind a rollout channel, a port already taken — is otherwise invisible:
-	# the harness reports only "Connection refused" and retries ten times. Wait
-	# for readiness rather than a fixed sleep, and stop the launch naming the
-	# log, the same way a secret that cannot be read stops it.
-	_hr_ready=0
-	_hr_tries=30
-	while [ "$_hr_tries" -gt 0 ]; do
-		if curl -fsS --max-time 2 "${HEADROOM_ANTHROPIC_BASE_URL}/readyz" >/dev/null 2>&1; then
-			_hr_ready=1
-			break
-		fi
-		# An exited proxy will never become ready; do not wait out the budget.
-		kill -0 "$_hr_pid" 2>/dev/null || break
-		sleep 0.5
-		_hr_tries=$((_hr_tries - 1))
-	done
-	if [ "$_hr_ready" -ne 1 ]; then
-		printf 'claude.sh: headroom proxy did not come up on %s; see %s\n' \
-			"$HEADROOM_ANTHROPIC_BASE_URL" "$_hr_log" >&2
-		return 1
-	fi
-	unset _hr_log _hr_pid _hr_ready _hr_tries
-fi
-ANTHROPIC_BASE_URL="$HEADROOM_ANTHROPIC_BASE_URL"
-
-# Claude Code can eagerly load large tool definitions when a custom base URL is
-# used unless tool search/deferral is explicitly enabled.
-ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
-
-export HEADROOM_PORT HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_SEARCH
+# Nothing here routes through Headroom any more. The proxy is a systemd user
+# service (`headroom install apply --preset persistent-service`), enabled and
+# restarted on failure by systemd, and settings.json points ANTHROPIC_BASE_URL
+# at it for every launch path. This file used to start the proxy itself and
+# export the base URL, which only ever worked for launches that went through
+# it -- a bare `claude` got nothing.
 
 # --- Filesystem sandbox + permission mode -----------------------------------
-# Both branches also switch OFF Claude Code's own native sandbox for this launch. It cannot
-# nest inside podman (bwrap cannot mount proc in a second user namespace), and the global flag
-# that would allow it, enableWeakerNestedSandbox, exposes the host /proc to every Bash command
-# -- which would weaken the BARE `claude` path too, where nothing else is confining it. Podman
-# is the boundary here, so turning the inner one off loses nothing. Delete these overrides when
-# this launcher retires and settings.json's sandbox block becomes the only boundary.
+# Switch OFF Claude Code's own native sandbox for this launch. It cannot nest
+# inside podman (bwrap cannot mount proc in a second user namespace), and the
+# global flag that would allow it, enableWeakerNestedSandbox, exposes the host
+# /proc to every Bash command -- which would weaken the BARE `claude` path too,
+# where the native sandbox IS the only boundary. Podman is the boundary here, so
+# turning the inner one off loses nothing. Delete when this launcher retires and
+# settings.json's sandbox block is the only boundary left.
+#
+# This is now the only pre-arg, so the ACP launcher can inherit it wholesale.
+# It briefly shared an array with --permission-mode, and that file's blanket
+# `unset` -- there to drop the permission flag, which the adapter rejects --
+# took this with it, leaving the editor path trying to nest. Removing the
+# git-gated permission mode removed the need to subtract anything at all.
+# shellcheck disable=SC2034  # read by renv after sourcing
+RENV_PRE_ARGS=(--settings '{"sandbox":{"enabled":false}}')
 # Run this harness confined to an allowlist of dirs via `sandbox`, and let it
 # work unprompted inside that confinement. The sandbox is the boundary, not the
 # permission prompt: every reachable path is an allowlisted bind.
@@ -86,8 +36,11 @@ export HEADROOM_PORT HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_
 # bypass depends on. --rw lands in the RW array, emitted after RO, so it
 # correctly overrides the enclosing read-only bind.
 #
-# Outside a worktree there is nothing to recover from, so stay confined but keep
-# normal prompting. Deny rules, and guardrail-hook ask/deny, apply in every mode.
+# The permission mode is no longer decided here. It was gated on being inside a
+# git worktree, on the reasoning that unprompted edits are safe because git can
+# undo them -- but a prompt you approve is exactly as unrecoverable as an edit
+# you were never asked about, so outside a repo the prompt restored nothing. It
+# is now settings.json's flat `defaultMode`, which both launch paths read.
 # Comment out the RENV_WRAP lines to disable confinement. See `sandbox --help`.
 if _toplevel=$(git rev-parse --show-toplevel 2>/dev/null); then
 	_rw=(--rw "$_toplevel")
@@ -104,19 +57,8 @@ if _toplevel=$(git rev-parse --show-toplevel 2>/dev/null); then
 	fi
 	# shellcheck disable=SC2034  # read by renv after sourcing
 	RENV_WRAP=(sandbox -p agent-claude "${_rw[@]}" --)
-	# shellcheck disable=SC2034  # read by renv after sourcing
-	RENV_PRE_ARGS=(--permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false}}')
 else
 	# shellcheck disable=SC2034  # read by renv after sourcing
 	RENV_WRAP=(sandbox -p agent-claude --)
-	# shellcheck disable=SC2034  # read by renv after sourcing
-	RENV_PRE_ARGS=(--settings '{"sandbox":{"enabled":false}}')
-	printf 'claude.sh: cwd is not a git worktree — starting with normal permissions\n' >&2
 fi
 unset _toplevel _common _rw
-
-# The sandbox mounts the claude binary read-only, so its self-updater can't write
-# (you'd see "Auto-update failed"). Disable it in the sandbox; update claude on
-# the host instead (outside renv).
-DISABLE_AUTOUPDATER=1
-export DISABLE_AUTOUPDATER

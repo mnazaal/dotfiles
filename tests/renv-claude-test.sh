@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Allow-all is gated on git, and the writable unit is everything git needs to
-# write. `renv claude` hands Claude Code --permission-mode bypassPermissions only
-# when the launch directory is a git worktree, and binds read-write both the repo
-# toplevel and — for a linked worktree, where they differ — the common git dir in
-# the main repo. Without either, the agent edits unprompted while git itself is
-# read-only, which destroys the recoverability the bypass depends on.
+# The writable unit is everything git needs to write. `renv claude` binds
+# read-write both the repo toplevel and — for a linked worktree, where they
+# differ — the common git dir in the main repo. Without both, the agent edits
+# files while git itself is read-only, so nothing it did can be reverted.
+#
+# The permission mode used to be decided here too, gated on being inside a
+# worktree. It is settings.json's flat defaultMode now, so no argv carries it.
 set -euo pipefail
 
 repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
@@ -38,11 +39,6 @@ set -euo pipefail
 printf '%s\n' test-asta-key
 EOF
 
-# Report the Headroom proxy as already up so the env file skips launching one.
-cat >"$bin/curl" <<'EOF'
-#!/usr/bin/env bash
-exit 0
-EOF
 
 cat >"$bin/sandbox" <<'EOF'
 #!/usr/bin/env bash
@@ -54,9 +50,10 @@ cat >"$bin/claude" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-chmod +x "$bin/pass" "$bin/curl" "$bin/sandbox" "$bin/claude"
+cp "$bin/claude" "$bin/claude-agent-acp"
+chmod +x "$bin/pass" "$bin/sandbox" "$bin/claude" "$bin/claude-agent-acp"
 
-run() { # cwd -> captured invocation
+run() { # cwd [harness] -> captured invocation
 	local capture="$tmp/capture"
 	(
 		cd "$1" || exit 1
@@ -64,7 +61,7 @@ run() { # cwd -> captured invocation
 			XDG_CONFIG_HOME="$config" \
 			GIT_CEILING_DIRECTORIES="$tmp" \
 			RENV_CAPTURE="$capture" \
-			"$repo/.local/scripts/renv" claude --version
+			"$repo/.local/scripts/renv" "${2:-claude}" --version
 	)
 	cat "$capture"
 }
@@ -80,7 +77,7 @@ expect() { # label, actual, expected
 confined() { # rw-paths... -> expected capture
 	printf -- '-p\nagent-claude\n'
 	for path in "$@"; do printf -- '--rw\n%s\n' "$path"; done
-	printf -- '--\n%s\n--permission-mode\nbypassPermissions\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' "$bin/claude"
+	printf -- '--\n%s\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' "$bin/claude"
 }
 
 # Repo root and subdirectory must bind the same toplevel, and only it: in a
@@ -91,58 +88,17 @@ expect 'repo subdirectory' "$(run "$toplevel/sub")" "$(confined "$toplevel")"
 # A linked worktree needs the main repo's git dir bound too, or nothing commits.
 expect 'linked worktree' "$(run "$linked")" "$(confined "$linked" "$common")"
 
+# The editor path drops --permission-mode (the adapter rejects it) but must KEEP
+# the native-sandbox override: podman is its boundary too, and bwrap cannot nest
+# inside podman. When both flags shared one array, a blanket `unset` took the
+# override with it and every Bash call in an agent-shell session failed. The
+# suite could not see that, because it only ever drove `renv claude`.
+expect 'acp keeps the native-sandbox override' "$(run "$toplevel" claude-agent-acp)" "$(
+	printf -- '-p\nagent-claude\n--rw\n%s\n--\n%s\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' \
+		"$toplevel" "$bin/claude-agent-acp"
+)"
+
 expect 'non-git directory' "$(run "$tmp/untracked")" "$(
 	printf -- '-p\nagent-claude\n--\n%s\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' "$bin/claude"
 )"
 
-# A proxy that cannot start must stop the launch with its log named, not leave
-# the harness pointed at a dead base URL to retry "Connection refused" ten times
-# with nothing saying why. Worst case here is the whole readiness budget (~15s),
-# if bash has not yet reaped the exited stub; a prompt failure is the liveness
-# check working.
-dead="$tmp/deadbin"
-mkdir -p "$dead" "$tmp/hrstate"
-
-cat >"$dead/curl" <<'EOF'
-#!/usr/bin/env bash
-exit 7
-EOF
-
-cat >"$dead/headroom" <<'EOF'
-#!/usr/bin/env bash
-printf 'error: --a-flag is not available in the current rollout channel\n' >&2
-exit 2
-EOF
-chmod +x "$dead/curl" "$dead/headroom"
-
-capture="$tmp/capture"
-rm -f "$capture"
-status=0
-stderr=$(
-	cd "$tmp/untracked" || exit 1
-	PATH="$dead:$bin:$PATH" \
-		XDG_CONFIG_HOME="$config" \
-		GIT_CEILING_DIRECTORIES="$tmp" \
-		RENV_CAPTURE="$capture" \
-		HEADROOM_PORT=1 \
-		HEADROOM_WORKSPACE_DIR="$tmp/hrstate" \
-		"$repo/.local/scripts/renv" claude --version 2>&1 >/dev/null
-) || status=$?
-
-[ "$status" -ne 0 ] || {
-	printf 'a proxy that failed to start did not stop the launch\n' >&2
-	exit 1
-}
-
-case "$stderr" in
-*"$tmp/hrstate/proxy-1.log"*) ;;
-*)
-	printf 'launch failure did not name the proxy log:\n%s\n' "$stderr" >&2
-	exit 1
-	;;
-esac
-
-[ ! -e "$capture" ] || {
-	printf 'claude was launched despite a proxy that never came up\n' >&2
-	exit 1
-}

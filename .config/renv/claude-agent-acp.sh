@@ -13,11 +13,12 @@
 # shellcheck source=/dev/null
 . "${XDG_CONFIG_HOME:-$HOME/.config}/renv/claude.sh"
 
-# claude.sh adds `--permission-mode bypassPermissions`, which is a flag of the
-# claude CLI and not of this adapter — passing it through would abort the
-# launch. Dropping it is also the point of the editor path: the per-tool-call
-# prompt shown in Emacs is what replaces the terminal's blanket bypass.
-unset RENV_PRE_ARGS
+# Nothing is subtracted from RENV_PRE_ARGS here any more. It used to carry
+# `--permission-mode bypassPermissions`, a claude CLI flag this adapter rejects,
+# so this file unset the array -- which also discarded the native-sandbox
+# override sharing it, and every Bash call in an agent-shell session then failed
+# with `Can't mount proc on /newroot/proc`. The permission mode has since moved
+# to settings.json, leaving only the override, which this path needs verbatim.
 
 # The sandbox wrapper inherited from claude.sh binds the repository read-write
 # by resolving `git rev-parse --show-toplevel` in the current directory. That

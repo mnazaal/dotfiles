@@ -85,14 +85,13 @@ case "$out" in *--permission-mode*)
 	;;
 esac
 
-# claude-agent-acp.sh cannot be driven the same way: sourcing claude.sh starts
-# the Headroom proxy, which a test must not do. Assert the one line that carries
-# the contract instead -- weaker than running it, and named as such.
+# What claude-agent-acp.sh passes through is now asserted behaviourally, by
+# renv-claude-test.sh, which stubs headroom-ensure so sourcing claude.sh does
+# not start a real proxy. A grep for `unset RENV_PRE_ARGS` used to stand in for it
+# here; that assertion pinned a contract that turned out to be the bug -- the
+# unset also discarded the native-sandbox override the editor path needs -- so
+# the proxy is gone and only the sourcing relationship is checked here.
 claude_acp="$repo/.config/renv/claude-agent-acp.sh"
-grep -q '^unset RENV_PRE_ARGS$' "$claude_acp" || {
-	printf 'renv: %s no longer drops RENV_PRE_ARGS\n' "$claude_acp" >&2
-	exit 1
-}
 grep -q 'renv/claude\.sh"$' "$claude_acp" || {
 	printf 'renv: %s no longer sources its CLI sibling\n' "$claude_acp" >&2
 	exit 1
