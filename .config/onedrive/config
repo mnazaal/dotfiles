@@ -1,2 +1,30 @@
 local_first = "true"
 enable_logging = "true"
+
+# Without this the client tries /var/log/onedrive, which it cannot create, and
+# falls back to writing the activity log into the home directory root.
+log_dir = "~/.local/state/onedrive/"
+
+# Ubuntu 24.04 ships curl 8.5.0, which is on upstream's list of versions with
+# known HTTP/2 bugs. The client already downgrades itself to HTTP/1.1 on
+# detecting it; setting these two makes that explicit and demotes the warning
+# from a desktop notification on every single sync to a line in the log. It
+# silences the notification, not the underlying libcurl bug — the real fix is a
+# curl newer than 8.6.
+force_http_11 = "true"
+ip_protocol_version = "1"
+
+# Stated rather than left implicit because changing it later mandates a full
+# --resync. This is also the client's own default.
+sync_dir = "~/OneDrive"
+
+# 10 GiB, raised from the client's 50 MB default. The drive holds 245 GB and
+# this filesystem has ~145 GB free, so a mis-scoped sync_list would otherwise
+# happily run / to within 50 MB of full and take the desktop down with it.
+# The unit is MEBIBYTES, not bytes: the client multiplies this by 1048576, and
+# `--display-config` reports the product. 10240 here reads back as 10737418240.
+space_reservation = "10240"
+
+# skip_file is deliberately not set. The default is `~*|.~*|*.tmp|*.swp|*.partial`
+# — Office and LibreOffice lock files, temporaries and vim swap files — and
+# defining our own would REPLACE those built-ins rather than add to them.

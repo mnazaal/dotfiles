@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# One OneDrive sync pass, for cron. `onedrive --sync` syncs once and exits, so
+# this needs no daemon and no supervisor. It also needs no lock of its own: the
+# client refuses to start while another instance is running, which is the
+# overlap guard a short schedule wants.
+#
+# Logging is not passed here — `enable_logging` and `log_dir` in the tracked
+# config send it to ~/.local/state/onedrive/, which is what cron needs given it
+# has no terminal to write to.
+# Overridable so this is testable, and so it can be pointed at a different
+# build without editing the script.
+ONEDRIVE_BIN="${ONEDRIVE_BIN:-/usr/bin/onedrive}"
+ONEDRIVE_CONFIG="$HOME/.config/onedrive/config"
+
+if [[ ! -x "$ONEDRIVE_BIN" ]]; then
+	echo "onedrive-cron: onedrive binary not executable: $ONEDRIVE_BIN" >&2
+	exit 1
+fi
+
+if [[ ! -f "$ONEDRIVE_CONFIG" ]]; then
+	echo "onedrive-cron: config not found: $ONEDRIVE_CONFIG" >&2
+	exit 1
+fi
+
+# --resync deletes and rebuilds the local sync database, and upstream cautions
+# against making it a startup default. It belongs to deliberate manual
+# recovery, not to a scheduled run that no one is watching.
+for arg in "$@"; do
+	case "$arg" in
+	--resync | --resync=*)
+		echo "onedrive-cron: refusing --resync in a scheduled run." >&2
+		echo "Run it by hand instead, after reading what it reports:" >&2
+		echo "  onedrive --sync --resync --dry-run" >&2
+		exit 1
+		;;
+	esac
+done
+
+status=0
+"$ONEDRIVE_BIN" --sync "$@" || status=$?
+
+# The client refuses to sync until a --resync has been done after certain
+# configuration changes, and signals that with a dedicated exit status: 126 up
+# to v2.5.11, 78 from v2.5.12. Both are recognised so that upgrading the client
+# does not turn this into an unexplained recurring cron failure.
+if [[ "$status" -eq 126 || "$status" -eq 78 ]]; then
+	echo "onedrive-cron: the client requires a --resync before it will sync (exit $status)." >&2
+	echo "Inspect what it would do, then run it:" >&2
+	echo "  onedrive --sync --resync --dry-run" >&2
+fi
+
+exit "$status"

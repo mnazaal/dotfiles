@@ -18,6 +18,12 @@ credentials.json
 secrets.json
 .config/gh/hosts.yml
 
+# onedrive: the client keeps refresh_token and items.sqlite3 in its config
+# directory, which is this stow-managed one. Default-deny it so a token can
+# never be committed, and track only the config file itself.
+.config/onedrive/*
+!.config/onedrive/config
+
 # Never commit full Firefox profiles or runtime/secrets files.
 .mozilla/firefox/*
 !.mozilla/firefox/bpw3h4pa.BetterFox/
@@ -63,6 +69,7 @@ __pycache__/
 # Standing plan and personal notes — local working documents, deliberately untracked
 PLAN.md
 wip.org
+notes/
 
 # Assets
 .local/share/*

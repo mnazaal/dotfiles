@@ -72,6 +72,10 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   sandbox; the bare commands retain their local defaults)
 - =.local/scripts/notmuch-cron= and =.local/scripts/rss2email-cron= depend on =pass=
 - =.local/scripts/cal-sync-cron= depends on encrypted ICS URL files in password store
+- =.local/scripts/onedrive-cron= depends on the =onedrive= client (abraunegg,
+  from the OpenSuSE Build Service repository — not Ubuntu's package) having been
+  authorised once interactively with a bare =onedrive=. It refuses =--resync=,
+  and reports the client's mandatory-resync exit status rather than looping on it
 - =.local/scripts/shell-share= depends on =ttyd=, =cloudflared=, and =tmux=
 
 * TODO
