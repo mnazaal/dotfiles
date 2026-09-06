@@ -356,3 +356,50 @@ if [ "$setenv_count" -ne 1 ]; then
 fi
 
 printf 'sandbox profiles: bwrap emitter matches the podman policy\n'
+
+# The bwrap root is hand-built, so two things podman's image supplied have to be
+# reconstructed. Both checks are conditional on the host having the shape that
+# makes them necessary: a machine whose /etc/resolv.conf is a real file, or whose
+# users are in /etc/passwd, needs neither, and asserting them there would fail for
+# being correct.
+output=$(run_bwrap "$project" -p agent-pi)
+
+resolv=$(readlink -f /etc/resolv.conf 2>/dev/null || true)
+case "$resolv" in
+"" | /etc/*) ;;
+*)
+	# Bound at its own path, not at /etc/resolv.conf: bwrap follows that symlink
+	# to create the destination and lands in the /run that is deliberately absent.
+	case "$output" in
+	*"--ro-bind $resolv $resolv"*) ;;
+	*)
+		printf 'bwrap: %s is not bound, so /etc/resolv.conf dangles and DNS dies inside\n' \
+			"$resolv" >&2
+		exit 1
+		;;
+	esac
+	;;
+esac
+
+if ! awk -F: -v u="$(id -u)" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null &&
+	getent passwd "$(id -u)" >/dev/null 2>&1; then
+	# An unresolvable uid makes Node's os.userInfo() throw, inside an agent
+	# written in that runtime. podman's --userns=keep-id synthesized the entry.
+	case "$output" in
+	*--ro-bind-data*/etc/passwd*)
+		case "$output" in
+		*--ro-bind-data*/etc/group*) ;;
+		*)
+			printf 'bwrap: /etc/group is not reconstructed alongside /etc/passwd\n' >&2
+			exit 1
+			;;
+		esac
+		;;
+	*)
+		printf 'bwrap: this uid is not in /etc/passwd and no entry is supplied; os.userInfo() throws\n' >&2
+		exit 1
+		;;
+	esac
+fi
+
+printf 'sandbox profiles: bwrap root reconstructs resolv.conf and passwd\n'

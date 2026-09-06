@@ -226,6 +226,18 @@ run_bwrap() {
 			p+=(--ro-bind "$d" "$d")
 		fi
 	done
+	# /etc/resolv.conf is a symlink into /run on a systemd-resolved host, and /run
+	# is deliberately not bound, so the read-only /etc above lands a DANGLING
+	# symlink: name resolution fails inside with nothing more diagnostic than
+	# "Temporary failure in name resolution". Bind the file at ITS OWN path so the
+	# symlink already in /etc resolves; binding it AT /etc/resolv.conf instead
+	# fails, because bwrap follows that symlink to create the destination and
+	# lands in the /run that is not there. podman never hit this — its image
+	# shipped a real resolv.conf that podman rewrote per network.
+	local resolv
+	if resolv=$(readlink -f /etc/resolv.conf 2>/dev/null) && [ -f "$resolv" ]; then
+		p+=(--ro-bind "$resolv" "$resolv")
+	fi
 	p+=(--tmpfs /tmp)
 	# Everything under $HOME is invisible unless the allowlist binds it back.
 	# bwrap's root is already a fresh tmpfs, so this is belt-and-braces against a
@@ -245,6 +257,30 @@ run_bwrap() {
 	# has no copy-up, so podman's load-bearing notmpcopyup has nothing to
 	# correspond to: there is no replica to make and no creation timeout to hit.
 	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--perms 0000 --tmpfs "$d"); fi; done
+
+	# An LDAP/sssd-backed user is absent from /etc/passwd, so the read-only bind
+	# above leaves the uid unresolvable and Node's os.userInfo() throws
+	# ERR_SYSTEM_ERROR — inside an agent written in exactly that runtime. podman
+	# hid this: --userns=keep-id synthesizes a passwd entry for the mapped user.
+	# Reproduce it by appending the line NSS resolves out here, where sssd is
+	# reachable, and pass it on a file descriptor so no generated file has to
+	# exist on disk or be cleaned up. --ro-bind-data rather than --file: /etc is
+	# bound read-only, so the entry has to arrive as a mount, not as a write.
+	local passwd_fd group_fd uid gid
+	uid=$(id -u)
+	gid=$(id -g)
+	if ! awk -F: -v u="$uid" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null &&
+		getent passwd "$uid" >/dev/null 2>&1; then
+		exec {passwd_fd}< <(
+			cat /etc/passwd
+			getent passwd "$uid"
+		)
+		exec {group_fd}< <(
+			cat /etc/group
+			getent group "$gid"
+		)
+		p+=(--ro-bind-data "$passwd_fd" /etc/passwd --ro-bind-data "$group_fd" /etc/group)
+	fi
 
 	p+=(--chdir "$PWD")
 	# Non-secret, and the only marker of this boundary: bwrap creates neither
