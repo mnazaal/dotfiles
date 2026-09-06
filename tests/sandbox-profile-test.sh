@@ -39,6 +39,12 @@ run() { # cwd [sandbox args...] -> dry-run argv
 	)
 }
 
+run_bwrap() { # cwd [sandbox args...] -> dry-run argv from the bwrap emitter
+	local cwd=$1
+	shift
+	run "$cwd" --engine bwrap "$@"
+}
+
 # Each bind is one shell-quoted argv token, so a writable bind is ' src:dst ' and
 # a read-only one is ' src:dst:ro '. A forbidden entry is matched as a substring,
 # so "DIR:DIR" also matches the read-only mount "DIR:DIR:ro": forbidding the
@@ -213,7 +219,7 @@ esac
 
 # The preflight is a shell snippet passed to `sh -c`, so exercise it directly
 # with the real one extracted from the launcher — a copy here would drift.
-preflight=$(awk "/^\tlocal preflight='/{f=1; sub(/^\tlocal preflight='/,\"\")} f{print} /^exec \"\\\$@\"'\$/{exit}" \
+preflight=$(awk "/^PREFLIGHT='/{f=1; sub(/^PREFLIGHT='/,\"\")} f{print} /^exec \"\\\$@\"'\$/{exit}" \
 	"$repo/.local/scripts/sandbox" | sed "s/'$//")
 [ -n "$preflight" ] || {
 	printf 'could not extract the preflight snippet from the launcher\n' >&2
@@ -289,3 +295,64 @@ output=$(run "$project" -p agent-claude)
 assert_mounts 'agent-claude still binds ~/.local/share read-write' "$output" \
 	"$home/.local/share:$home/.local/share "
 printf 'sandbox profiles: credential and mail masks pass\n'
+
+# --- bwrap emitter (PLAN phase A) --------------------------------------------
+# podman is still the default, so everything above pins the podman form. These
+# assert the SAME policy through the second emitter, because `make test` being
+# green is phase A5's exit criterion and would otherwise say nothing about it.
+
+# Order is the whole mechanism here: bwrap applies binds in argv order and lets
+# a repeated destination's LAST bind win, which is why the emitter carries no
+# dedupe. A pin emitted before the writable bind that contains it would be
+# silently undone, and the argv would still look correct.
+output=$(run_bwrap "$home/dotfiles" -p agent-pi)
+rest=${output#*"--bind $home/dotfiles $home/dotfiles"}
+case "$rest" in
+*"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"*) ;;
+*)
+	printf 'bwrap: the guardrails pin is not emitted after the writable dotfiles bind\n' >&2
+	exit 1
+	;;
+esac
+
+# $HOME is tmpfs'd before the allowlist is bound back, so an unlisted path under
+# it is absent rather than merely unwritable.
+case "$output" in
+*"--tmpfs $home "*) ;;
+*)
+	printf 'bwrap: the home directory is not shadowed with a tmpfs\n' >&2
+	exit 1
+	;;
+esac
+
+# Masks need --perms 0000 to be masks at all; a bare --tmpfs leaves a writable
+# empty directory, which passes any path-only assertion.
+output=$(run_bwrap "$project" -p agent-pi)
+for store in gnupg pass password-store keyrings mail zsh; do
+	case "$output" in
+	*"--perms 0000 --tmpfs $home/.local/share/$store"*) ;;
+	*)
+		printf 'bwrap: %s is not masked with mode 0000\n' "$store" >&2
+		exit 1
+		;;
+	esac
+done
+
+# The environment allowlist must never travel in argv. bwrap's own --setenv would
+# put every allowlisted secret where `ps` can read it, so the emitter strips the
+# environment in the launcher instead and passes only this one non-secret marker.
+case "$output" in
+*"--setenv SANDBOX_ENGINE bwrap"*) ;;
+*)
+	printf 'bwrap: the boundary marker --verify-pins looks for is missing\n' >&2
+	exit 1
+	;;
+esac
+setenv_count=$(printf '%s\n' "$output" | grep -o -- '--setenv' | wc -l)
+if [ "$setenv_count" -ne 1 ]; then
+	printf 'bwrap: %s --setenv tokens; values in argv are world-readable via ps\n' \
+		"$setenv_count" >&2
+	exit 1
+fi
+
+printf 'sandbox profiles: bwrap emitter matches the podman policy\n'
