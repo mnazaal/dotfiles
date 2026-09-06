@@ -5,7 +5,6 @@ use agent
 RW+=( "$H/.claude" "$H/.local/state/claude" )
 RW_FILES+=( "$H/.claude.json" )
 SANDBOX_ENV+=(
-	"AGENT_BRANCH_PREFIX"
 	"ASTA_MCP_API_KEY"
 	"HEADROOM_PORT"
 	"HEADROOM_ANTHROPIC_BASE_URL"

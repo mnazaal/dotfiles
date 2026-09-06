@@ -80,7 +80,7 @@ expect() { # label, actual, expected
 confined() { # rw-paths... -> expected capture
 	printf -- '-p\nagent-claude\n'
 	for path in "$@"; do printf -- '--rw\n%s\n' "$path"; done
-	printf -- '--\n%s\n--permission-mode\nbypassPermissions\n--version\n' "$bin/claude"
+	printf -- '--\n%s\n--permission-mode\nbypassPermissions\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' "$bin/claude"
 }
 
 # Repo root and subdirectory must bind the same toplevel, and only it: in a
@@ -92,7 +92,7 @@ expect 'repo subdirectory' "$(run "$toplevel/sub")" "$(confined "$toplevel")"
 expect 'linked worktree' "$(run "$linked")" "$(confined "$linked" "$common")"
 
 expect 'non-git directory' "$(run "$tmp/untracked")" "$(
-	printf -- '-p\nagent-claude\n--\n%s\n--version\n' "$bin/claude"
+	printf -- '-p\nagent-claude\n--\n%s\n--settings\n{\"sandbox\":{\"enabled\":false}}\n--version\n' "$bin/claude"
 )"
 
 # A proxy that cannot start must stop the launch with its log named, not leave

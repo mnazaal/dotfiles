@@ -12,4 +12,4 @@ use agent
 # RW bind nested in a plain RO one wins, which is what makes these override.
 RW+=( "$H/.config/pi/agent/sessions" "$H/.config/pi/agent/npm" )
 RW_FILES+=( "$H/.config/pi/agent/mcp-cache.json" "$H/.config/pi/agent/run-history.jsonl" )
-SANDBOX_ENV+=( "AGENT_BRANCH_PREFIX" "OPENROUTER_API_KEY" "ASTA_MCP_API_KEY" )
+SANDBOX_ENV+=( "OPENROUTER_API_KEY" "ASTA_MCP_API_KEY" )

@@ -69,6 +69,12 @@ ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-false}"
 export HEADROOM_PORT HEADROOM_ANTHROPIC_BASE_URL ANTHROPIC_BASE_URL ENABLE_TOOL_SEARCH
 
 # --- Filesystem sandbox + permission mode -----------------------------------
+# Both branches also switch OFF Claude Code's own native sandbox for this launch. It cannot
+# nest inside podman (bwrap cannot mount proc in a second user namespace), and the global flag
+# that would allow it, enableWeakerNestedSandbox, exposes the host /proc to every Bash command
+# -- which would weaken the BARE `claude` path too, where nothing else is confining it. Podman
+# is the boundary here, so turning the inner one off loses nothing. Delete these overrides when
+# this launcher retires and settings.json's sandbox block becomes the only boundary.
 # Run this harness confined to an allowlist of dirs via `sandbox`, and let it
 # work unprompted inside that confinement. The sandbox is the boundary, not the
 # permission prompt: every reachable path is an allowlisted bind.
@@ -99,10 +105,12 @@ if _toplevel=$(git rev-parse --show-toplevel 2>/dev/null); then
 	# shellcheck disable=SC2034  # read by renv after sourcing
 	RENV_WRAP=(sandbox -p agent-claude "${_rw[@]}" --)
 	# shellcheck disable=SC2034  # read by renv after sourcing
-	RENV_PRE_ARGS=(--permission-mode bypassPermissions)
+	RENV_PRE_ARGS=(--permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false}}')
 else
 	# shellcheck disable=SC2034  # read by renv after sourcing
 	RENV_WRAP=(sandbox -p agent-claude --)
+	# shellcheck disable=SC2034  # read by renv after sourcing
+	RENV_PRE_ARGS=(--settings '{"sandbox":{"enabled":false}}')
 	printf 'claude.sh: cwd is not a git worktree — starting with normal permissions\n' >&2
 fi
 unset _toplevel _common _rw

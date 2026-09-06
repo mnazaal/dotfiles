@@ -79,7 +79,7 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	(
 		cd "$project"
 		HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
-			SANDBOX_CAPTURE="$capture" AGENT_BRANCH_PREFIX="test-agent" \
+			SANDBOX_CAPTURE="$capture" \
 			ASTA_MCP_API_KEY=asta-key OPENROUTER_API_KEY=openrouter-key \
 			HEADROOM_PORT=8787 \
 			HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
@@ -116,5 +116,5 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	done
 }
 
-assert_profile_env agent-claude AGENT_BRANCH_PREFIX ASTA_MCP_API_KEY HEADROOM_PORT ANTHROPIC_BASE_URL -- OPENROUTER_API_KEY UNRELATED_SECRET
-assert_profile_env agent-pi AGENT_BRANCH_PREFIX OPENROUTER_API_KEY ASTA_MCP_API_KEY -- UNRELATED_SECRET
+assert_profile_env agent-claude ASTA_MCP_API_KEY HEADROOM_PORT ANTHROPIC_BASE_URL -- OPENROUTER_API_KEY UNRELATED_SECRET
+assert_profile_env agent-pi OPENROUTER_API_KEY ASTA_MCP_API_KEY -- UNRELATED_SECRET
