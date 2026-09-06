@@ -59,7 +59,6 @@ refuses() { # label harness -> renv must exit non-zero AND never reach the sandb
 
 # --- per-harness wiring ------------------------------------------------------
 out=$(run pi --version)
-expect pi "$out" "openrouter=test-openrouter-pi"
 expect pi "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi")"
 
 # --- the editor's ACP launcher ------------------------------------------------
@@ -77,7 +76,6 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$bin/pi-acp"
 chmod +x "$bin/pi-acp"
 
 out=$(run pi-acp --version)
-expect pi-acp "$out" "openrouter=test-openrouter-pi"
 expect pi-acp "$out" "$(printf -- '-p\nagent-pi\n--\n%s\n--version' "$bin/pi-acp")"
 case "$out" in *--permission-mode*)
 	printf 'renv pi-acp: a CLI-only --permission-mode reached the adapter\n' >&2

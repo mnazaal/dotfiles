@@ -117,4 +117,4 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 }
 
 assert_profile_env agent-claude ASTA_MCP_API_KEY HEADROOM_PORT ANTHROPIC_BASE_URL -- OPENROUTER_API_KEY UNRELATED_SECRET
-assert_profile_env agent-pi OPENROUTER_API_KEY ASTA_MCP_API_KEY -- UNRELATED_SECRET
+assert_profile_env agent-pi ASTA_MCP_API_KEY -- OPENROUTER_API_KEY UNRELATED_SECRET
