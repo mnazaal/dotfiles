@@ -2,7 +2,7 @@
   "mcpServers": {
     "asta-mcp": {
       "headers": {
-        "x-api-key": "$env:ASTA_MCP_API_KEY"
+        "x-api-key": "!cat /run/pi/asta-key"
       },
       "lifecycle": "lazy",
       "url": "https://asta-tools.allen.ai/mcp/v1"
