@@ -261,11 +261,13 @@ run_bwrap() {
 	uid=$(id -u)
 	gid=$(id -g)
 	if ! awk -F: -v u="$uid" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null; then
-		# Independently, because they fail independently: on this host the primary
-		# GID (70000) resolves through NO source — `getent group` exits 2 with empty
-		# output — while the uid resolves fine. Coupling them meant a group lookup
-		# that never worked suppressed the passwd entry that did, which is the
-		# regression this comment exists to prevent recurring.
+		# Independently, because they fail independently. Measured on this host: the
+		# group lookup for this gid returned exit 2 with empty output once, then
+		# succeeded on ten consecutive retries — a transient directory failure, not a
+		# permanent one. Coupling them meant that single blip suppressed the passwd
+		# entry too, silently restoring the os.userInfo() throw. There is no test for
+		# this: any test would have to make NSS fail on demand, and one that merely
+		# runs the lookup passes vacuously whenever the directory is healthy.
 		passwd_line=$(getent passwd "$uid" 2>/dev/null) || passwd_line=""
 		group_line=$(getent group "$gid" 2>/dev/null) || group_line=""
 		if [ -z "$passwd_line" ]; then

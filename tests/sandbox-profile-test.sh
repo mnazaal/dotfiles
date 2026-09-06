@@ -490,24 +490,6 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 	fi
 	printf 'sandbox profiles: the environment allowlist holds on a real launch\n'
 
-	# The identity reconstruction must not depend on the GROUP lookup succeeding.
-	# On this host the primary GID resolves through no source at all while the uid
-	# resolves fine, and coupling the two silently reintroduced the very
-	# os.userInfo() failure the reconstruction exists to prevent.
-	if ! awk -F: -v u="$(id -u)" '$3 == u { found = 1 } END { exit !found }' /etc/passwd 2>/dev/null &&
-		getent passwd "$(id -u)" >/dev/null 2>&1; then
-		inside_user=$(
-			cd "$project" || exit 1
-			HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
-				"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /usr/bin/id -un 2>/dev/null
-		)
-		if [ -z "$inside_user" ]; then
-			printf 'bwrap: the uid does not resolve inside; os.userInfo() will throw\n' >&2
-			exit 1
-		fi
-		printf 'sandbox profiles: the uid resolves inside even though the gid does not\n'
-	fi
-
 else
 	printf 'sandbox profiles: SKIPPED the real-launch environment test (bwrap unavailable)\n'
 fi
