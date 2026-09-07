@@ -6,12 +6,21 @@
 # which profile it happened to compose. Everything below is pi-specific.
 use agent
 
-# The pi runtime lives in ~/.local/share/bun, bound by `dev`. Its control plane
-# stays immutable during a managed run — `agent` already binds ~/.config
-# read-only — and only the package and session locations are writable. A plain
-# RW bind nested in a plain RO one wins, which is what makes these override.
-RW+=( "$H/.config/pi/agent/sessions" "$H/.config/pi/agent/npm" )
-RW_FILES+=( "$H/.config/pi/agent/mcp-cache.json" "$H/.config/pi/agent/run-history.jsonl" )
+# The pi runtime lives in ~/.local/share/bun, bound by `dev`. Its CONTROL PLANE
+# cannot be read-only, which an earlier version of this profile assumed: pi
+# creates a lock directory beside each file it reads (settings.json.lock,
+# auth.json.lock), so a read-only bind makes it report its own settings as
+# invalid and abandon the OAuth availability refresh — the symptom is a bare
+# "No models available" with the real cause two lines above it. It also
+# REWRITES auth.json when a token refreshes, so that file cannot be pinned
+# either. Bind the directory; a plain RW nested in a plain RO one wins.
+#
+# What still protects the machinery in here: settings.json and extensions/ are
+# stow symlinks into ~/dotfiles, and machinery-ro pins those TARGETS read-only
+# after every writable bind, so their contents cannot change from inside.
+# Replacing a symlink itself remains possible and is deliberate circumvention,
+# which this guard has never claimed to stop (see .agents/guardrails/README.md).
+RW+=( "$H/.config/pi/agent" )
 # PI_CODING_AGENT_DIR is load-bearing, not a convenience. pi finds its config
 # directory from it and otherwise falls back to ~/.pi/agent — a symlink that
 # exists on the host and NOT inside, where $HOME is a tmpfs holding only the

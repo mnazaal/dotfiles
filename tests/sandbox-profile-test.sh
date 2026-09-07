@@ -178,10 +178,7 @@ assert_mounts agent-pi "$output" \
 	"$home/dotfiles:$home/dotfiles:ro" \
 	"$home/.config:$home/.config:ro" \
 	"$home/projects:$home/projects:ro" \
-	"$home/.config/pi/agent/sessions:$home/.config/pi/agent/sessions" \
-	"$home/.config/pi/agent/npm:$home/.config/pi/agent/npm" \
-	"$home/.config/pi/agent/mcp-cache.json:$home/.config/pi/agent/mcp-cache.json" \
-	"$home/.config/pi/agent/run-history.jsonl:$home/.config/pi/agent/run-history.jsonl" \
+	"$home/.config/pi/agent:$home/.config/pi/agent " \
 	-- \
 	"$home/dotfiles:$home/dotfiles "
 
