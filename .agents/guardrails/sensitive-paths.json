@@ -58,6 +58,11 @@
     "~/.config/pi/agent/settings.json",
     "~/dotfiles/.config/pi/agent/settings.json",
     "~/.agents/guardrails",
-    "~/dotfiles/.agents/guardrails"
+    "~/dotfiles/.agents/guardrails",
+    "~/.local/share/claude",
+    "~/.local/share/bun/bin",
+    "~/.local/share/cargo/bin",
+    "~/.local/share/go/bin",
+    "~/.local/share/pkgit/kitty/HEAD/kitty/launcher"
   ]
 }

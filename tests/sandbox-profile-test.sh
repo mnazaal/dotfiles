@@ -497,20 +497,37 @@ fi
 # --- every directory on the sandbox PATH must be a pin, not merely read-only ---
 # A writable directory on the sandbox's own PATH is a cross-session persistence
 # route: whatever is dropped there runs OUTSIDE the sandbox in every later
-# session. machinery-ro pins the bun bin dir for exactly that reason, but the
-# rule is general and had been applied one directory at a time. dev.profile also
-# prepends the resolved node bin dir, and a plain read-only bind there does not
-# survive agent.profile's blanket read-write ~/.local/share, which is emitted
-# after it. The observable form of "is a pin" is "emitted after the writable
-# binds", which is what assert_mount_order checks.
+# session. The sandbox PATH is dev.profile's SANDBOX_PATH_PREPEND plus the host
+# PATH (PATH is in the default SANDBOX_ENV), and agent.profile's blanket
+# read-write ~/.local/share contains several of its entries, so a plain read-only
+# bind there is shadowed. The observable form of "is a pin" is "emitted after
+# the writable bind", which assert_mount_order checks.
+#
+# Walk BOTH sources rather than naming directories: the bun bin dir, the node
+# bin dir, and (2026-09-07) cargo/bin, go/bin and the kitty launcher were each
+# found writable one at a time, and a name-by-name list is exactly how the next
+# one hides. Every real PATH entry under $HOME/.local/share is mapped into the
+# fixture home and created there so the bind can be emitted; an entry the
+# profiles do not pin then fails with "never binds", which is the report wanted.
+pathdirs=()
 if node_bin=$(command -v node 2>/dev/null); then
-	node_bin=$(dirname "$(readlink -f "$node_bin")")
+	pathdirs+=("$(dirname "$(readlink -f "$node_bin")")")
+fi
+IFS=: read -r -a host_path <<<"$PATH"
+for entry in "${host_path[@]}"; do
+	case "$entry" in
+	"$HOME"/.local/share/*)
+		fixture="$home/${entry#"$HOME"/}"
+		mkdir -p "$fixture"
+		pathdirs+=("$fixture")
+		;;
+	esac
+done
+for dir in "${pathdirs[@]}"; do
 	for profile in agent-claude agent-pi; do
 		assert_mount_order "$project" "$profile" \
-			"$home/org/agents:$home/org/agents" \
-			"$node_bin:$node_bin:ro"
+			"$home/.local/share:$home/.local/share" \
+			"$dir:$dir:ro"
 	done
-	printf 'sandbox profiles: the prepended node bin dir is pinned, not merely read-only\n'
-else
-	printf 'sandbox profiles: SKIPPED the node bin pin check (no node on PATH)\n'
-fi
+done
+printf 'sandbox profiles: all %s PATH directories under a writable bind are pinned\n' "${#pathdirs[@]}"

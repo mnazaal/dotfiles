@@ -39,6 +39,13 @@ RO_LAST+=(
 	# protection that read as real and was not. It belongs here, where the pins
 	# are emitted last and actually win.
 	"$H/.local/share/claude"
+	# Same class, found 2026-09-07 in a live agent-pi run: three more host PATH
+	# directories under the blanket read-write ~/.local/share were writable from
+	# inside. tests/sandbox-profile-test.sh now walks the real PATH, so the next
+	# one fails the suite instead of waiting to be noticed.
+	"$H/.local/share/cargo/bin"
+	"$H/.local/share/go/bin"
+	"$H/.local/share/pkgit/kitty/HEAD/kitty/launcher"
 )
 
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv
