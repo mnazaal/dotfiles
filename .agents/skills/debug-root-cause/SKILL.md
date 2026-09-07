@@ -11,15 +11,16 @@ No fixes without root-cause investigation or a stated blocker.
 
 ## Workflow
 
-1. Capture exact symptom: command, output, expected vs observed, environment, recent changes.
+1. Capture exact symptom: command, output, expected vs observed, environment, recent changes. Read the lines ABOVE the headline error: a summary line is usually the consequence, the actionable error sits above it in different wording, and treating the headline as the whole error aims the next probe at the wrong layer.
 2. If the failure surfaced right after your own edit/refactor, isolate your diff and rerun the same check before hypothesizing about the edit — cheap, conclusive, and rules out (or confirms) your change as the cause before you spend probes on it. Do not automatically `git stash`, reset, or check out another tree when staged hunks or unrelated user changes exist; get confirmation or use an isolated worktree/copy.
-3. Build a red-capable repro loop: command/check/artifact, exact symptom, expected vs observed, determinism or reproduction rate.
-4. Minimize until remaining elements are load-bearing.
-5. Generate ranked falsifiable hypotheses.
-6. Probe one variable at a time; prefer targeted evidence over broad logging. Tag every debug log with a unique prefix (e.g. `[DEBUG-a4f2]`) so cleanup is one grep.
-7. State root cause with confidence and evidence.
-8. Hand off minimal fix plan to `dev-*` with regression-test seam.
-9. Once the fix lands: re-run the original repro loop (must go green), grep and remove tagged debug instrumentation, and state the confirmed root cause in the commit/PR message.
+3. When it works in one environment and fails in another, run the SAME artifact in both and compare before theorising about which difference matters. Confined vs unconfined, container vs host, CI vs local: one comparison localises the fault to the boundary in a single step, and it is available before any hypothesis is.
+4. Build a red-capable repro loop: command/check/artifact, exact symptom, expected vs observed, determinism or reproduction rate.
+5. Minimize until remaining elements are load-bearing.
+6. Generate ranked falsifiable hypotheses.
+7. Probe one variable at a time; prefer targeted evidence over broad logging. Tag every debug log with a unique prefix (e.g. `[DEBUG-a4f2]`) so cleanup is one grep.
+8. State root cause with confidence and evidence.
+9. Hand off minimal fix plan to `dev-*` with regression-test seam.
+10. Once the fix lands: re-run the original repro loop (must go green), grep and remove tagged debug instrumentation, and state the confirmed root cause in the commit/PR message.
 
 ## Reassessment Rules
 

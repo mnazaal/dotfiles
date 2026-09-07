@@ -248,6 +248,25 @@ const TABLE: Row[] = [
 // The machinery-in-bash rule is relaxed only when the caller says the kernel
 // already pins those paths (the Claude adapter derives this from the native
 // sandbox block). Credentials are never relaxed.
+// The test-command capability decides whether dev-verification is required.
+// It matched only the direct runners, so a repository whose suite is `make
+// test` or `bun test` never tripped it -- 60% gate compliance, and not one
+// firing across a day of running exactly those commands.
+test("test-command capability: runner subcommands count as a test run", () => {
+  const rails = createGuardrails("claude");
+  for (const command of ["pytest -q", "make test", "bun test ./tests/x.ts", "cargo test", "go test ./...", "make test-unit"]) {
+    const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
+    expect(`${command}: ${r.decision}`).toBe(`${command}: deny`);
+    expect(`${command}: ${(r.skills ?? []).includes("dev-verification")}`).toBe(`${command}: true`);
+  }
+  // The same runners doing anything else must stay ungated, which is why the
+  // rule keys on the command/subcommand PAIR rather than the runner's name.
+  for (const command of ["make link", "make check-guardrails-native-sync", "go build ./...", "bun install", "cargo build"]) {
+    const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
+    expect(`${command}: ${r.decision}`).toBe(`${command}: allow`);
+  }
+});
+
 const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
 test("machinery in bash: denied outside a sandbox", () => {
   const rails = createGuardrails("claude", { inSandbox: false });

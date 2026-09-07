@@ -712,6 +712,20 @@ export function createSkillGate() {
       if (commandTokens.some((token) => ["pytest", "unittest", "vitest", "jest", "mocha", "rspec"].includes(token))) {
         capabilities.add("test-command");
       }
+      // Runners whose `test` SUBCOMMAND is the suite. The pair matters, not the
+      // name: `make` and `go` mostly do other things, so a name-only match
+      // would gate `make link` and `go build`. Measured 2026-09-07 -- without
+      // these the gate sat at 60% compliance and never fired once across a full
+      // day in a repository whose canonical commands are `make test` and
+      // `bun test`.
+      const TEST_RUNNERS = new Set(["make", "bun", "cargo", "go"]);
+      for (const seg of splitSegments(input.command)) {
+        const parsed = commandAndArgs(seg, WRAPPERS);
+        if (!parsed || !TEST_RUNNERS.has(parsed.command)) continue;
+        if (parsed.args.some((a) => a === "test" || a.startsWith("test:") || a.startsWith("test-"))) {
+          capabilities.add("test-command");
+        }
+      }
     }
     if (isGitWorktree(input.cwd ?? HOME)) capabilities.add("git-worktree");
     return capabilities;

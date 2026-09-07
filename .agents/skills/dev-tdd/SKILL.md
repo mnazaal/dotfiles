@@ -10,6 +10,7 @@ description: "Use for test-first development: features, bug fixes, regression te
 - Test behavior through public interfaces, not private implementation details.
 - Prefer one observable behavior per test/check.
 - Make the check able to fail for the right reason.
+- Rebuild or truncate shared fixture state per case. A fixture that one case writes and the next reads passes vacuously the moment the writer stops running: the later case asserts against data it never produced, and the assertion looks healthy right up until the earlier case is deleted.
 - Validate numerics against an independent oracle (exact enumeration, finite differences, analytic special case), not a re-derivation of the code's own formula.
 - For stochastic recovery, assert a distribution (e.g. median over seeds), not a single-seed threshold — a lucky seed hides seed-dependent failure.
 - Golden/snapshot first run is red because it writes the baseline — re-run to confirm, don't debug it as a failure.
