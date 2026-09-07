@@ -155,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); [ -n \"$out\" ] && { printf '%s\\n' \"$out\" >&2; exit 2; }; exit 0"
+            "command": "f=\"$HOME/.local/scripts/agent-checkpoint\"; [ -x \"$f\" ] || exit 0; out=$(\"$f\" 2>&1 >/dev/null); rc=$?; [ -n \"$out\" ] && printf '%s\\n' \"$out\" >&2; [ \"$rc\" -eq 0 ] || exit 2; exit 0"
           }
         ]
       }

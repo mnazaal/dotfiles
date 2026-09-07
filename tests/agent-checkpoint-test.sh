@@ -117,16 +117,21 @@ run_in "$r" || fail "non-zero exit in side-effect check"
 [ "$(cat "$r/tracked.txt")" = "MODIFIED" ] || fail "checkpoint altered a working file"
 [ -f "$r/untracked.txt" ] || fail "checkpoint removed an untracked file"
 
-# --- 8. A failure must never wedge the session -------------------------------
-# This runs on every turn; if it can exit non-zero it is worse than the prompts
-# it replaces. An unwritable .git is the realistic failure mode.
+# --- 8. Exit status separates "captured nothing" from "captured, filed oddly" -
+# This is what the per-Bash hook gates on, so the two cases must not share an
+# exit code. An unwritable .git captures NOTHING; allow-all rests on a snapshot
+# existing, so that turn must stop. The converse -- a snapshot that exists but
+# whose ref could not be written -- is case 17 and exits 0, because wedging the
+# session buys nothing when the work is already recoverable.
 r=$(new_repo unwritable)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod -R a-w "$r/.git"
 rc=0
-(cd "$r" && "$script" >/dev/null 2>&1) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
 chmod -R u+w "$r/.git"
-[ "$rc" -eq 0 ] || fail "exited $rc when .git was unwritable; must always exit 0"
+[ "$rc" -ne 0 ] || fail "a checkpoint that captured nothing must exit non-zero"
+printf '%s' "$out" | grep -q 'NOT recoverable' ||
+	fail "a fatal checkpoint must say the work is not recoverable, got: $out"
 
 # --- 9. A repo with no commits still gets a checkpoint -----------------------
 # An unborn HEAD is where work is LEAST recoverable: there is no history to fall
@@ -237,5 +242,47 @@ run_in "$r" || fail "non-zero exit after a real change"
 run_in "$r" AGENT_BRANCH_PREFIX=pi || fail "non-zero exit for a second agent"
 refs_of "$r" | grep -q '^refs/agent-checkpoint/pi/' ||
 	fail "a second agent was deduped against another agent's checkpoint"
+
+# --- 16. A path git cannot index costs that path, not the whole snapshot -----
+# The harness masks its own denied paths as /dev/null character devices at the
+# root of EVERY project it opens. A masked path that is ALSO tracked makes
+# `git add -A` fail outright ("can only add regular files, symbolic links or
+# git-directories"), which took the snapshot down with it in every repo. A FIFO
+# at a tracked path reproduces that refusal exactly and needs no privileges.
+r=$(new_repo unindexable)
+printf 'REAL EDIT\n' >>"$r/other.txt"
+git -C "$r" add other.txt
+git -C "$r" commit -q -m other
+rm "$r/tracked.txt"
+mkfifo "$r/tracked.txt"
+printf 'MUST SURVIVE\n' >>"$r/other.txt"
+run_in "$r" || fail "an unindexable path aborted the whole snapshot"
+[ "$(refs_of "$r" | wc -l)" -eq 1 ] ||
+	fail "no checkpoint ref written when a tracked path was unindexable"
+snap=$(refs_of "$r")
+git -C "$r" show "$snap:other.txt" | grep -q 'MUST SURVIVE' ||
+	fail "the real edit was lost from a snapshot taken beside an unindexable path"
+# The masked path keeps its committed content rather than vanishing from the
+# tree, because read-tree seeds the index from HEAD before add runs.
+git -C "$r" show "$snap:tracked.txt" | grep -q 'original' ||
+	fail "the unindexable path should keep its HEAD content in the snapshot"
+
+# --- 17. A snapshot that exists but files oddly is a note, not a failure -----
+# The commit object is written before the ref is. If only the ref update fails
+# the work IS recoverable (git fsck --lost-found finds it), so the script must
+# say so and still exit 0 -- otherwise the hook blocks every Bash call in a
+# session over a snapshot that succeeded.
+r=$(new_repo danglingref)
+printf 'MODIFIED\n' >"$r/tracked.txt"
+chmod -R a-w "$r/.git/refs"
+rc=0
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+chmod -R u+w "$r/.git/refs"
+[ "$rc" -eq 0 ] ||
+	fail "a snapshot that exists must exit 0 even when its ref could not be written"
+printf '%s' "$out" | grep -q 'dangling at' ||
+	fail "expected the dangling snapshot to be named, got: $out"
+printf '%s' "$out" | grep -q 'NOT recoverable' &&
+	fail "a dangling but existing snapshot must not claim the work is unrecoverable"
 
 printf 'agent-checkpoint: all behaviors pass\n'

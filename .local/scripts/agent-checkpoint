@@ -12,16 +12,28 @@
 #
 # Uses a temporary index, not `git stash create`, which silently omits untracked
 # files. The real index, working tree, HEAD, and stash stack are never touched.
-# Never fails: this runs every turn, so every path ends in exit 0.
+# Exit status IS the contract, because a caller has to tell "no snapshot" from
+# "snapshot taken, filed oddly": nonzero means the work is NOT captured, zero
+# means it is. Callers that gate on this script (the per-Bash hook) block only
+# on nonzero. Keying on stderr instead conflates the two and blocks on success.
 set -uo pipefail
 
-# Exit 0 on every path (this runs each turn; wedging the session is worse than
-# the prompts it replaces) — but never in silence. The guardrail `allow` tier
-# for world-writable and recursive-force-rm is earned by this script working,
-# so a checkpoint that stops working must say so where the turn can see it.
-warn() {
+# The guardrail `allow` tier for world-writable and recursive-force-rm is earned
+# by this script working, so a checkpoint that stops working must say so where
+# the turn can see it. Two severities, because they are not the same event:
+#
+#   fatal — nothing was captured. Exit 1, and a gating caller should refuse the
+#           turn: allow-all rests on a snapshot that does not exist.
+#   note  — the snapshot EXISTS but something about filing it is off. Exit 0:
+#           the work is recoverable, so wedging the session buys nothing.
+fatal() {
 	printf 'agent-checkpoint: %s: uncommitted work is NOT recoverable this turn\n' \
 		"$1" >&2
+	exit 1
+}
+
+note() {
+	printf 'agent-checkpoint: %s\n' "$1" >&2
 	exit 0
 }
 
@@ -37,17 +49,25 @@ else
 	parent=()
 fi
 
-idx=$(mktemp -u 2>/dev/null) || warn "could not create a temporary index"
+idx=$(mktemp -u 2>/dev/null) || fatal "could not create a temporary index"
 tree=$(
 	export GIT_INDEX_FILE="$idx"
 	if [ ${#parent[@]} -gt 0 ]; then
 		git read-tree HEAD 2>/dev/null || exit 1
 	fi
-	git add -A 2>/dev/null || exit 1
+	# --ignore-errors, because a path that cannot be indexed must not cost us the
+	# whole snapshot. The harness masks its own denied paths as /dev/null
+	# character devices at the root of EVERY project it opens, and `git add`
+	# refuses those ("can only add regular files, symbolic links or
+	# git-directories") — without this flag the mask defeats the checkpoint in
+	# every repo, and a caller gating on that blocks the session outright. The
+	# read-tree above already put the committed version of any masked-but-tracked
+	# file in the index, so those keep their HEAD content rather than vanishing.
+	git add -A --ignore-errors 2>/dev/null || true
 	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
-[ -n "$tree" ] || warn "could not write a tree (unreadable or unwritable repo?)"
+[ -n "$tree" ] || fatal "could not write a tree (unreadable or unwritable repo?)"
 
 # Nothing changed since this agent's last checkpoint: the newest ref already
 # holds this exact tree. Skip it. Measured on the real repo before this guard,
@@ -62,8 +82,8 @@ if [ -n "$last" ] && [ "$(git rev-parse -q --verify "$last^{tree}" 2>/dev/null)"
 fi
 
 sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) ||
-	warn "could not commit the snapshot tree"
-[ -n "$sha" ] || warn "commit-tree produced no object"
+	fatal "could not commit the snapshot tree"
+[ -n "$sha" ] || fatal "commit-tree produced no object"
 
 # Nanoseconds, not seconds: at second resolution two snapshots inside one
 # second landed on the same ref name and the later one silently overwrote the
@@ -73,7 +93,9 @@ sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT
 git update-ref "$prefix/$(date +%s%N)" "$sha" 2>/dev/null ||
 	# The commit object IS written at this point; only the ref failed. It is
 	# dangling, so name it — `git fsck --lost-found` finds it until gc runs.
-	warn "could not update the checkpoint ref; snapshot is dangling at $sha"
+	# A note, not a fatal: the snapshot exists and the work is recoverable, so
+	# there is nothing here worth refusing the turn over.
+	note "could not update the checkpoint ref; snapshot is dangling at $sha"
 
 printf 'checkpoint %s\n' "$sha"
 exit 0
