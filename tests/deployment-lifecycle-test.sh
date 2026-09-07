@@ -61,6 +61,33 @@ done
 	exit 1
 }
 
+# A REAL directory sitting where a link would go is the user's, not ours. stow
+# folds its contents in rather than replacing it, and clean must leave both the
+# directory and any file the user put there alone -- the rmdir pass only removes
+# what it emptied. This was asserted by a test that left with the codex harness,
+# though the behavior it covers is stow's and stayed behind.
+occupied_home="$tmp/occupied-home"
+mkdir -p "$occupied_home/.agents/skills"
+printf 'mine\n' >"$occupied_home/.agents/skills/USER-NOTES.md"
+make --no-print-directory -C "$repo" link HOME="$occupied_home" >/dev/null
+[ -f "$occupied_home/.agents/skills/USER-NOTES.md" ] || {
+	printf 'make link destroyed a real file occupying a deployed directory\n' >&2
+	exit 1
+}
+[ -L "$occupied_home/.agents/skills/dev-git" ] || [ -d "$occupied_home/.agents/skills/dev-git" ] || {
+	printf 'make link did not deploy into a directory that already existed\n' >&2
+	exit 1
+}
+make --no-print-directory -C "$repo" clean HOME="$occupied_home" >/dev/null
+[ -f "$occupied_home/.agents/skills/USER-NOTES.md" ] || {
+	printf 'make clean removed a real file it did not deploy\n' >&2
+	exit 1
+}
+[ -d "$occupied_home/.agents/skills" ] || {
+	printf 'make clean removed a directory that was not empty\n' >&2
+	exit 1
+}
+
 # Renaming repository content strands the links deployed under the old name:
 # stow no longer knows about them, so only the DEEP sweep can see them.
 renamed_home="$tmp/renamed-home"
