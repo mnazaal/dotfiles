@@ -361,14 +361,17 @@ if _top=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null) && [ -n "$_top" ]
 fi
 
 if [ "$realcwd" = "$realhome" ] || is_home_or_ancestor "$realcwd"; then
-	printf 'sandbox: cwd (%s) is $HOME or above — not auto-binding it.\n' "$PWD" >&2
-	printf '         cd into a project.\n' >&2
+	printf 'sandbox: nothing writable added: cwd is $HOME or above. Run inside a\n' >&2
+	printf '         git repository for a writable checkout.\n' >&2
 	[ ${#RW[@]} -gt 0 ] || die 'empty writable allowlist from $HOME — refusing to run'
 elif [ "$in_worktree" -eq 0 ] && covered_by_readonly "$rw_unit"; then
 	# Deliberately NOT an error: a read-only launch here is still useful, and
 	# refusing outright would make a mistyped path look like a broken sandbox.
-	printf 'sandbox: cwd (%s) is bound read-only by the profile and is not a\n' "$PWD" >&2
-	printf '         repository — not auto-binding it. cd into a project inside it.\n' >&2
+	# The message says what to DO, not which two conditions were true: the
+	# remedy is the same in every case, and naming the conditions invites a
+	# guess about what this particular directory is.
+	printf 'sandbox: nothing writable added: cwd is read-only in this profile.\n' >&2
+	printf '         Run inside a git repository for a writable checkout.\n' >&2
 	[ ${#RW[@]} -gt 0 ] || die 'nothing writable — refusing to run'
 else
 	RW+=("$rw_unit")
