@@ -148,6 +148,18 @@ const TABLE: Row[] = [
   { command: `rm -rf ${fixture}/repo`, expected: "deny", note: "a directory holding .git is a repo root wherever it sits" },
   { command: `cd ${fixture} && rm -rf repo`, expected: "deny", note: "same, relative after cd" },
   { command: `rm -rf ${fixture}/plain`, expected: { claude: "allow", default: "ask" }, note: "no .git: an ordinary directory" },
+  // Deleting a .git takes the history AND the agent-checkpoint refs that live
+  // inside it, so the recovery earning the allow tier dies with what it would
+  // have recovered. The kernel does not backstop it: .git, .git/refs and
+  // .git/objects are writable inside the sandbox.
+  { command: "rm -rf .git", expected: "deny", note: "the repo's own history and its checkpoint refs" },
+  { command: "rm -rf ~/dotfiles/.git", expected: "deny", note: "same, named absolutely" },
+  { command: `rm -rf ${fixture}/repo/.git`, expected: "deny", note: "same, a sibling repo" },
+  { command: `rm -rf ${fixture}/repo/.git/refs`, expected: "deny", note: "inside .git counts too" },
+  // A glob names its parent's contents, so it is judged on the directory it
+  // expands inside rather than on a literal token that never exists on disk.
+  { command: `rm -rf ${fixture}/repo/*`, expected: "deny", note: "empties a repo while reading as an ordinary path" },
+  { command: `rm -rf ${fixture}/plain/*`, expected: { claude: "allow", default: "ask" }, note: "a glob inside an ordinary directory stays ordinary" },
   { command: "rm -rf .", expected: "deny", note: "the whole working directory" },
   { command: "rm -rf ..", expected: "deny", note: "an ancestor of the working directory" },
   {
@@ -236,6 +248,12 @@ const TABLE: Row[] = [
   { command: "rm -rf node_modules && npm install", expected: { claude: "allow", default: "ask" }, note: "routine; in-project recursive rm" },
   { command: "du -sh node_modules", expected: "allow" },
   { command: "cat .git/HEAD", expected: "allow", note: "a read of the repo's own state" },
+  { command: "du -sh .git", expected: "allow", note: "the other read the bash branch was removed for" },
+  { command: "rm -rf node_modules", expected: { claude: "allow", default: "ask" }, note: "routine, and not a persistence route" },
+  // Repo-local hooks execute on the next commit. The typed Write tool denies
+  // this path, so bash must too, or the rule is a tool-switch away from moot.
+  { command: "echo hi > .git/hooks/pre-commit", expected: "deny", note: "a hook that runs on the next commit" },
+  { command: "cp /tmp/x .git/hooks/post-checkout", expected: "deny", note: "same route, different verb" },
   // A credential prefix must end at a path boundary: ~/.aws-sdk-notes.md is not
   // ~/.aws, and ~/.npmrc.example is not ~/.npmrc.
   { command: "ls ~/.aws-sdk-notes.md", expected: "allow", note: "prefix, not the credential dir" },

@@ -287,10 +287,27 @@ function resolveAny(input: string, cwd: string): string {
  * circumvention, which no amount of string parsing can cover.
  */
 function isTopLevelRmTarget(target: string, base: string, origin: string): boolean {
+  // A glob names its PARENT'S CONTENTS, so judge the directory it expands
+  // inside: `rm -rf ~/projects/foo/*` empties that repository while reading as
+  // an ordinary path. Tested before resolution, because the literal token with
+  // the `*` in it never exists on disk and every filesystem check below would
+  // miss it. The slice has no glob character, so the recursion terminates.
+  const globAt = target.split("/").findIndex(p => /[*?[]/.test(p));
+  if (globAt !== -1) {
+    const upto = target.split("/").slice(0, globAt).join("/");
+    return isTopLevelRmTarget(upto || (target.startsWith("/") ? "/" : "."), base, origin);
+  }
   const resolved = resolveAny(target, base);
   if (resolved === "/" || resolved === HOME) return true;
   // A direct child of $HOME is a project root or top-level store.
   if (resolved.startsWith(HOME + "/") && !resolved.slice(HOME.length + 1).includes("/")) return true;
+  // `.git` itself, or anything inside it. Deleting it destroys the history and
+  // the agent-checkpoint refs together -- the refs live at
+  // refs/agent-checkpoint/<prefix>/*, INSIDE the .git being removed -- so the
+  // recovery that earns the allow tier goes with the thing it was meant to
+  // recover. Nothing else backstops this: measured inside the sandbox, .git,
+  // .git/refs and .git/objects are all writable (only .git/hooks is pinned).
+  if (resolved.endsWith("/.git") || resolved.includes("/.git/")) return true;
   // A directory holding .git is a repository root wherever it sits -- projects
   // live under ~/projects/<name>, and a sibling repo's checkpoint refs die with
   // its .git. Filesystem-backed, like isGitWorktree below.
@@ -313,11 +330,21 @@ const PATTERN_FLAGS = new Set([
 ]);
 
 function hasProtectedSegment(path: string, operation: Operation = "unknown"): boolean {
-  for (const comp of path.replace(/\\/g, "/").split("/")) {
+  const comps = path.replace(/\\/g, "/").split("/");
+  for (let i = 0; i < comps.length; i++) {
+    const comp = comps[i];
     if (comp === ".env" || comp.startsWith(".env.")) return true;
+    // Repo-local git hooks run on the next commit, so they are an execution
+    // route rather than repository data, and they stay armed for bash. The
+    // false positives that took the bash branch off were `cat .git/HEAD` and
+    // `du -sh .git`; neither names hooks/, so this costs them nothing. The
+    // typed Write tool already denies this exact path, and a rule an agent can
+    // route around by switching from Write to `echo >` is not a rule.
+    if (comp === ".git" && comps[i + 1] === "hooks") return true;
     // Typed write tools only: applied to every bash token this denied routine
-    // work (rm -rf node_modules, cat .git/HEAD) that the kernel pin and the
-    // per-call checkpoint already cover.
+    // work (rm -rf node_modules, cat .git/HEAD). Destroying a .git from bash is
+    // covered by isTopLevelRmTarget instead, which judges what rm would remove
+    // rather than whether a token mentions the directory.
     if (operation !== "read" && operation !== "bash" && (comp === ".git" || comp === "node_modules")) return true;
   }
   return false;
