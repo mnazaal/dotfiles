@@ -428,13 +428,56 @@ for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}" "${MASK[@]}"; do
 	fi
 done
 
-# auto-bind cwd read-write — but never when it is $HOME or above
+# The writable unit is the REPOSITORY, not $PWD. Two failures come from getting
+# this wrong, and both are silent:
+#   - from a SUBDIRECTORY, binding only $PWD leaves .git under a read-only bind,
+#     so the agent edits files it can never commit;
+#   - from a directory that CONTAINS repositories, binding $PWD read-write is
+#     emitted after the profile's read-only entry and therefore WINS, which is
+#     how `cd ~/projects && pi` made every sibling project writable (measured
+#     2026-09-07, confirmed on the host).
+# A git worktree is what distinguishes a project from a container of projects,
+# so ask git rather than matching names.
+covered_by_readonly() { # path -> 0 when a profile already binds it read-only
+	local target=$1 d
+	for d in "${RO[@]}" "${RO_LAST[@]}"; do
+		[ "$target" = "$d" ] || [ "${target#"$d"/}" != "$target" ] || continue
+		return 0
+	done
+	return 1
+}
+
+rw_unit=$PWD
+in_worktree=0
+if _top=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null) && [ -n "$_top" ]; then
+	rw_unit=$_top
+	in_worktree=1
+fi
+
 if [ "$realcwd" = "$realhome" ] || is_home_or_ancestor "$realcwd"; then
 	printf 'sandbox: cwd (%s) is $HOME or above — not auto-binding it.\n' "$PWD" >&2
-	printf '         cd into a project, or pass --rw DIR explicitly.\n' >&2
+	printf '         cd into a project.\n' >&2
 	[ ${#RW[@]} -gt 0 ] || die 'empty writable allowlist from $HOME — refusing to run'
+elif [ "$in_worktree" -eq 0 ] && covered_by_readonly "$rw_unit"; then
+	# Deliberately NOT an error: a read-only launch here is still useful, and
+	# refusing outright would make a mistyped path look like a broken sandbox.
+	printf 'sandbox: cwd (%s) is bound read-only by the profile and is not a\n' "$PWD" >&2
+	printf '         repository — not auto-binding it. cd into a project inside it.\n' >&2
+	[ ${#RW[@]} -gt 0 ] || die 'nothing writable — refusing to run'
 else
-	RW+=("$PWD")
+	RW+=("$rw_unit")
+	# A linked worktree keeps its real git directory in the MAIN repository,
+	# which may sit under a read-only bind — bind it too or nothing commits.
+	# --git-common-dir is relative in a normal checkout and absolute in a linked
+	# worktree, so resolve before comparing.
+	if [ "$in_worktree" -eq 1 ] &&
+		_common=$(git -C "$PWD" rev-parse --git-common-dir 2>/dev/null) &&
+		_common=$(cd "$_common" 2>/dev/null && pwd); then
+		case "$_common" in
+		"$rw_unit" | "$rw_unit"/*) ;;
+		*) RW+=("$_common") ;;
+		esac
+	fi
 fi
 
 # Profiles are trusted shell snippets, but environment names still need to be

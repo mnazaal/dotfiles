@@ -29,6 +29,13 @@ mkdir -p \
 touch "$home/.config/pi/agent/mcp-cache.json" \
 	"$home/.config/pi/agent/run-history.jsonl"
 
+# ~/dotfiles and the demo project are REPOSITORIES; ~/projects is the container
+# holding them. The auto-bind rule keys on exactly that difference, so a fixture
+# of plain directories would exercise the wrong branch of it.
+for r in "$home/dotfiles" "$home/projects/demo"; do
+	git -c init.defaultBranch=main init -q "$r"
+done
+
 run() { # cwd [sandbox args...] -> dry-run argv
 	local cwd=$1
 	shift
@@ -108,21 +115,28 @@ assert_mounts 'agent in ~/projects/demo' "$output" \
 	-- \
 	"--bind $home/projects $home/projects"
 
-# Launching from ~/dotfiles itself must still get a writable checkout: the cwd
-# auto-bind is deduped into RW before the profile's read-only entry is seen.
+# Launching from ~/dotfiles itself must still get a writable checkout, even
+# though the profile binds it read-only: it is a repository, so it is the unit
+# of work rather than a container of them.
 output=$(run "$home/dotfiles" -p agent)
 assert_mounts 'agent in ~/dotfiles' "$output" "--bind $home/dotfiles $home/dotfiles"
 
-# A bare subdirectory launch leaves the rest of the repo — crucially .git —
-# under the read-only ~/projects bind. That is why a launcher passes
-# --rw <toplevel>.
-# Assert both halves: the hazard is real, and --rw is what resolves it.
+# From a SUBDIRECTORY the writable unit is still the repository: binding only
+# $PWD leaves .git under the read-only ~/projects bind, so an agent edits files
+# it can never commit.
 output=$(run "$home/projects/demo/src" -p agent)
-assert_mounts 'agent in a bare subdirectory' "$output" \
-	-- "--bind $home/projects/demo $home/projects/demo"
-output=$(run "$home/projects/demo/src" -p agent --rw "$home/projects/demo")
-assert_mounts 'agent with --rw <toplevel>' "$output" \
+assert_mounts 'a subdirectory launch binds the repository root' "$output" \
 	"--bind $home/projects/demo $home/projects/demo"
+
+# ...and from the directory that CONTAINS repositories, nothing is auto-bound.
+# The read-write bind is emitted after the profile's read-only one and would
+# win, so `cd ~/projects` would otherwise hand over every sibling project at
+# once. Measured 2026-09-07 with a real launch: the write reached the host.
+output=$(run "$home/projects" -p agent)
+assert_mounts 'the projects container stays read-only' "$output" \
+	"--ro-bind $home/projects $home/projects" \
+	-- \
+	"--bind $home/projects $home/projects"
 
 # An agent that rewrites a config file atomically — temp file beside it, then
 # rename over the target — must not have that file bound individually: a file
