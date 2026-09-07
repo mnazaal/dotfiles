@@ -92,7 +92,8 @@ message.
   rule produces. A string applies to every agent; an object keys by agent like
   `find_policy`. An unlisted category falls back to `ask`, so the map is
   fail-safe. Never-legitimate categories (`escalation`, `confinement`,
-  `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`) deny
+  `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`,
+  `git-clean-ignored` — ignored trees are outside the checkpoint's reach) deny
   for everyone. Categories the sandbox already contains (`world-writable`,
   `recursive-force-rm`) allow only where `agent-checkpoint` is wired — claude
   today. It stays `ask` for pi, which has no per-turn snapshot yet, so allowing
@@ -120,5 +121,11 @@ Claude's credential denies are drift-checked against `sensitive-paths.json` by
 path list cannot express: dangerous commands, skill gates, ref-rewrite
 protection, and the `ask` tier.
 
-The filesystem boundary for both agents is the `sandbox` profile each one
-launches under, not a harness feature — see `.config/sandbox/README.md`.
+The filesystem boundary differs per harness and is not this hook: bare
+`claude` runs under the `sandbox` block of its own `settings.json` (Bash
+subprocesses at the kernel, file tools through `permissions.deny`), while pi
+runs under the `sandbox -p agent-pi` profile — see `.config/sandbox/README.md`.
+The core relaxes the machinery-in-bash rule wherever the kernel already pins
+those paths: inside a container it detects itself, and, for Claude, when the
+adapter reads an enabled native sandbox from the machinery-pinned
+`settings.json` (never for a call carrying `dangerouslyDisableSandbox`).

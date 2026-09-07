@@ -27,7 +27,8 @@ CHECKS:
   - SSH multiplex socket parent exists
   - Git hooks path and delta pager availability
   - Neovim vim.pack availability when nvim is installed
-  - Claude agent guard hooks are present and parse (they fail open if broken)
+  - Claude agent guard hook is present and loads (settings.json denies every
+    tool call if it cannot run, so a broken hook locks the session out)
   - ~/org/agenda exists and is writable (--strict only; warning otherwise)
   - Optional shellcheck and shfmt availability
   - Waybar bluetooth module is listed when configured
@@ -173,20 +174,21 @@ fi
 
 # Agent guard: a bun CLI (.claude/hooks/guardrails.ts) over the shared core in
 # ~/.agents/guardrails/ (core.ts + JSON data), used by Claude and pi.
-# It fails open by design (a missing bun or moved file silently disables the guard
-# rather than locking out the tools), so surface breakage here. Checks the deployed
-# copies under $HOME, which is what the harness actually runs.
+# settings.json's hook command fails CLOSED: when bun is missing or the hook
+# cannot load, every matched tool call is denied and the session is unusable
+# until it is repaired, so surface the breakage here where it is diagnosable.
+# Checks the deployed copies under $HOME, which is what the harness runs.
 guard_hook="$HOME/.claude/hooks/guardrails.ts"
 if command -v bun >/dev/null 2>&1; then
 	if [[ ! -f "$guard_hook" ]]; then
-		fail "agent guard hook missing (fails open): ~/.claude/hooks/guardrails.ts"
+		fail "agent guard hook missing (every tool call denied): ~/.claude/hooks/guardrails.ts"
 	elif printf '{}\n' | bun "$guard_hook" >/dev/null 2>&1; then
 		ok "agent guard hook loads (bun): guardrails.ts"
 	else
-		fail "agent guard hook fails to load (fails open): ~/.claude/hooks/guardrails.ts"
+		fail "agent guard hook fails to load (every tool call denied): ~/.claude/hooks/guardrails.ts"
 	fi
 else
-	fail "bun missing — Claude agent guard hook fails open"
+	fail "bun missing — Claude agent guard hook denies every tool call"
 fi
 # Read-only pins whose source lives outside the repository: the sandbox binds a
 # path only if it exists, so a relocated toolchain turns a pin into nothing at
@@ -214,7 +216,7 @@ for asset in core.ts sensitive-paths.json dangerous-commands.json; do
 	if [[ -f "$HOME/.agents/guardrails/$asset" ]]; then
 		ok "guardrail asset present: $asset"
 	else
-		fail "guardrail asset missing (fails open): ~/.agents/guardrails/$asset"
+		fail "guardrail asset missing (hook denies every tool call): ~/.agents/guardrails/$asset"
 	fi
 done
 

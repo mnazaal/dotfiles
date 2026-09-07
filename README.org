@@ -67,9 +67,11 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   in =.config/pkgit/= (see its README). =pkgit -i <pkg>= installs, =pkgit -b
   <pkg>,update= updates in place. Never =pkgit -u= or =-f=: both delete a
   package's source tree from under themselves
-- =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=
-  (=renv claude= and =renv pi= launch each agent in its own filesystem
-  sandbox; the bare commands retain their local defaults)
+- =.local/scripts/renv= loads command-specific env wrappers from =.config/renv/=.
+  Bare =claude= is confined by the sandbox block in its own settings.json and
+  needs no launcher; =renv claude= is the legacy podman door (Emacs still uses
+  it via =renv claude-agent-acp=); =renv pi= launches pi under bubblewrap, and
+  bare =pi= is unconfined. See =.config/sandbox/README.md=
 - =.local/scripts/notmuch-cron= and =.local/scripts/rss2email-cron= depend on =pass=
 - =.local/scripts/cal-sync-cron= depends on encrypted ICS URL files in password store
 - =.local/scripts/onedrive-cron= depends on the =onedrive= client (abraunegg,

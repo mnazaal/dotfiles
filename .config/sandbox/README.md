@@ -9,7 +9,8 @@ sandbox -- ./configure && make     # confined to the current project
 sandbox -p dev -- npm test         # + dev toolchains (node/bun/git) read-only
 sandbox --rw ~/scratch -- ./untrusted-installer.sh
 sandbox --no-net -- python build.py
-sandbox -n -- make                 # dry-run: print the podman command
+sandbox -n -- make                 # dry-run: print the engine's command
+sandbox --engine bwrap -- make     # pick the engine (podman is the default)
 ```
 
 ## Model
@@ -33,17 +34,28 @@ Network is shared by default; `--no-net` cuts it.
 
 ## Runtime
 
-A rootless podman container: namespace isolation, sharing the host kernel.
+Two engines consume the same profile accumulators; both share the host kernel
+and need no root:
 
-It reuses the host userspace through read-only mounts (`/usr`, toolchains), an
-`ubuntu:24.04` base image (`$SANDBOX_IMAGE`), `--userns=keep-id`, and
-`--network=host`. They need no root.
+- **podman** (default): a rootless container that reuses the host userspace
+  through read-only mounts, an `ubuntu:24.04` base image (`$SANDBOX_IMAGE`),
+  `--userns=keep-id`, and `--network=host`.
+- **bwrap** (bubblewrap): a mount namespace built by hand from the host root
+  (`/usr`, `/etc`, usrmerge symlinks, a reconstructed `/etc/passwd` entry for
+  an LDAP user), with `$HOME` shadowed by a tmpfs before the allowlist is bound
+  back. Binds apply in argv order, which is what makes `RO_LAST` pins hold.
+
+Precedence: `--engine` beats `$SANDBOX_ENGINE` beats the profile's
+`PROFILE_ENGINE` beats podman. `agent-pi` sets `PROFILE_ENGINE=bwrap`; the
+bwrap emitter sets `SANDBOX_ENGINE=bwrap` inside, since it creates neither
+`/run/.containerenv` nor `/.dockerenv`.
 
 ## Profiles
 
 A profile is a tiny `*.profile` file sourced by the engine; it appends to the
-`RW` / `RO` / `RW_FILES` / `RO_LAST` arrays and can `use NAME` to compose
-another. `-p NAME` resolves a bare name against **`$SANDBOX_PROFILE_PATH`**
+`RW` / `RO` / `RW_FILES` / `RO_LAST` / `MASK` arrays (a mask shadows a path
+with an empty tmpfs so it is absent, not merely unwritable), may set
+`PROFILE_ENGINE`, and can `use NAME` to compose another. `-p NAME` resolves a bare name against **`$SANDBOX_PROFILE_PATH`**
 (default `~/.config/sandbox`); `-p PATH` (containing `/`) loads a file directly.
 
 Profiles live in `~/.config/sandbox` so direct sandbox invocations and `renv`
@@ -54,30 +66,44 @@ harnesses use the same profile namespace:
 | `dev` | `~/.config/sandbox/` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
 | `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
 | `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
-| `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state |
-| `agent-pi` | `~/.config/sandbox/` | `use agent` + pi's own writable state; both harnesses reach the same places, and the difference is a decision rather than a side effect of composition |
+| `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state. The legacy podman door: bare `claude` no longer uses it (see below) |
+| `agent-pi` | `~/.config/sandbox/` | `use agent` + pi's own writable state, under bwrap; both harnesses reach the same places, and the difference is a decision rather than a side effect of composition |
 
-## Coding agents (via renv)
+## Coding agents
 
-The harness env files (`~/.config/renv/{claude,pi}.sh`) own the sandbox
-decision — `renv` knows nothing about it. They set
-`RENV_WRAP=(sandbox -p agent-<cmd> --)`; `renv` then runs the harness under that
-wrapper (a generic feature — an env file may set `RENV_WRAP` to any prefix
-command). Comment that line out to disable. Fails closed: if the wrapper errors,
-the harness never launches unconfined.
+Each harness has a different boundary, and that asymmetry is a decision
+(`PLAN.md`, "pi containment"): claude can host its own, pi cannot.
 
-```sh
-renv claude         # launches confined, no extra steps
-```
+- **Bare `claude`** is confined by the `sandbox` block in
+  `~/.claude/settings.json` (Claude Code's own bubblewrap, Bash subprocesses
+  only, with `permissions.deny` rules covering the file tools). It needs no
+  launcher. The `denyWrite` list there and `machinery-ro.profile` here must
+  name the same persistence pins; `tests/sandbox-profile-test.sh` walks the
+  PATH for the profile side.
+- **`renv claude`** and **`renv claude-agent-acp`** (the Emacs door) are the
+  legacy podman path: `claude.sh` switches the native sandbox OFF (it cannot
+  nest inside podman) and wraps the harness in `sandbox -p agent-claude`.
+  Host network, `~/.claude` read-write. Scheduled for retirement once the ACP
+  adapter is confirmed to honour the settings block.
+- **`renv pi`** wraps pi in `sandbox -p agent-pi` under bwrap and supplies the
+  ASTA MCP key; bare `pi` is unconfined and has no key (a PATH shim is the
+  planned fix). pi's own permission extension decides tool calls inside;
+  network and MCP access remain enabled.
 
-`renv pi` keeps bare `pi` unchanged. It supplies the ASTA MCP key and confines
-Git activity to `pi/*`; the outer sandbox is the filesystem boundary. pi's own
-permission extension decides tool calls inside it. Network and MCP access remain
-enabled.
+The renv env files own the wrapper decision — `renv` knows nothing about it.
+They set `RENV_WRAP=(sandbox -p agent-<cmd> --)`; comment that line out to
+disable. Fails closed: if the wrapper errors, the harness never launches
+unconfined.
 
 ## One-time setup
 
-- Nothing: rootless podman works out of the box.
+- podman: nothing, rootless works out of the box.
+- bwrap: on Ubuntu 24.04 an unconfined process that creates a user namespace is
+  moved into the `unprivileged_userns` AppArmor profile, which breaks bwrap
+  (`loopback: Failed RTM_NEWADDR`). The blanket `/etc/apparmor.d/bwrap`
+  profile (from `apparmor-profiles`) grants it; the narrow
+  `bwrap-userns-restrict` strips the capabilities Claude Code's nested step
+  needs and is parked in `disable/`.
 
 ## Limits / caveats
 
@@ -87,7 +113,8 @@ enabled.
   base set plus what the profile appends; pinned by `tests/sandbox-env-test.sh`).
   Allowlisted secrets resolved by `renv` (API keys) do ride along by design.
 - An agent must see its own login state to authenticate, so its credential
-  file is mounted read-only and blocked by the in-process guardrail. That is
+  file rides along inside its writable state directory (`~/.claude` under
+  `agent-claude`) and is guarded only by the in-process guardrail. That is
   not a secret boundary against the agent process itself.
 - No resource caps by default (a too-tight `--memory`/`--pids-limit` would kill an
   interactive agent mid-task; add them only for unattended runs).
