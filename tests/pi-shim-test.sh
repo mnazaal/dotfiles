@@ -36,6 +36,11 @@ run_shim() { # args... -> shim stdout; sandbox argv lands in $capture
 		PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" "$@"
 }
 
+fail() { # message -> report and stop
+	printf 'pi shim: %s\n' "$1" >&2
+	exit 1
+}
+
 expect() { # label haystack needle
 	case "$2" in *"$3"*) ;; *)
 		printf 'pi shim %s: expected %s in\n%s\n' "$1" "$3" "$2" >&2
