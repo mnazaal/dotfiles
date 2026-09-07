@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# sandbox — run a command confined to an allowlist of directories, as either a
-# rootless podman container or a bubblewrap namespace. A profile's allowlist
-# becomes bind mounts; everything else under $HOME stays invisible. See
-# `sandbox --help`.
+# sandbox — run a command confined to an allowlist of directories, as a
+# bubblewrap namespace. A profile's allowlist becomes bind mounts; everything
+# else under $HOME stays invisible. See `sandbox --help`.
 set -euo pipefail
 
 H=$HOME
 PROFILE_PATH=${SANDBOX_PROFILE_PATH:-${XDG_CONFIG_HOME:-$H/.config}/sandbox}
-IMAGE=${SANDBOX_IMAGE:-ubuntu:24.04}
-# Engine choice is resolved after argument parsing, since a profile can express
-# one and is only loaded during it. Precedence, highest first: --engine, the
-# SANDBOX_ENGINE environment variable, the profile's PROFILE_ENGINE, podman.
-# Profiles stay engine-neutral in everything else: both emitters consume the same
-# five accumulators, which is what makes the two forms comparable.
-ENGINE_FLAG=""
 
 die() {
 	printf 'sandbox: %s\n' "$1" >&2
@@ -38,8 +30,7 @@ OPTIONS
       --mask DIR            shadow DIR with an empty tmpfs, so a path nested
                             inside a broader --rw bind is absent (repeatable)
       --no-net              unshare the network (shared by default)
-      --engine NAME         podman or bwrap; overrides the profile's choice
-  -n, --dry-run             print the engine's command instead of running it
+  -n, --dry-run             print the bwrap command instead of running it
       --verify-pins         inside the sandbox: check every machinery pin is
                             actually read-only, then exit. Non-zero if any is not
   -h, --help                show this help
@@ -50,8 +41,7 @@ DESCRIPTION
   $HOME (ssh, gnupg, pass, other projects) is invisible. Secrets already in
   the environment pass through, so callers can resolve them beforehand.
 
-  Env: $SANDBOX_IMAGE (container base image, podman only),
-  $SANDBOX_PROFILE_PATH, $SANDBOX_ENGINE.
+  Env: $SANDBOX_PROFILE_PATH.
 EOF
 }
 
@@ -123,68 +113,6 @@ while [ "$n" -gt 0 ]; do
 done
 exec "$@"'
 
-run_podman() {
-	command -v podman >/dev/null 2>&1 || die 'podman not found in PATH' 127
-	local d
-	local name="${PROFILE_NAME:-sandbox}-$$"
-	local p=(run --rm --name "$name" --userns=keep-id --http-proxy=false -w "$PWD" --security-opt label=disable)
-	# Pass the NAME only: podman reads the value from this process's environment
-	# and sets it in the container just when it is set here. Emitting "$d=$value"
-	# instead would put every allowlisted secret into the podman argv, where it is
-	# world-readable via `ps` for the life of the container and printed verbatim
-	# by --dry-run.
-	for d in "${SANDBOX_ENV[@]}"; do
-		[ -n "${!d+x}" ] && p+=(--env "$d")
-	done
-	# Give commands normal scratch space without exposing the host's /tmp.
-	# shellcheck disable=SC2054  # commas are mount options within one element
-	p+=(--tmpfs /tmp:rw,nosuid,nodev,mode=1777)
-	if [ -t 0 ] && [ -t 1 ]; then p+=(-it); else p+=(-i); fi
-	if [ "$NET" -eq 1 ]; then p+=(--network=host); else p+=(--network=none); fi
-	[ -n "$SANDBOX_PATH_PREPEND" ] && p+=(--env "PATH=$SANDBOX_PATH_PREPEND:$PATH")
-
-	# Reuse the host userspace (binaries + libs) + TLS certs, read-only, so the
-	# command sees the same tools it would natively. The image supplies /etc
-	# (resolv.conf, hosts) that podman manages.
-	for d in /usr /opt /etc/ssl /etc/ca-certificates; do
-		if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi
-	done
-	for d in "${RO[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
-	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
-	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d"); fi; done
-	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(-v "$d:$d:ro"); fi; done
-	# Shadow a path a broader RW bind above would otherwise expose, with an empty
-	# read-only tmpfs. Unlike RO_LAST, which leaves the real contents readable, a
-	# mask makes the path ABSENT — the treatment the credential stores already get
-	# by never being bound at all. Emitted after every -v so the mask lands on top.
-	#
-	# notmpcopyup is load-bearing, not tuning. Podman turns tmpcopyup ON by default
-	# for --tmpfs, so the shadowed directory is COPIED into the tmpfs: the mask
-	# becomes a RAM-backed replica of the store it exists to hide, and container
-	# creation blocks until the copy finishes. Measured on this host: the masked
-	# maildir is 12 GB / 122k files, the copy ran past podman's 240s creation
-	# timeout, and EVERY launch died with "container creation timeout: internal
-	# libpod error" — with crun still copying into RAM after podman gave up, since
-	# the timeout abandons the copier rather than killing it. Drop the option and
-	# both defects return.
-	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--tmpfs "$d:ro,nosuid,nodev,mode=0000,notmpcopyup"); fi; done
-
-	local pins=() d
-	for d in "${RO_LAST[@]}"; do
-		if [ -e "$d" ]; then pins+=("$d"); fi
-	done
-	local preflight=$PREFLIGHT
-	if [ "$DRYRUN" -eq 1 ]; then
-		printf 'podman'
-		printf ' %q' "${p[@]}" "$IMAGE" \
-			/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
-		printf '\n'
-		exit 0
-	fi
-	exec podman "${p[@]}" "$IMAGE" \
-		/bin/sh -c "$preflight" sandbox-preflight "${#RO_LAST[@]}" "${#pins[@]}" "${pins[@]}" "${cmd[@]}"
-}
-
 run_bwrap() {
 	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
 	local d target
@@ -237,7 +165,7 @@ run_bwrap() {
 	# manual guarantees binds are "applied in the order they are given as
 	# arguments", and PLAN's A2 measured that this holds for a REPEATED
 	# DESTINATION too: the later bind wins rather than erroring, which is why the
-	# podman path's realpath dedupe has no counterpart here.
+	# no dedupe pass is needed, or wanted.
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi; done
 	# A mask makes the path ABSENT rather than merely unwritable. bwrap's --tmpfs
 	# has no copy-up, so podman's load-bearing notmpcopyup has nothing to
@@ -360,8 +288,6 @@ NET=1 # 1 share network, 0 unshare
 DRYRUN=0
 VERIFY_PINS=0
 SANDBOX_PATH_PREPEND=""
-PROFILE_NAME=""   # first -p name, used as podman container name
-PROFILE_ENGINE="" # a profile may name the engine its policy has been verified on
 declare -A _loaded=()
 
 cmd=()
@@ -369,7 +295,6 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	-p | --profile)
 		load_profile_arg "$2"
-		[ -z "$PROFILE_NAME" ] && PROFILE_NAME="${2##*/}" # first -p sets the name
 		shift 2
 		;;
 	--rw)
@@ -382,10 +307,6 @@ while [ $# -gt 0 ]; do
 		;;
 	--mask)
 		MASK+=("$2")
-		shift 2
-		;;
-	--engine)
-		ENGINE_FLAG="$2"
 		shift 2
 		;;
 	--no-net)
@@ -419,8 +340,6 @@ done
 
 [ ${#cmd[@]} -gt 0 ] || [ "$VERIFY_PINS" -eq 1 ] ||
 	die 'usage: sandbox [options] [--] <command> [args...]' 2
-
-ENGINE=${ENGINE_FLAG:-${SANDBOX_ENGINE:-${PROFILE_ENGINE:-podman}}}
 
 # A read-only bind is attached to an inode, so replacing the file orphans the
 # mount and silently disarms the pin for the life of the session — and replacing
@@ -518,38 +437,6 @@ else
 	RW+=("$PWD")
 fi
 
-# Dedupe mount destinations: podman refuses a repeated destination outright
-# ("duplicate mount destination", e.g. cwd is a dir a profile also RO-mounts,
-# like running from ~/dotfiles). RW is deduped first so it wins over RO — the
-# current project / explicit --rw stays writable.
-#
-# podman-only, and deliberately so. bwrap lets the LATER bind win (measured,
-# PLAN A2), and the emission order already encodes the intended precedence —
-# RO, then RW, then RO_LAST — so running this on the bwrap path would change
-# nothing except to keep 20 lines alive that phase A5 deletes.
-_rp() { readlink -f "$1" 2>/dev/null || printf '%s' "$1"; }
-declare -A _seen=()
-declare -A _seen_mask=()
-dedupe() { # $1 = array name, $2 = seen-map name; drop repeated realpaths
-	local -n _a=$1
-	local -n _s=${2:-_seen}
-	local out=() x k
-	for x in "${_a[@]}"; do
-		k=$(_rp "$x")
-		[ -z "${_s[$k]:-}" ] || continue
-		_s[$k]=1
-		out+=("$x")
-	done
-	_a=("${out[@]}")
-}
-if [ "$ENGINE" = podman ]; then
-	dedupe RW
-	dedupe RW_FILES
-	dedupe RO
-	dedupe RO_LAST
-	dedupe MASK _seen_mask
-fi
-
 # Profiles are trusted shell snippets, but environment names still need to be
 # valid before indirect expansion below.
 declare -A _seen_env=()
@@ -562,8 +449,4 @@ for name in "${SANDBOX_ENV[@]}"; do
 done
 SANDBOX_ENV=("${env_out[@]}")
 
-case "$ENGINE" in
-podman) run_podman ;;
-bwrap) run_bwrap ;;
-*) die "unknown engine: $ENGINE (expected podman or bwrap)" 2 ;;
-esac
+run_bwrap

@@ -29,14 +29,3 @@ RW+=( "$H/.config/pi/agent" )
 # The writable binds above are for exactly that directory, so the profile was
 # always built for pi to find it; only the variable was missing.
 SANDBOX_ENV+=( "ASTA_MCP_API_KEY" "PI_CODING_AGENT_DIR" "PI_OFFLINE" "PI_SKIP_VERSION_CHECK" )
-
-# pi runs under bubblewrap rather than podman. Not a preference: podman refuses a
-# repeated mount destination, which `use agent` produces whenever cwd is a
-# directory a profile also binds read-only, and its --tmpfs copies a masked store
-# into RAM unless notmpcopyup is remembered. bwrap has neither trap, documents the
-# bind ordering RO_LAST depends on, and is already the engine of Claude Code's own
-# sandbox on this host. Verified live before this line was added: writes outside
-# the allowlist reach nothing, pins survive a writable cwd bind, masked stores are
-# unreadable, and a broken pin exits 78 before the command runs.
-# `--engine podman` still selects the old path while it exists.
-PROFILE_ENGINE=bwrap

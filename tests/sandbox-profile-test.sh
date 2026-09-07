@@ -29,23 +29,7 @@ mkdir -p \
 touch "$home/.config/pi/agent/mcp-cache.json" \
 	"$home/.config/pi/agent/run-history.jsonl"
 
-# The assertions below are about a specific emitter's argv, so they name the
-# engine rather than inheriting whatever the profile now defaults to. Which
-# engine each profile picks when nothing is passed is asserted separately, at the
-# end of this file.
-ENGINE_ARGS=(--engine podman)
-
-run() { # cwd [sandbox args...] -> dry-run argv for the engine under test
-	local cwd=$1
-	shift
-	(
-		cd "$cwd" || exit 1
-		HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
-			"$repo/.local/scripts/sandbox" --dry-run "${ENGINE_ARGS[@]}" "$@" -- /bin/true
-	)
-}
-
-run_default() { # cwd [sandbox args...] -> dry-run argv with NO engine forced
+run() { # cwd [sandbox args...] -> dry-run argv
 	local cwd=$1
 	shift
 	(
@@ -55,20 +39,9 @@ run_default() { # cwd [sandbox args...] -> dry-run argv with NO engine forced
 	)
 }
 
-run_bwrap() { # cwd [sandbox args...] -> dry-run argv from the bwrap emitter
-	local cwd=$1
-	shift
-	run_default "$cwd" --engine bwrap "$@"
-}
-
-engine_of() { # first token of the emitted argv
-	printf '%s' "${1%% *}"
-}
-
-# Each bind is one shell-quoted argv token, so a writable bind is ' src:dst ' and
-# a read-only one is ' src:dst:ro '. A forbidden entry is matched as a substring,
-# so "DIR:DIR" also matches the read-only mount "DIR:DIR:ro": forbidding the
-# read-write form needs the trailing space that separates argv tokens.
+# bwrap names a bind as two argv tokens after its flag, so the read-write form is
+# '--bind SRC DST' and the read-only one '--ro-bind SRC DST'. Forbidding the
+# writable form is unambiguous: '--ro-bind X X' does not contain '--bind X X'.
 assert_mounts() { # label output required mounts... -- forbidden mount fragments...
 	local label=$1 output=$2
 	shift 2
@@ -128,17 +101,17 @@ assert_mount_order() { # cwd profile earlier-mount later-mount
 # the shared agent wiki stays writable.
 output=$(run "$home/projects/demo" -p agent)
 assert_mounts 'agent in ~/projects/demo' "$output" \
-	" $home/projects:$home/projects:ro " \
-	" $home/dotfiles:$home/dotfiles:ro " \
-	" $home/projects/demo:$home/projects/demo " \
-	" $home/org/agents:$home/org/agents " \
+	"--ro-bind $home/projects $home/projects" \
+	"--ro-bind $home/dotfiles $home/dotfiles" \
+	"--bind $home/projects/demo $home/projects/demo" \
+	"--bind $home/org/agents $home/org/agents" \
 	-- \
-	" $home/projects:$home/projects "
+	"--bind $home/projects $home/projects"
 
 # Launching from ~/dotfiles itself must still get a writable checkout: the cwd
 # auto-bind is deduped into RW before the profile's read-only entry is seen.
 output=$(run "$home/dotfiles" -p agent)
-assert_mounts 'agent in ~/dotfiles' "$output" " $home/dotfiles:$home/dotfiles "
+assert_mounts 'agent in ~/dotfiles' "$output" "--bind $home/dotfiles $home/dotfiles"
 
 # A bare subdirectory launch leaves the rest of the repo — crucially .git —
 # under the read-only ~/projects bind. That is why a launcher passes
@@ -146,10 +119,10 @@ assert_mounts 'agent in ~/dotfiles' "$output" " $home/dotfiles:$home/dotfiles "
 # Assert both halves: the hazard is real, and --rw is what resolves it.
 output=$(run "$home/projects/demo/src" -p agent)
 assert_mounts 'agent in a bare subdirectory' "$output" \
-	-- " $home/projects/demo:$home/projects/demo "
+	-- "--bind $home/projects/demo $home/projects/demo"
 output=$(run "$home/projects/demo/src" -p agent --rw "$home/projects/demo")
 assert_mounts 'agent with --rw <toplevel>' "$output" \
-	" $home/projects/demo:$home/projects/demo "
+	"--bind $home/projects/demo $home/projects/demo"
 
 # An agent that rewrites a config file atomically — temp file beside it, then
 # rename over the target — must not have that file bound individually: a file
@@ -174,13 +147,13 @@ assert_mounts 'agent with --rw <toplevel>' "$output" \
 # read-only ~/.config bind by being emitted after it.
 output=$(run "$project" -p agent-pi)
 assert_mounts agent-pi "$output" \
-	"$home/.agents:$home/.agents:ro" \
-	"$home/dotfiles:$home/dotfiles:ro" \
-	"$home/.config:$home/.config:ro" \
-	"$home/projects:$home/projects:ro" \
-	"$home/.config/pi/agent:$home/.config/pi/agent " \
+	"--ro-bind $home/.agents $home/.agents" \
+	"--ro-bind $home/dotfiles $home/dotfiles" \
+	"--ro-bind $home/.config $home/.config" \
+	"--ro-bind $home/projects $home/projects" \
+	"--bind $home/.config/pi/agent $home/.config/pi/agent" \
 	-- \
-	"$home/dotfiles:$home/dotfiles "
+	"--bind $home/dotfiles $home/dotfiles"
 
 # The guardrail source must be read-only AND bound after the writable dotfiles
 # bind that contains it: $HOME/.agents is stow symlinks into $HOME/dotfiles, so
@@ -189,8 +162,8 @@ assert_mounts agent-pi "$output" \
 # the machinery-ro fragment must still pin the sources read-only afterwards, for
 # EVERY harness profile, not just the ones composing `agent`.
 assert_mount_order "$home/dotfiles" agent-pi \
-	"$home/dotfiles:$home/dotfiles" \
-	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
+	"--bind $home/dotfiles $home/dotfiles" \
+	"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"
 
 # A harness binary sits under agent.profile's blanket read-write ~/.local/share,
 # so a plain read-only bind for it is emitted BEFORE that parent and shadowed by
@@ -198,11 +171,11 @@ assert_mount_order "$home/dotfiles" agent-pi \
 # harnesses, because either could rewrite the other's executable and persist
 # outside the sandbox. This is the same hole the bun bin pin closes.
 assert_mount_order "$project" agent-pi \
-	"$home/.local/share:$home/.local/share" \
-	"$home/.local/share/claude:$home/.local/share/claude:ro"
+	"--bind $home/.local/share $home/.local/share" \
+	"--ro-bind $home/.local/share/claude $home/.local/share/claude"
 assert_mount_order "$project" agent-pi \
-	"$home/.local/share:$home/.local/share" \
-	"$home/.local/share/bun/bin:$home/.local/share/bun/bin:ro"
+	"--bind $home/.local/share $home/.local/share" \
+	"--ro-bind $home/.local/share/bun/bin $home/.local/share/bun/bin"
 
 # A bind re-exposing an ancestor of $HOME defeats the allowlist as completely as
 # binding $HOME itself, so the sandbox must refuse it.
@@ -281,43 +254,19 @@ esac
 
 chmod u+w "$ro_pin"
 
-# Host credential/mail stores are masked with an empty tmpfs so they are ABSENT,
-# not merely unwritable. The masks live in machinery-ro, which EVERY agent-*
-# profile composes, so assert all four rather than just the one profile whose
-# blanket ~/.local/share bind exposes them today — a harness that later grows a
-# broad bind must inherit the protection without a second edit.
-# The option separators arrive backslash-escaped: --dry-run prints every argv
-# token through printf %q. Assert notmpcopyup, not merely the path: podman defaults
-# tmpcopyup ON, which copies the shadowed store into the tmpfs and turns the
-# mask into a RAM replica that also stalls container creation past podman's
-# 240s timeout. A path-only assertion passes in exactly that broken state.
-output=$(run "$project" -p agent-pi)
-assert_mounts "agent-pi masks credential and mail stores" "$output" \
-	"--tmpfs $home/.local/share/gnupg:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-	"--tmpfs $home/.local/share/pass:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-	"--tmpfs $home/.local/share/password-store:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-	"--tmpfs $home/.local/share/keyrings:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-	"--tmpfs $home/.local/share/mail:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-	"--tmpfs $home/.local/share/zsh:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup"
-
 # The masks must shadow a bind that is still there: if the blanket read-write
 # bind were narrowed away instead, these assertions would pass for the wrong
 # reason and stop testing the mask at all.
 output=$(run "$project" -p agent-pi)
 assert_mounts 'agent-pi still binds ~/.local/share read-write' "$output" \
-	"$home/.local/share:$home/.local/share "
+	"--bind $home/.local/share $home/.local/share"
 printf 'sandbox profiles: credential and mail masks pass\n'
-
-# --- bwrap emitter (PLAN phase A) --------------------------------------------
-# podman is still the default, so everything above pins the podman form. These
-# assert the SAME policy through the second emitter, because `make test` being
-# green is phase A5's exit criterion and would otherwise say nothing about it.
 
 # Order is the whole mechanism here: bwrap applies binds in argv order and lets
 # a repeated destination's LAST bind win, which is why the emitter carries no
 # dedupe. A pin emitted before the writable bind that contains it would be
 # silently undone, and the argv would still look correct.
-output=$(run_bwrap "$home/dotfiles" -p agent-pi)
+output=$(run "$home/dotfiles" -p agent-pi)
 rest=${output#*"--bind $home/dotfiles $home/dotfiles"}
 case "$rest" in
 *"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"*) ;;
@@ -339,7 +288,7 @@ esac
 
 # Masks need --perms 0000 to be masks at all; a bare --tmpfs leaves a writable
 # empty directory, which passes any path-only assertion.
-output=$(run_bwrap "$project" -p agent-pi)
+output=$(run "$project" -p agent-pi)
 for store in gnupg pass password-store keyrings mail zsh; do
 	case "$output" in
 	*"--perms 0000 --tmpfs $home/.local/share/$store"*) ;;
@@ -367,14 +316,14 @@ if [ "$setenv_count" -ne 1 ]; then
 	exit 1
 fi
 
-printf 'sandbox profiles: bwrap emitter matches the podman policy\n'
+printf 'sandbox profiles: the emitter enforces mask, order and env policy\n'
 
 # The bwrap root is hand-built, so two things podman's image supplied have to be
 # reconstructed. Both checks are conditional on the host having the shape that
 # makes them necessary: a machine whose /etc/resolv.conf is a real file, or whose
 # users are in /etc/passwd, needs neither, and asserting them there would fail for
 # being correct.
-output=$(run_bwrap "$project" -p agent-pi)
+output=$(run "$project" -p agent-pi)
 
 resolv=$(readlink -f /etc/resolv.conf 2>/dev/null || true)
 case "$resolv" in
@@ -422,32 +371,6 @@ fi
 
 printf 'sandbox profiles: bwrap root reconstructs resolv.conf and passwd\n'
 
-# --- which engine each profile selects ---------------------------------------
-# pi is confined by bwrap and claude's legacy profile is still podman, so the
-# choice has to be per profile rather than global. Assert the precedence too: a
-# flag beats the environment beats the profile, or a debugging override would
-# silently do nothing.
-
-expect_engine() { # label expected-engine output
-	local got
-	got=$(engine_of "$3")
-	if [ "$got" != "$2" ]; then
-		printf '%s: engine is %s, expected %s\n' "$1" "$got" "$2" >&2
-		exit 1
-	fi
-}
-
-expect_engine 'agent-pi default' bwrap "$(run_default "$project" -p agent-pi)"
-expect_engine 'no profile at all' podman "$(run_default "$project")"
-expect_engine 'flag beats the profile' podman \
-	"$(run_default "$project" -p agent-pi --engine podman)"
-expect_engine 'flag beats it before -p too' podman \
-	"$(run_default "$project" --engine podman -p agent-pi)"
-expect_engine 'environment beats the profile' podman \
-	"$(SANDBOX_ENGINE=podman run_default "$project" -p agent-pi)"
-
-printf 'sandbox profiles: engine selection is per profile, flag and env override\n'
-
 # --- the environment allowlist, exercised for real ----------------------------
 # Every assertion above uses --dry-run, which returns before the environment is
 # ever touched. That is exactly why a leak here went unnoticed: the allowlist is
@@ -456,12 +379,25 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 	envprof="$home/.config/sandbox"
 	mkdir -p "$envprof"
 	printf 'RO+=( "$H/.config" )\n' >"$envprof/envprobe.profile"
+	# This counts matching lines in the probe's output, so a launcher that dies
+	# prints no matches and reads exactly like a clean run. Prove it launched
+	# first — it passed vacuously for one commit when `--engine` was deleted
+	# from under it.
+	ran=$(
+		cd "$project" || exit 1
+		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
+			"$repo/.local/scripts/sandbox" -p envprobe -- /bin/echo launched 2>/dev/null
+	)
+	if [ "$ran" != launched ]; then
+		printf 'bwrap: the env probe never launched, so its silence proves nothing\n' >&2
+		exit 1
+	fi
 	leaked=$(
 		cd "$project" || exit 1
 		export keep=LEAK_keep allowed=LEAK_allowed name=LEAK_name d=LEAK_d \
 			SECRET_CANARY=LEAK_secret
 		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
-			"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /usr/bin/env 2>&1 |
+			"$repo/.local/scripts/sandbox" -p envprobe -- /usr/bin/env 2>&1 |
 			grep -cE '^(keep|allowed|name|d|SECRET_CANARY)=' || true
 	)
 	if [ "$leaked" != 0 ]; then
@@ -474,7 +410,7 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 		cd "$project" || exit 1
 		export p=HOSTILE d=HOSTILE resolv=HOSTILE pins=HOSTILE cmd=HOSTILE
 		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
-			"$repo/.local/scripts/sandbox" --engine bwrap -p envprobe -- /bin/true
+			"$repo/.local/scripts/sandbox" -p envprobe -- /bin/true
 	) 2>/dev/null; then
 		printf 'bwrap: an exported name collided with the launcher and broke the launch\n' >&2
 		exit 1
@@ -516,7 +452,7 @@ for entry in "${host_path[@]}"; do
 done
 for dir in "${pathdirs[@]}"; do
 	assert_mount_order "$project" agent-pi \
-		"$home/.local/share:$home/.local/share" \
-		"$dir:$dir:ro"
+		"--bind $home/.local/share $home/.local/share" \
+		"--ro-bind $dir $dir"
 done
 printf 'sandbox profiles: all %s PATH directories under a writable bind are pinned\n' "${#pathdirs[@]}"
