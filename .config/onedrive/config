@@ -14,9 +14,19 @@ log_dir = "~/.local/state/onedrive/"
 force_http_11 = "true"
 ip_protocol_version = "1"
 
-# Stated rather than left implicit because changing it later mandates a full
-# --resync. This is also the client's own default.
-sync_dir = "~/OneDrive"
+# The local mirror root. Its contents correspond one-to-one with sync_list —
+# nothing else lives here, and nothing here is hand-made. Named for the job
+# rather than the provider, so a second provider can sit beside it later.
+# Changing this mandates a full --resync, so it is settled before the first
+# download rather than after.
+sync_dir = "~/sync"
+
+# Symlinks inside the sync tree are never followed. This is a guard, not a
+# preference: the previous ~/OneDrive contained Material/Papers as a symlink
+# out to ~/Documents/Papers, so a --resync with an empty database walked out of
+# the sync tree and queued 158 uploads of an unrelated directory. Links may
+# point INTO this tree from elsewhere; links pointing out of it cannot.
+skip_symlinks = "true"
 
 # 10 GiB, raised from the client's 50 MB default. The drive holds 245 GB and
 # this filesystem has ~145 GB free, so a mis-scoped sync_list would otherwise
