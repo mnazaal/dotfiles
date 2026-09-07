@@ -175,7 +175,7 @@ out=$(cd "$r" && "$script" 2>&1) || fail "non-zero exit on a clean tree"
 # Name the namespace instead of inheriting it: the assertions below query one
 # explicitly, so leaving the prefix ambient made the block pass or fail on
 # whether the caller's shell happened to export the same value. It passed under
-# `renv claude` and failed from a plain shell, where the script falls back to
+# a launcher and failed from a plain shell, where the script falls back to
 # its default namespace and the query below then matches nothing.
 r=$(new_repo collision)
 printf 'FIRST\n' >"$r/tracked.txt"

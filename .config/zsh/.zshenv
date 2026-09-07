@@ -55,10 +55,11 @@ export JULIA_DEPOT_PATH="$XDG_DATA_HOME/julia"
 export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
 export PI_OFFLINE=1
 export PI_SKIP_VERSION_CHECK=1
-# Headroom defaults its workspace to ~/.headroom. renv sets this for the proxy,
-# but only inside renv — so a bare `headroom savings|dashboard|inspect|perf`
-# read an empty workspace and reported nothing. Export it here so the CLI and
-# the proxy agree; renv uses ${VAR:-default} and inherits this value.
+# Headroom defaults its workspace to ~/.headroom, so a bare
+# `headroom savings|dashboard|inspect|perf` read an empty workspace and
+# reported nothing. Export it here for the CLI. The PROXY gets it from the
+# systemd drop-in instead: a service does not read this file, which is how the
+# whole lossy-compression config was silently lost once already.
 export HEADROOM_WORKSPACE_DIR="$XDG_STATE_HOME/headroom"
 export HEADROOM_SAVINGS_PROFILE="general"
 export HEADROOM_MODE=cache

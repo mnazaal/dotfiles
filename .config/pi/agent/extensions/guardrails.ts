@@ -3,8 +3,8 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createGuardrails, skillReceipts, toolEventFromInput } from "../../../../.agents/guardrails/core.ts";
 
 // Throws if a policy JSON is missing or malformed; a throw at import aborts pi
-// with exit 1. That is the fail-closed launch renv's RENV_REQUIRE_GUARDRAILS
-// used to provide, now with no launcher in the way.
+// with exit 1. That is a fail-closed launch: a missing or malformed policy
+// stops pi rather than starting it unguarded, with no launcher in the way.
 const rails = createGuardrails("pi");
 
 // Confine this agent's git history to pi/* branches (the shared git hooks in

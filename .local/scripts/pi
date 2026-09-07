@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# pi — run the pi coding agent confined, with nothing typed before it.
+#
+# pi ships no sandbox of its own and says so in its docs/security.md, so the
+# boundary has to come from outside the process. This shim IS that outside: it
+# sits first on PATH ($ZDOTDIR/.zshenv prepends ~/.local/scripts last, so it
+# wins) and shadows the real binary under ~/.local/share/bun/bin.
+#
+# It replaces `renv pi` plus .config/renv/pi.sh, which did these same two things
+# behind a prefix that had to be typed and was easy to forget — and forgetting
+# it launched pi with no boundary and no key.
+set -euo pipefail
+
+# Resolve the real binary ABSOLUTELY. `command -v pi` finds this shim, so a
+# PATH lookup here would re-exec this file forever.
+real="${BUN_INSTALL:-$HOME/.local/share/bun}/bin/pi"
+[ -x "$real" ] || {
+	printf 'pi: the real binary is not executable at %s\n' "$real" >&2
+	exit 127
+}
+
+# Already inside a sandbox: run the real binary directly. Nesting a second
+# bubblewrap inside the first fails (it cannot mount proc), and the outer
+# boundary already confines this process — so this is the correct answer, not a
+# concession. Covers both this repo's engine and Claude Code's native sandbox.
+if [ -n "${SANDBOX_ENGINE:-}" ] || [ -n "${SANDBOX_RUNTIME:-}" ]; then
+	exec "$real" "$@"
+fi
+
+# Fail closed: without the wrapper the only outcome left is an unconfined agent.
+command -v sandbox >/dev/null 2>&1 || {
+	printf 'pi: sandbox not found on PATH; refusing to run unconfined\n' >&2
+	exit 127
+}
+
+# The MCP key is resolved HERE, outside the boundary, because machinery-ro masks
+# the password store inside — `pass` cannot work in there. Fail closed as the
+# launcher did: a harness that starts without its key fails later and less
+# legibly, at the first MCP call.
+ASTA_MCP_API_KEY=$(pass show asta-mcp) || {
+	printf 'pi: could not read asta-mcp from pass\n' >&2
+	exit 1
+}
+export ASTA_MCP_API_KEY
+
+exec sandbox -p agent-pi -- "$real" "$@"

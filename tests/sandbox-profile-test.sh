@@ -141,7 +141,8 @@ output=$(run "$home/dotfiles" -p agent)
 assert_mounts 'agent in ~/dotfiles' "$output" " $home/dotfiles:$home/dotfiles "
 
 # A bare subdirectory launch leaves the rest of the repo — crucially .git —
-# under the read-only ~/projects bind. That is why renv passes --rw <toplevel>.
+# under the read-only ~/projects bind. That is why a launcher passes
+# --rw <toplevel>.
 # Assert both halves: the hazard is real, and --rw is what resolves it.
 output=$(run "$home/projects/demo/src" -p agent)
 assert_mounts 'agent in a bare subdirectory' "$output" \

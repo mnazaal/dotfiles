@@ -32,7 +32,7 @@ clean:
 
 check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
-	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/renv .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
+	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
 		head -n 1 "$$file" | grep -Eq '^#!.*(sh|bash)' && printf '%s\n' "$$file"; \
 	done | sort)"; \
@@ -63,7 +63,7 @@ check: test check-agent-role-sync check-guardrails-native-sync check-machinery-r
 test:
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/guardrails-skill-state-test.sh
-	@bash tests/renv-test.sh
+	@bash tests/pi-shim-test.sh
 	@bash tests/sandbox-env-test.sh
 	@bash tests/sandbox-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh
