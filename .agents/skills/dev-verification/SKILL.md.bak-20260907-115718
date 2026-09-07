@@ -75,7 +75,6 @@ description: Use before claiming work is complete, fixed, passing, ready, merged
 - Timing a command without asserting it did the work — a broken run is the fastest run, so a surprisingly fast variant is a failure until proven otherwise.
 - Treating an impossible measurement (removing work made it *slower*) as a result rather than as a readout of your noise floor.
 - Rounding a safety fact up a rung: writing up an argument that stopped at "the failure path looks unreachable" as though it had been executed.
-- Narrating a DIAGNOSIS with no grade at all: "the download failed because the cache backend duplicated the model" and "the download failed, and here is the command that shows why" read identically and differ entirely in worth. When the check is available, run it instead of narrating the cause; when it is not, say "hypothesis" and give the command that would settle it. This is the most frequent way the grading rule above gets skipped, because chat prose has no slot for the grade.
 
 ## Related Skills
 
