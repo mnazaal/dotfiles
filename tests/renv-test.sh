@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# renv wiring for every non-claude harness: which sandbox profile, secrets and
+# renv wiring for every harness that still uses it: which sandbox profile,
 # pre-args each launch carries, and that a launch dies rather than running bare
 # when its wrapper is absent.
 # `renv claude` keeps its own test: its --rw logic needs a git fixture.
@@ -82,18 +82,6 @@ case "$out" in *--permission-mode*)
 	exit 1
 	;;
 esac
-
-# What claude-agent-acp.sh passes through is now asserted behaviourally, by
-# renv-claude-test.sh, which stubs headroom-ensure so sourcing claude.sh does
-# not start a real proxy. A grep for `unset RENV_PRE_ARGS` used to stand in for it
-# here; that assertion pinned a contract that turned out to be the bug -- the
-# unset also discarded the native-sandbox override the editor path needs -- so
-# the proxy is gone and only the sourcing relationship is checked here.
-claude_acp="$repo/.config/renv/claude-agent-acp.sh"
-grep -q 'renv/claude\.sh"$' "$claude_acp" || {
-	printf 'renv: %s no longer sources its CLI sibling\n' "$claude_acp" >&2
-	exit 1
-}
 
 # --- fail closed when the wrapper itself is missing --------------------------
 # Without this, a PATH without `sandbox` would run the harness unconfined.

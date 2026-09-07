@@ -34,10 +34,10 @@ RO_LAST+=(
 	# Same shadowing, and the same class of hole: a harness binary living under
 	# the blanket read-write bind. ~/.local/bin/claude resolves into this
 	# directory, so without the pin either agent could rewrite the other's
-	# executable and persist outside the sandbox. agent-claude used to declare it
-	# in the plain read-only pass, which is emitted BEFORE the read-write parent —
-	# protection that read as real and was not. It belongs here, where the pins
-	# are emitted last and actually win.
+	# executable and persist outside the sandbox. The retired agent-claude profile
+	# declared it in the plain read-only pass, which is emitted BEFORE the
+	# read-write parent — protection that read as real and was not. It belongs
+	# here, where the pins are emitted last and actually win.
 	"$H/.local/share/claude"
 	# Same class, found 2026-09-07 in a live agent-pi run: three more host PATH
 	# directories under the blanket read-write ~/.local/share were writable from

@@ -190,25 +190,21 @@ assert_mounts agent-pi "$output" \
 # inside ~/dotfiles auto-binds the repo read-write, which is the harder case —
 # the machinery-ro fragment must still pin the sources read-only afterwards, for
 # EVERY harness profile, not just the ones composing `agent`.
-for profile in agent-claude agent-pi; do
-	assert_mount_order "$home/dotfiles" "$profile" \
-		"$home/dotfiles:$home/dotfiles" \
-		"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
-done
+assert_mount_order "$home/dotfiles" agent-pi \
+	"$home/dotfiles:$home/dotfiles" \
+	"$home/dotfiles/.agents/guardrails:$home/dotfiles/.agents/guardrails:ro"
 
 # A harness binary sits under agent.profile's blanket read-write ~/.local/share,
 # so a plain read-only bind for it is emitted BEFORE that parent and shadowed by
 # it — protection that reads real and is not. The pin has to land after. Both
 # harnesses, because either could rewrite the other's executable and persist
 # outside the sandbox. This is the same hole the bun bin pin closes.
-for profile in agent-claude agent-pi; do
-	assert_mount_order "$project" "$profile" \
-		"$home/.local/share:$home/.local/share" \
-		"$home/.local/share/claude:$home/.local/share/claude:ro"
-	assert_mount_order "$project" "$profile" \
-		"$home/.local/share:$home/.local/share" \
-		"$home/.local/share/bun/bin:$home/.local/share/bun/bin:ro"
-done
+assert_mount_order "$project" agent-pi \
+	"$home/.local/share:$home/.local/share" \
+	"$home/.local/share/claude:$home/.local/share/claude:ro"
+assert_mount_order "$project" agent-pi \
+	"$home/.local/share:$home/.local/share" \
+	"$home/.local/share/bun/bin:$home/.local/share/bun/bin:ro"
 
 # A bind re-exposing an ancestor of $HOME defeats the allowlist as completely as
 # binding $HOME itself, so the sandbox must refuse it.
@@ -228,7 +224,7 @@ fi
 # while both the profile and this argv still look correct — so comparing those
 # two (make check-machinery-ro-sync) cannot detect it. The launcher therefore
 # asserts each pin inside the container before the command runs.
-out=$(run "$home/dotfiles" -p agent-claude)
+out=$(run "$home/dotfiles" -p agent-pi)
 case "$out" in
 *sandbox-preflight*) ;;
 *)
@@ -297,22 +293,20 @@ chmod u+w "$ro_pin"
 # tmpcopyup ON, which copies the shadowed store into the tmpfs and turns the
 # mask into a RAM replica that also stalls container creation past podman's
 # 240s timeout. A path-only assertion passes in exactly that broken state.
-for profile in agent-claude agent-pi; do
-	output=$(run "$project" -p "$profile")
-	assert_mounts "$profile masks credential and mail stores" "$output" \
-		"--tmpfs $home/.local/share/gnupg:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-		"--tmpfs $home/.local/share/pass:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-		"--tmpfs $home/.local/share/password-store:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-		"--tmpfs $home/.local/share/keyrings:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-		"--tmpfs $home/.local/share/mail:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
-		"--tmpfs $home/.local/share/zsh:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup"
-done
+output=$(run "$project" -p agent-pi)
+assert_mounts "agent-pi masks credential and mail stores" "$output" \
+	"--tmpfs $home/.local/share/gnupg:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+	"--tmpfs $home/.local/share/pass:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+	"--tmpfs $home/.local/share/password-store:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+	"--tmpfs $home/.local/share/keyrings:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+	"--tmpfs $home/.local/share/mail:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup" \
+	"--tmpfs $home/.local/share/zsh:ro\,nosuid\,nodev\,mode=0000\,notmpcopyup"
 
 # The masks must shadow a bind that is still there: if the blanket read-write
 # bind were narrowed away instead, these assertions would pass for the wrong
 # reason and stop testing the mask at all.
-output=$(run "$project" -p agent-claude)
-assert_mounts 'agent-claude still binds ~/.local/share read-write' "$output" \
+output=$(run "$project" -p agent-pi)
+assert_mounts 'agent-pi still binds ~/.local/share read-write' "$output" \
 	"$home/.local/share:$home/.local/share "
 printf 'sandbox profiles: credential and mail masks pass\n'
 
@@ -446,7 +440,6 @@ expect_engine() { # label expected-engine output
 }
 
 expect_engine 'agent-pi default' bwrap "$(run_default "$project" -p agent-pi)"
-expect_engine 'agent-claude default' podman "$(run_default "$project" -p agent-claude)"
 expect_engine 'no profile at all' podman "$(run_default "$project")"
 expect_engine 'flag beats the profile' podman \
 	"$(run_default "$project" -p agent-pi --engine podman)"
@@ -524,10 +517,8 @@ for entry in "${host_path[@]}"; do
 	esac
 done
 for dir in "${pathdirs[@]}"; do
-	for profile in agent-claude agent-pi; do
-		assert_mount_order "$project" "$profile" \
-			"$home/.local/share:$home/.local/share" \
-			"$dir:$dir:ro"
-	done
+	assert_mount_order "$project" agent-pi \
+		"$home/.local/share:$home/.local/share" \
+		"$dir:$dir:ro"
 done
 printf 'sandbox profiles: all %s PATH directories under a writable bind are pinned\n' "${#pathdirs[@]}"

@@ -59,7 +59,7 @@ if [ -f "$envfile" ]; then
 fi
 
 # An env file may set RENV_WRAP to a wrapper command (a bash array) to run the
-# resolved command under — e.g. RENV_WRAP=(sandbox -p agent-claude --) to confine
+# resolved command under — e.g. RENV_WRAP=(sandbox -p agent-pi --) to confine
 # it, or (nice -n10), (chrt -i 0), etc. renv stays agnostic about the wrapper.
 # Secrets sourced above are already in the environment, so a sandbox wrapper hides
 # the vault from the command while still passing the resolved keys through.

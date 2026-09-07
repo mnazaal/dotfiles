@@ -66,7 +66,6 @@ harnesses use the same profile namespace:
 | `dev` | `~/.config/sandbox/` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
 | `machinery-ro` | `~/.config/sandbox/` | RO_LAST pins on the enforcement stack — composed by every `agent-*` profile |
 | `agent` | `~/.config/sandbox/` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
-| `agent-claude` | `~/.config/sandbox/` | `use agent` + that harness's state. The legacy podman door: bare `claude` no longer uses it (see below) |
 | `agent-pi` | `~/.config/sandbox/` | `use agent` + pi's own writable state, under bwrap; both harnesses reach the same places, and the difference is a decision rather than a side effect of composition |
 
 ## Coding agents
@@ -74,17 +73,13 @@ harnesses use the same profile namespace:
 Each harness has a different boundary, and that asymmetry is a decision
 (`PLAN.md`, "pi containment"): claude can host its own, pi cannot.
 
-- **Bare `claude`** is confined by the `sandbox` block in
+- **`claude` and `claude-agent-acp`** are confined by the `sandbox` block in
   `~/.claude/settings.json` (Claude Code's own bubblewrap, Bash subprocesses
-  only, with `permissions.deny` rules covering the file tools). It needs no
-  launcher. The `denyWrite` list there and `machinery-ro.profile` here must
+  only, with `permissions.deny` rules covering the file tools). Neither needs a
+  launcher: the ACP adapter reads the same settings, verified 2026-09-07 in a
+  live Emacs session. The `denyWrite` list there and `machinery-ro.profile` here must
   name the same persistence pins; `tests/sandbox-profile-test.sh` walks the
   PATH for the profile side.
-- **`renv claude`** and **`renv claude-agent-acp`** (the Emacs door) are the
-  legacy podman path: `claude.sh` switches the native sandbox OFF (it cannot
-  nest inside podman) and wraps the harness in `sandbox -p agent-claude`.
-  Host network, `~/.claude` read-write. Scheduled for retirement once the ACP
-  adapter is confirmed to honour the settings block.
 - **`renv pi`** wraps pi in `sandbox -p agent-pi` under bwrap and supplies the
   ASTA MCP key; bare `pi` is unconfined and has no key (a PATH shim is the
   planned fix). pi's own permission extension decides tool calls inside;
@@ -113,9 +108,8 @@ unconfined.
   base set plus what the profile appends; pinned by `tests/sandbox-env-test.sh`).
   Allowlisted secrets resolved by `renv` (API keys) do ride along by design.
 - An agent must see its own login state to authenticate, so its credential
-  file rides along inside its writable state directory (`~/.claude` under
-  `agent-claude`) and is guarded only by the in-process guardrail. That is
-  not a secret boundary against the agent process itself.
+  file is guarded only by the in-process guardrail, never by the boundary.
+  That is not a secret boundary against the agent process itself.
 - No resource caps by default (a too-tight `--memory`/`--pids-limit` would kill an
   interactive agent mid-task; add them only for unattended runs).
 - `~/.ssh` / `pass` are absent inside, so `git push` over SSH and `pass` reads

@@ -63,7 +63,6 @@ check: test check-agent-role-sync check-guardrails-native-sync check-machinery-r
 test:
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/guardrails-skill-state-test.sh
-	@bash tests/renv-claude-test.sh
 	@bash tests/renv-test.sh
 	@bash tests/sandbox-env-test.sh
 	@bash tests/sandbox-profile-test.sh

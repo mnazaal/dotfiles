@@ -76,6 +76,15 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 		if [ "$seen_separator" -eq 0 ]; then expected+=("$name"); else forbidden+=("$name"); fi
 	done
 
+	# Truncate first: the capture is what the FAKE podman writes, so a profile
+	# whose engine is not podman leaves the previous profile's file in place and
+	# every assertion below then passes against stale argv. That is how the
+	# agent-pi case passed while testing nothing (found 2026-09-07).
+	: >"$capture"
+	# ...and force the engine that owns the capture. What is under test is the
+	# per-profile SANDBOX_ENV list, which is engine-neutral data; agent-pi's real
+	# bwrap launch is covered by the real-launch env test in
+	# tests/sandbox-profile-test.sh, which asserts nothing unallowlisted crosses.
 	(
 		cd "$project"
 		HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
@@ -85,7 +94,7 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 			HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
 			ANTHROPIC_BASE_URL=http://127.0.0.1:8787 ENABLE_TOOL_SEARCH=false \
 			DISABLE_AUTOUPDATER=1 EDITOR=nvim UNRELATED_SECRET=must-not-reach-container \
-			"$repo/.local/scripts/sandbox" -p "$profile" -- /bin/true
+			"$repo/.local/scripts/sandbox" --engine podman -p "$profile" -- /bin/true
 	)
 
 	args=$(<"$capture")
@@ -116,5 +125,4 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	done
 }
 
-assert_profile_env agent-claude ASTA_MCP_API_KEY HEADROOM_PORT ANTHROPIC_BASE_URL -- OPENROUTER_API_KEY UNRELATED_SECRET
 assert_profile_env agent-pi ASTA_MCP_API_KEY -- OPENROUTER_API_KEY UNRELATED_SECRET
