@@ -25,14 +25,7 @@ OPTIONS
                             $SANDBOX_PROFILE_PATH (default ~/.config/sandbox),
                             a value containing '/' is a file path. Repeatable;
                             a profile may `use OTHER` to compose.
-      --rw DIR              add a read-write bind        (repeatable)
-      --ro DIR              add a read-only  bind        (repeatable)
-      --mask DIR            shadow DIR with an empty tmpfs, so a path nested
-                            inside a broader --rw bind is absent (repeatable)
-      --no-net              unshare the network (shared by default)
   -n, --dry-run             print the bwrap command instead of running it
-      --verify-pins         inside the sandbox: check every machinery pin is
-                            actually read-only, then exit. Non-zero if any is not
   -h, --help                show this help
 
 DESCRIPTION
@@ -117,7 +110,9 @@ run_bwrap() {
 	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
 	local d target
 	local p=(--unshare-user --unshare-ipc --unshare-pid --unshare-uts --die-with-parent)
-	if [ "$NET" -eq 0 ]; then p+=(--unshare-net); fi
+	# The network is shared. Egress is not this boundary's job (PLAN, Open
+	# risks: exfiltration is accepted, not mitigated), and nothing asked for
+	# an opt-out.
 
 	# No image supplies a root filesystem here, so build one. This is the one
 	# place the two engines genuinely differ in WHAT is bound rather than how:
@@ -206,7 +201,8 @@ run_bwrap() {
 
 	p+=(--chdir "$PWD")
 	# Non-secret, and the only marker of this boundary: bwrap creates neither
-	# /run/.containerenv nor /.dockerenv, which is what --verify-pins tests for.
+	# /run/.containerenv nor /.dockerenv, so the pi shim tests this instead to
+	# recognise that it is already inside a sandbox.
 	p+=(--setenv SANDBOX_ENGINE bwrap)
 
 	# Only allowlisted names cross. bwrap inherits the environment wholesale, so
@@ -284,9 +280,7 @@ declare -a RW=() RO=() RW_FILES=() RO_LAST=() MASK=()
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
 declare -a SANDBOX_ENV=(HOME PWD PATH LANG LC_ALL LC_CTYPE TERM COLORTERM NO_COLOR EDITOR VISUAL XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_RUNTIME_DIR XDG_STATE_HOME WAYLAND_DISPLAY)
-NET=1 # 1 share network, 0 unshare
 DRYRUN=0
-VERIFY_PINS=0
 SANDBOX_PATH_PREPEND=""
 declare -A _loaded=()
 
@@ -297,28 +291,8 @@ while [ $# -gt 0 ]; do
 		load_profile_arg "$2"
 		shift 2
 		;;
-	--rw)
-		RW+=("$2")
-		shift 2
-		;;
-	--ro)
-		RO+=("$2")
-		shift 2
-		;;
-	--mask)
-		MASK+=("$2")
-		shift 2
-		;;
-	--no-net)
-		NET=0
-		shift
-		;;
 	-n | --dry-run)
 		DRYRUN=1
-		shift
-		;;
-	--verify-pins)
-		VERIFY_PINS=1
 		shift
 		;;
 	-h | --help)
@@ -338,76 +312,8 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-[ ${#cmd[@]} -gt 0 ] || [ "$VERIFY_PINS" -eq 1 ] ||
+[ ${#cmd[@]} -gt 0 ] ||
 	die 'usage: sandbox [options] [--] <command> [args...]' 2
-
-# A read-only bind is attached to an inode, so replacing the file orphans the
-# mount and silently disarms the pin for the life of the session — and replacing
-# is what `git checkout`, stow and every temp-then-rename editor write does. The
-# profile and the podman argv both still look correct afterwards, which is why
-# comparing those two (`make check-machinery-ro-sync`) cannot detect it. Only the
-# live mount namespace can, so ask it.
-if [ "$VERIFY_PINS" -eq 1 ]; then
-	[ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ "${SANDBOX_ENGINE:-}" = bwrap ] ||
-		die '--verify-pins is meaningful only inside the sandbox' 2
-	pin_status=0
-	pin_checked=0
-	pin_writable=0
-	pin_missing=0
-	for d in "${RO_LAST[@]}"; do
-		if [ ! -e "$d" ]; then
-			printf 'sandbox: machinery pin MISSING, so unprotected: %s\n' "$d" >&2
-			pin_missing=$((pin_missing + 1))
-			pin_status=1
-			continue
-		fi
-		pin_checked=$((pin_checked + 1))
-		if [ -w "$d" ]; then
-			printf 'sandbox: machinery pin WRITABLE, so not enforced: %s\n' "$d" >&2
-			pin_writable=$((pin_writable + 1))
-			pin_status=1
-		fi
-	done
-	# Ask the kernel whether each mask is a mount point. An empty listing proves
-	# nothing here: mode=0000 makes a masked directory unreadable, so `ls` returns
-	# nothing whether the tmpfs applied or not, and inferring success from that is
-	# the fail-open this check exists to remove.
-	mask_ok=0
-	for d in "${MASK[@]}"; do
-		if awk -v p="$d" '$5 == p { found = 1 } END { exit !found }' /proc/self/mountinfo; then
-			mask_ok=$((mask_ok + 1))
-		else
-			printf 'sandbox: mask NOT APPLIED, so the real contents are exposed: %s\n' "$d" >&2
-			pin_status=1
-		fi
-	done
-	if [ "${#RO_LAST[@]}" -eq 0 ]; then
-		printf 'sandbox: no machinery pins declared — the profile did not compose\n' >&2
-		exit 1
-	fi
-	if [ "$pin_status" -eq 0 ]; then
-		# Says what was measured, not what was hoped. `test -w` answers "not
-		# writable from here", which for a pin nested under a read-only parent
-		# bind is also true when the pin's own bind is absent — so this counts
-		# non-writable paths, and only a session whose cwd makes the parent
-		# writable distinguishes the two.
-		printf 'sandbox: %d of %d machinery pins present and not writable\n' \
-			"$pin_checked" "${#RO_LAST[@]}"
-		printf 'sandbox: %d of %d secret masks applied\n' "$mask_ok" "${#MASK[@]}"
-	else
-		# Different causes, different remedies. A writable pin means its bind was
-		# orphaned by the file being replaced, which a relaunch fixes. A missing
-		# pin means policy names a path that is not there, which a relaunch
-		# cannot fix and which needs the profile or the file reconciled.
-		if [ "$pin_writable" -gt 0 ]; then
-			printf 'sandbox: relaunch to re-bind — a pin breaks when its file is replaced.\n' >&2
-		fi
-		if [ "$pin_missing" -gt 0 ]; then
-			printf 'sandbox: a missing pin is not fixed by relaunching; reconcile the profile with the filesystem.\n' >&2
-		fi
-	fi
-	exit "$pin_status"
-fi
 
 cmdpath=$(command -v -- "${cmd[0]}") || die "command not found: ${cmd[0]}" 127
 cmd[0]=$cmdpath

@@ -192,9 +192,19 @@ assert_mount_order "$project" agent-pi \
 	"--ro-bind $home/.local/share/bun/bin $home/.local/share/bun/bin"
 
 # A bind re-exposing an ancestor of $HOME defeats the allowlist as completely as
-# binding $HOME itself, so the sandbox must refuse it.
+# binding $HOME itself, so the sandbox must refuse it. A PROFILE is the only
+# thing that can ask for one now that the bind flags are gone, which is also the
+# realistic source: profiles are hand-written, and this guard is what stops one
+# typo from dissolving the boundary.
 ancestor=$(dirname "$home")
-if run "$project" --ro "$ancestor" >"$tmp/stdout" 2>"$tmp/stderr"; then
+badprof="$home/.config/sandbox"
+mkdir -p "$badprof"
+printf 'RO+=( "%s" )\n' "$ancestor" >"$badprof/badbind.profile"
+if (
+	cd "$project" || exit 1
+	HOME="$home" SANDBOX_PROFILE_PATH="$badprof" \
+		"$repo/.local/scripts/sandbox" --dry-run -p badbind -- /bin/true
+) >"$tmp/stdout" 2>"$tmp/stderr"; then
 	printf 'sandbox accepted an ancestor of HOME\n' >&2
 	exit 1
 fi
@@ -319,7 +329,7 @@ done
 case "$output" in
 *"--setenv SANDBOX_ENGINE bwrap"*) ;;
 *)
-	printf 'bwrap: the boundary marker --verify-pins looks for is missing\n' >&2
+	printf 'bwrap: the boundary marker the pi shim looks for is missing\n' >&2
 	exit 1
 	;;
 esac
