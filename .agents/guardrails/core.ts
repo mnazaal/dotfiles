@@ -30,7 +30,9 @@ const HOME = homedir();
  *
  * Deliberately not an environment variable: an agent can set one of those, and
  * this would become the confinement-tampering hole the guard exists to close.
- * Callers pass `inSandbox` explicitly; only tests do.
+ * Callers pass `inSandbox` explicitly: the Claude adapter does, for the native
+ * bubblewrap sandbox that creates neither marker (it reads the machinery-pinned
+ * settings.json instead), and the tests do.
  */
 function detectSandbox(): boolean {
   return existsSync("/run/.containerenv") || existsSync("/.dockerenv");
@@ -265,6 +267,7 @@ function subcommandOf(args: string[], valueOpts?: Set<string>): string {
 
 function resolveAny(input: string, cwd: string): string {
   if (input.startsWith("~/") || input === "~") return resolve(HOME, input === "~" ? "" : input.slice(2));
+  if (input === "$HOME" || input === "${HOME}") return HOME;
   if (input.startsWith("$HOME/")) return resolve(HOME, input.slice(6));
   if (input.startsWith("${HOME}/")) return resolve(HOME, input.slice(8));
   if (input.startsWith("/")) return resolve(input);
@@ -288,6 +291,10 @@ function isTopLevelRmTarget(target: string, base: string, origin: string): boole
   if (resolved === "/" || resolved === HOME) return true;
   // A direct child of $HOME is a project root or top-level store.
   if (resolved.startsWith(HOME + "/") && !resolved.slice(HOME.length + 1).includes("/")) return true;
+  // A directory holding .git is a repository root wherever it sits -- projects
+  // live under ~/projects/<name>, and a sibling repo's checkpoint refs die with
+  // its .git. Filesystem-backed, like isGitWorktree below.
+  if (existsSync(resolve(resolved, ".git"))) return true;
   for (const anchor of [resolve(base), resolve(origin)]) {
     if (resolved === anchor || anchor.startsWith(resolved + "/")) return true;
   }
@@ -308,7 +315,10 @@ const PATTERN_FLAGS = new Set([
 function hasProtectedSegment(path: string, operation: Operation = "unknown"): boolean {
   for (const comp of path.replace(/\\/g, "/").split("/")) {
     if (comp === ".env" || comp.startsWith(".env.")) return true;
-    if (operation !== "read" && (comp === ".git" || comp === "node_modules")) return true;
+    // Typed write tools only: applied to every bash token this denied routine
+    // work (rm -rf node_modules, cat .git/HEAD) that the kernel pin and the
+    // per-call checkpoint already cover.
+    if (operation !== "read" && operation !== "bash" && (comp === ".git" || comp === "node_modules")) return true;
   }
   return false;
 }
@@ -363,11 +373,22 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     }
   }
 
+  // A mention ends at a path boundary: ~/.aws-sdk-notes.md is not ~/.aws, and
+  // ~/.npmrc.example is not ~/.npmrc. Any character that cannot continue a
+  // path component (/, whitespace, quotes, :, operators) ends the match.
+  function mentions(hay: string, needle: string): boolean {
+    for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + 1)) {
+      const after = hay[i + needle.length];
+      if (after === undefined || !/[A-Za-z0-9._-]/.test(after)) return true;
+    }
+    return false;
+  }
+
   function blockedCommand(command: string, cwd: string): string | undefined {
     const norm = command.replaceAll("${HOME}", HOME).replaceAll("$HOME", HOME).replaceAll("~/", `${HOME}/`);
     for (const s of [...credentials, ...bashMachinery]) {
       const abs = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
-      if (norm.includes(s) || norm.includes(abs)) return s;
+      if (mentions(norm, s) || mentions(norm, abs)) return s;
     }
     // The argument to a search tool's pattern flag is a PATTERN, not a path the
     // command touches: `find . -not -path '*/.git/*'` is the idiom for AVOIDING
@@ -427,6 +448,8 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       if (rest.includes("--no-verify")) return "git hook skip (--no-verify)";
       if (sub === "branch" && rest.some(t => t === "-f" || t === "--force" || t === "-D" || t === "-d" || t === "--delete")) return "forced/deleted git branch";
       if (sub === "push" && rest.some(t => t === "-f" || t === "--force" || t === "--delete" || t === "-d" || t.startsWith("--force"))) return "force/delete git push";
+      // Refspec forms: `+dst` forces, `:dst` deletes. `src:dst` is an ordinary push.
+      if (sub === "push" && rest.some(t => t.startsWith("+") || (t.startsWith(":") && t.length > 1))) return "force/delete git push (refspec)";
       return undefined;
     }
     return undefined;
@@ -442,6 +465,15 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       if (t.startsWith("AGENT_BRANCH_PREFIX=")) return "reassigns AGENT_BRANCH_PREFIX (branch confinement)";
       if (t.startsWith("GIT_CONFIG") && t.includes("=")) return "git config via environment (GIT_CONFIG_*)";
     }
+    return undefined;
+  }
+
+  // agent-checkpoint snapshots with `git add -A`, which honours .gitignore, so
+  // ignored trees are outside its reach: `git clean -x`/`-X` is the one clean
+  // form nothing can undo. Its own category, so the severity map can rate it.
+  function gitCleanIgnoredReason(args: string[]): string | undefined {
+    if (subcommandOf(args, GIT_VALUE_OPTS) !== "clean") return undefined;
+    if (args.some(t => t.startsWith("-") && !t.startsWith("--") && /[xX]/.test(t))) return "git clean of ignored files (-x)";
     return undefined;
   }
 
@@ -492,7 +524,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       }
       if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args)))
         return { reason: "world-writable permissions", category: "world-writable" };
-      if (command === "git") { const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" }; }
+      if (command === "git") {
+        const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" };
+        const c = gitCleanIgnoredReason(args); if (c) return { reason: c, category: "git-clean-ignored" };
+      }
       if (command === "find") {
         if (findPolicy === "always") return { reason: "find — prefer grepika/read tools", category: "find" };
         if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) return { reason: "find with -exec/-delete", category: "find" };

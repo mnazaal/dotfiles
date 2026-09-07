@@ -16,11 +16,19 @@
  * still report their command severity here rather than a skill-gate deny.
  */
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createGuardrails } from "../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
+
+// A sibling repository and a plain directory, both OUTSIDE cwd: the repo-root
+// rule is filesystem-backed (a directory holding .git is a root wherever it
+// sits), so the rows below need real directories, not string patterns.
+const fixture = mkdtempSync(join(tmpdir(), "guardrails-severity-"));
+mkdirSync(join(fixture, "repo", ".git"), { recursive: true });
+mkdirSync(join(fixture, "plain"), { recursive: true });
 
 // Severity comes from shared data — the adapters differ only in how they
 // RENDER a decision. Rows may declare a deliberate per-agent split; anything
@@ -86,6 +94,15 @@ const TABLE: Row[] = [
   { command: "git -c core.hooksPath=/dev/null commit -m x", expected: "deny" },
   { command: "git commit --no-verify -m x", expected: "deny" },
   { command: "git push --force origin main", expected: "deny" },
+  { command: "git push origin +main", expected: "deny", note: "a refspec + is a force" },
+  { command: "git push origin :claude/topic", expected: "deny", note: "a refspec :dst is a delete" },
+  { command: "git push origin HEAD:claude/topic", expected: "allow", note: "src:dst is an ordinary push" },
+  // agent-checkpoint snapshots with `git add -A`, which honours .gitignore, so
+  // ignored trees (.venv, caches) are outside its reach; -x is the one clean
+  // form the checkpoint cannot undo. Hand it to the user instead.
+  { command: "git clean -fdx", expected: "deny", note: "deletes ignored files the checkpoint never saw" },
+  { command: "git clean -fdX", expected: "deny", note: "ignored-only variant" },
+  { command: "git clean -fd", expected: "allow", note: "untracked only: checkpointed" },
   { command: "git branch -D claude/topic", expected: "deny" },
   // The rule's message already says "forced/deleted"; -d is the safe variant
   // but is still a deletion, and there is no ask tier left to surface it.
@@ -123,6 +140,14 @@ const TABLE: Row[] = [
   { command: "rm -rf ~/dotfiles", expected: "deny", note: "direct child of home: a repo root" },
   { command: "rm -rf ~/projects", expected: "deny", note: "direct child of home" },
   { command: "rm -rf $HOME/dotfiles", expected: "deny", note: "$HOME normalizes to the same path" },
+  { command: 'rm -rf "$HOME"', expected: "deny", note: "bare quoted $HOME is home, not <cwd>/$HOME" },
+  { command: "rm -rf ${HOME}", expected: "deny", note: "braced form" },
+  // Projects live under ~/projects/<name>, not directly under ~. A sibling
+  // repository's checkpoint refs live in ITS .git, so deleting it destroys work
+  // and recovery together exactly as deleting a direct child of home would.
+  { command: `rm -rf ${fixture}/repo`, expected: "deny", note: "a directory holding .git is a repo root wherever it sits" },
+  { command: `cd ${fixture} && rm -rf repo`, expected: "deny", note: "same, relative after cd" },
+  { command: `rm -rf ${fixture}/plain`, expected: { claude: "allow", default: "ask" }, note: "no .git: an ordinary directory" },
   { command: "rm -rf .", expected: "deny", note: "the whole working directory" },
   { command: "rm -rf ..", expected: "deny", note: "an ancestor of the working directory" },
   {
@@ -205,7 +230,34 @@ const TABLE: Row[] = [
   { command: "rm -r build", expected: "allow", note: "recursive without --force is not gated" },
   { command: "git push origin claude/topic", expected: "allow" },
   { command: "find . -name '*.py'", expected: "allow", note: "no -exec primary" },
+  // The protected-segment rule (.git, node_modules) exists for the typed write
+  // tools; applied to every bash token it denied routine work while the
+  // kernel pin and the checkpoint already cover .git.
+  { command: "rm -rf node_modules && npm install", expected: { claude: "allow", default: "ask" }, note: "routine; in-project recursive rm" },
+  { command: "du -sh node_modules", expected: "allow" },
+  { command: "cat .git/HEAD", expected: "allow", note: "a read of the repo's own state" },
+  // A credential prefix must end at a path boundary: ~/.aws-sdk-notes.md is not
+  // ~/.aws, and ~/.npmrc.example is not ~/.npmrc.
+  { command: "ls ~/.aws-sdk-notes.md", expected: "allow", note: "prefix, not the credential dir" },
+  { command: "cat ~/.npmrc.example", expected: "allow", note: "prefix, not the credential file" },
+  { command: "ls ~/.aws", expected: "deny", note: "control: the credential dir itself" },
+  { command: "cat ~/.ssh/config", expected: "deny", note: "control: inside the credential dir" },
+  { command: "cp x ~/.ssh:ro", expected: "deny", note: "control: a non-name character still ends the path" },
 ];
+
+// The machinery-in-bash rule is relaxed only when the caller says the kernel
+// already pins those paths (the Claude adapter derives this from the native
+// sandbox block). Credentials are never relaxed.
+const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
+test("machinery in bash: denied outside a sandbox", () => {
+  const rails = createGuardrails("claude", { inSandbox: false });
+  expect(rails.evaluate({ tool: "bash", command: machineryCommand, cwd }, loadedSkills).decision).toBe("deny");
+});
+test("machinery in bash: allowed inside a sandbox that pins it", () => {
+  const rails = createGuardrails("claude", { inSandbox: true });
+  expect(rails.evaluate({ tool: "bash", command: machineryCommand, cwd }, loadedSkills).decision).toBe("allow");
+  expect(rails.evaluate({ tool: "bash", command: "cat ~/.ssh/config", cwd }, loadedSkills).decision).toBe("deny");
+});
 
 for (const { command, expected, note } of TABLE) {
   test(`${label(expected)}: ${command}${note ? ` (${note})` : ""}`, () => {

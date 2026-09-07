@@ -79,6 +79,7 @@
     "confinement": "deny",
     "disk-destructive": "deny",
     "git-guard-bypass": "deny",
+    "git-clean-ignored": "deny",
     "recursive-force-rm-toplevel": "deny",
     "world-writable": {
       "claude": "allow",
