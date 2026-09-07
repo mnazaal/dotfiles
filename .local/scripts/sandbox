@@ -29,7 +29,9 @@ OPTIONS
   -h, --help                show this help
 
 DESCRIPTION
-  Only an allowlist is visible: the current project ($PWD) is read-write,
+  Only an allowlist is visible: the git repository containing the current
+  directory is read-write (not $PWD alone -- a subdirectory launch still binds
+  the repository root, or nothing at all outside a repository),
   system dirs and whatever profiles add are read-only, everything else under
   $HOME (ssh, gnupg, pass, other projects) is invisible. Secrets already in
   the environment pass through, so callers can resolve them beforehand.
@@ -155,7 +157,6 @@ run_bwrap() {
 
 	for d in "${RO[@]}"; do if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi; done
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(--bind "$d" "$d"); fi; done
-	for d in "${RW_FILES[@]}"; do if [ -e "$d" ]; then p+=(--bind "$d" "$d"); fi; done
 	# Emitted last so a pin nested inside a writable bind stays read-only. The
 	# manual guarantees binds are "applied in the order they are given as
 	# arguments", and PLAN's A2 measured that this holds for a REPEATED
@@ -275,7 +276,7 @@ run_bwrap() {
 # writable one stays read-only. Plain RO is emitted first, where an overlapping
 # RW bind wins — which is why the read-only $H/.agents bind does not protect
 # its stow targets under the writable $H/dotfiles bind.
-declare -a RW=() RO=() RW_FILES=() RO_LAST=() MASK=()
+declare -a RW=() RO=() RO_LAST=() MASK=()
 # Only these non-secret host variables cross the sandbox boundary by default.
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.

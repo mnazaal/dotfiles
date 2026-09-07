@@ -20,8 +20,9 @@ const HOME = homedir();
 
 /**
  * Is this process inside the container sandbox? Machinery is unwritable at the
- * kernel there -- machinery-ro pins every path read-only and `sandbox
- * --verify-pins` re-checks that on every user prompt -- so denying it in bash
+ * kernel there -- machinery-ro pins every path read-only at launch (nothing
+ * re-checks the pins afterwards; the --verify-pins hook that once did was
+ * deleted with the podman door) -- so denying it in bash
  * blocks the reads sensitive-paths.json explicitly allows ("blocked for
  * write/bash but allowed for normal read tools") while adding no protection.
  * The workaround it drives, splitting a path across string concatenation,

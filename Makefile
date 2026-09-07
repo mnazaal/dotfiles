@@ -1,4 +1,4 @@
-.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync
+.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter
 
 help:
 	@printf '%s\n' \
@@ -25,12 +25,11 @@ clean:
 		while IFS= read -r dir; do rmdir "$(HOME)/$$dir" 2>/dev/null || true; done
 	@if [ -n "$(DEEP)" ]; then \
 		DOTFILES="$(CURDIR)" find "$(HOME)" \
-			-path "$(HOME)/.local/share/containers" -prune -o \
 			-path "$(CURDIR)" -prune -o \
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
 
-check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync
+check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -102,3 +101,52 @@ check-machinery-ro-sync:
 		printf '%s\n' "$$pinned" | grep -qF "\"$$pin\"" || { printf 'machinery-ro drift: %s is policy-protected but not pinned read-only in machinery-ro.profile\n' "$$p" >&2; status=1; }; \
 	done; \
 	exit "$$status"
+
+# Every skill's frontmatter must load as YAML with string values. The failure
+# this catches is silent and per-file: pi parses strictly, so one unquoted
+# `description: Use for X: y` drops THAT skill from routing with no error
+# anywhere -- 29 of 39 were broken this way at once. Asserts the values LOAD as
+# strings rather than grepping for quote characters, so any spelling that is
+# genuinely valid passes and one that merely looks valid does not.
+define SKILL_FRONTMATTER_PY
+import glob, sys
+try:
+    import yaml
+except ImportError:
+    print("warn: PyYAML not installed; skipping skill-frontmatter check")
+    sys.exit(0)
+status = 0
+files = sorted(glob.glob(".agents/skills/*/SKILL.md"))
+if not files:
+    print("skill-frontmatter: no SKILL.md files found -- wrong directory?", file=sys.stderr)
+    sys.exit(1)
+for f in files:
+    text = open(f, encoding="utf-8").read()
+    if not text.startswith("---\n"):
+        print("skill-frontmatter: %s: no frontmatter block" % f, file=sys.stderr)
+        status = 1
+        continue
+    try:
+        data = yaml.safe_load(text.split("---\n", 2)[1])
+    except yaml.YAMLError as e:
+        print("skill-frontmatter: %s: not valid YAML (%s)" % (f, str(e).splitlines()[0]), file=sys.stderr)
+        status = 1
+        continue
+    if not isinstance(data, dict):
+        print("skill-frontmatter: %s: frontmatter is not a mapping" % f, file=sys.stderr)
+        status = 1
+        continue
+    for key in ("name", "description"):
+        if key not in data:
+            print("skill-frontmatter: %s: missing %s" % (f, key), file=sys.stderr)
+            status = 1
+        elif not isinstance(data[key], str):
+            print("skill-frontmatter: %s: %s loaded as %s, not a string -- quote it"
+                  % (f, key, type(data[key]).__name__), file=sys.stderr)
+            status = 1
+sys.exit(status)
+endef
+export SKILL_FRONTMATTER_PY
+
+check-skill-frontmatter:
+	@python3 -c "$$SKILL_FRONTMATTER_PY"

@@ -42,8 +42,18 @@ EOF
 # and reports everything it genuinely can measure. Binding the handful of files
 # instead would verify three deployed paths while the rest stayed invisible —
 # a partial gate that reads as a complete one.
+# SANDBOX_ENGINE is set by the launcher for its own boundary. The container
+# markers are kept for a foreign container, not for ours: no engine this
+# repository drives creates either one any more.
+#
+# KNOWN GAP, stated rather than papered over: the harness-native boundary
+# (bare `claude`, and the editor's ACP door) sets no marker at all and is not
+# detectable from inside, so `make check` run there still reports masked paths
+# as deployment failures. Run it outside the boundary to get a real answer --
+# which is the standing rule for deployment questions anyway, since a mask is
+# indistinguishable from a missing file from in here.
 sandboxed=0
-if [[ -e /run/.containerenv || -e /.dockerenv ]]; then
+if [[ -n ${SANDBOX_ENGINE:-} || -e /run/.containerenv || -e /.dockerenv ]]; then
 	sandboxed=1
 fi
 skip() { printf 'skip: %s (not verifiable inside the sandbox)\n' "$1"; }

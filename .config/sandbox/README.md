@@ -57,7 +57,7 @@ recognise that it is already sandboxed and step aside rather than nest.
 ## Profiles
 
 A profile is a tiny `*.profile` file sourced by the launcher; it appends to the
-`RW` / `RO` / `RW_FILES` / `RO_LAST` / `MASK` arrays (a mask shadows a path with
+`RW` / `RO` / `RO_LAST` / `MASK` arrays (a mask shadows a path with
 an empty tmpfs so it is absent, not merely unwritable) and can `use NAME` to
 compose another. `-p NAME` resolves a bare name against
 **`$SANDBOX_PROFILE_PATH`** (default `~/.config/sandbox`); `-p PATH`
