@@ -16,8 +16,6 @@ The shared rules above are written tool-agnostically (for the pi agent). Map the
   prompts for that shape while any `Read()` deny rule exists, even under
   `bypassPermissions`.
 - **Docs** — use `WebFetch`/`WebSearch` for library/API docs.
-- **Papers** — use the configured academic-paper verification tool before citing
-  a paper; never cite an unverified paper.
 - **Subagents** — delegate via the `Task` tool. The agents in `~/.claude/agents/`
   are the equivalent of pi's subagents.
 - **Python tests** — run `pytest` / `pytest <path>` only. Never `python -m

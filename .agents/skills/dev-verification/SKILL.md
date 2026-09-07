@@ -11,7 +11,6 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 - Evidence before claims.
 - No completion, fixed, passing, ready, reviewed, or verified claim without fresh verification evidence.
 - Run the verification that proves the claim or state why blocked.
-- Run a slow check in the background once and let it report when it finishes; never hand-roll a `sleep`/`pgrep` poll loop to watch a command you already backgrounded — it outlives the job and leaks.
 - To tell whether a backgrounded job is actually working vs. stalled, compare accumulated CPU time (`ps -o time`) to wall-clock elapsed — near-zero CPU growth over minutes means blocked/hung, not busy.
 - Read full relevant output, including exit status and failures.
 - Do not extrapolate from partial checks.
