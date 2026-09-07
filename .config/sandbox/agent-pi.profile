@@ -12,7 +12,14 @@ use agent
 # RW bind nested in a plain RO one wins, which is what makes these override.
 RW+=( "$H/.config/pi/agent/sessions" "$H/.config/pi/agent/npm" )
 RW_FILES+=( "$H/.config/pi/agent/mcp-cache.json" "$H/.config/pi/agent/run-history.jsonl" )
-SANDBOX_ENV+=( "ASTA_MCP_API_KEY" )
+# PI_CODING_AGENT_DIR is load-bearing, not a convenience. pi finds its config
+# directory from it and otherwise falls back to ~/.pi/agent — a symlink that
+# exists on the host and NOT inside, where $HOME is a tmpfs holding only the
+# allowlist. Without it pi started with no auth.json, no settings.json and no
+# mcp.json, and reported "No models available" while looking perfectly healthy.
+# The writable binds above are for exactly that directory, so the profile was
+# always built for pi to find it; only the variable was missing.
+SANDBOX_ENV+=( "ASTA_MCP_API_KEY" "PI_CODING_AGENT_DIR" "PI_OFFLINE" "PI_SKIP_VERSION_CHECK" )
 
 # pi runs under bubblewrap rather than podman. Not a preference: podman refuses a
 # repeated mount destination, which `use agent` produces whenever cwd is a

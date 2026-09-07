@@ -90,7 +90,7 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 		HOME="$home" PATH="$bin:$PATH" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
 			SANDBOX_CAPTURE="$capture" \
 			ASTA_MCP_API_KEY=asta-key OPENROUTER_API_KEY=openrouter-key \
-			HEADROOM_PORT=8787 \
+			HEADROOM_PORT=8787 PI_CODING_AGENT_DIR="$home/.config/pi/agent" \
 			HEADROOM_ANTHROPIC_BASE_URL=http://127.0.0.1:8787 \
 			ANTHROPIC_BASE_URL=http://127.0.0.1:8787 ENABLE_TOOL_SEARCH=false \
 			DISABLE_AUTOUPDATER=1 EDITOR=nvim UNRELATED_SECRET=must-not-reach-container \
@@ -125,4 +125,5 @@ assert_profile_env() { # profile expected names... -- forbidden names...
 	done
 }
 
-assert_profile_env agent-pi ASTA_MCP_API_KEY -- OPENROUTER_API_KEY UNRELATED_SECRET
+# PI_CODING_AGENT_DIR must cross or pi runs with no configuration at all.
+assert_profile_env agent-pi ASTA_MCP_API_KEY PI_CODING_AGENT_DIR -- OPENROUTER_API_KEY UNRELATED_SECRET
