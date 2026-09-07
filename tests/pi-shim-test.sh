@@ -116,4 +116,44 @@ args=$(<"$capture")
 expect 'the acp name selects the acp binary' "$args" "$bun/bin/pi-acp"
 expect 'the acp name still selects the pi profile' "$args" $'-p\nagent-pi'
 
+# --- pi's guardrail adapter: the two properties nothing else covers ----------
+# This file is pi's ONLY enforcement layer -- it has no native permission layer
+# to fall back on -- and it had no test at all. Both properties below fail
+# silently: an unguarded pi looks exactly like a guarded one until something
+# destructive is allowed, and an empty branch prefix reads to the shared git
+# hooks as a HUMAN committing, which is precisely what they exist to stop.
+ext="$repo/.config/pi/agent/extensions/guardrails.ts"
+[ -f "$ext" ] || fail "pi guardrails extension missing: $ext"
+
+# The prefix must be set in the agent process itself, since the launcher that
+# used to set it is gone and the bash tool spreads process.env per spawn.
+grep -q 'process\.env\.AGENT_BRANCH_PREFIX = "pi"' "$ext" ||
+	fail "the pi extension must set AGENT_BRANCH_PREFIX=pi in-process"
+
+# Fail-closed launch: createGuardrails runs at import, and loadJson throws on a
+# missing or malformed policy, so pi aborts rather than starting unguarded.
+# Driven, not grepped -- the claim is about what an import DOES.
+probe="$tmp/failclosed"
+mkdir -p "$probe/.agents/guardrails"
+cp "$repo/.agents/guardrails/core.ts" "$probe/.agents/guardrails/core.ts"
+for f in sensitive-paths.json dangerous-commands.json skill-gates.json; do
+	cp "$repo/.agents/guardrails/$f" "$probe/.agents/guardrails/$f"
+done
+cat >"$probe/import.ts" <<'PROBE'
+import { createGuardrails } from "./.agents/guardrails/core.ts";
+createGuardrails("pi");
+console.log("imported");
+PROBE
+if ! (cd "$probe" && HOME="$probe" bun run import.ts >/dev/null 2>&1); then
+	fail "the guardrail factory should import cleanly with a well-formed policy"
+fi
+printf 'not json {{{' >"$probe/.agents/guardrails/dangerous-commands.json"
+if (cd "$probe" && HOME="$probe" bun run import.ts >/dev/null 2>&1); then
+	fail "a malformed policy must abort the agent, not start it unguarded"
+fi
+rm -f "$probe/.agents/guardrails/dangerous-commands.json"
+if (cd "$probe" && HOME="$probe" bun run import.ts >/dev/null 2>&1); then
+	fail "a missing policy must abort the agent, not start it unguarded"
+fi
+
 printf 'pi shim: all behaviors pass\n'

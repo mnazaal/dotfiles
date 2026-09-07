@@ -36,6 +36,20 @@ for r in "$home/dotfiles" "$home/projects/demo"; do
 	git -c init.defaultBranch=main init -q "$r"
 done
 
+# A linked worktree of the demo repo, for the common-dir assertion below. It
+# needs a commit to attach to, and the shared git hooks must stay out of the
+# fixture's way.
+linked="$home/projects/demo-wt"
+(
+	cd "$home/projects/demo" || exit 1
+	git config core.hooksPath "$tmp/nohooks"
+	git config user.email t@example.invalid
+	git config user.name fixture
+	mkdir -p "$tmp/nohooks"
+	git commit -q --allow-empty -m init
+	git worktree add -q --detach "$linked" HEAD
+) >/dev/null 2>&1 || { printf 'sandbox profiles: could not build the linked-worktree fixture\n' >&2; exit 1; }
+
 run() { # cwd [sandbox args...] -> dry-run argv
 	local cwd=$1
 	shift
@@ -127,6 +141,23 @@ assert_mounts 'agent in ~/dotfiles' "$output" "--bind $home/dotfiles $home/dotfi
 output=$(run "$home/projects/demo/src" -p agent)
 assert_mounts 'a subdirectory launch binds the repository root' "$output" \
 	"--bind $home/projects/demo $home/projects/demo"
+
+# A LINKED WORKTREE needs the main repository's git directory bound read-write
+# too, or nothing commits: its own .git is a file pointing at
+# <main>/.git/worktrees/<name>, and the objects and refs a commit writes live
+# under the main repo. Binding only the worktree gives an agent files it can
+# edit and never commit -- allow-all with no recovery, since the checkpoint
+# writes refs there as well. The launcher resolves --git-common-dir for exactly
+# this; without an assertion the resolution was free to rot.
+output=$(run "$linked" -p agent)
+assert_mounts 'a linked worktree binds its own directory' "$output" \
+	"--bind $linked $linked"
+# Only the common GIT DIR, not the main worktree: committing needs the objects
+# and refs, and binding the whole main checkout would hand over a second working
+# tree nobody asked for.
+assert_mounts 'a linked worktree binds the main git dir, not the main worktree' \
+	"$output" "--bind $home/projects/demo/.git $home/projects/demo/.git" \
+	-- "--bind $home/projects/demo $home/projects/demo "
 
 # ...and from the directory that CONTAINS repositories, nothing is auto-bound.
 # The read-write bind is emitted after the profile's read-only one and would

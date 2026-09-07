@@ -127,3 +127,19 @@ the capabilities Claude Code's nested step needs and is parked in `disable/`.
   stronger; the gVisor path was carried for a year without ever being selected
   or tested, so it was removed rather than left as untested code. The microVM
   route stays closed while the host gates `/dev/kvm`.
+- **No seccomp filter.** The launcher passes bubblewrap `--unshare-*`,
+  `--die-with-parent` and the bind set, and nothing else: the whole syscall
+  surface of the shared kernel is reachable. podman applied its default seccomp
+  profile, so this is a real reduction that came with the engine change and was
+  not weighed at the time. It is consistent with the line above — this boundary
+  is about mistakes, not exploits — but it should be a choice rather than an
+  omission nobody wrote down.
+- **The two harnesses are confined at different scopes, and one is narrower
+  than this document's model implies.** Everything above describes whole-process
+  confinement, which is what pi gets: the shim execs the agent itself under the
+  launcher. The harness-native boundary that claude uses covers its Bash
+  subprocesses only; its typed file tools (Read, Edit, Write) are governed by
+  `permissions.deny` in settings.json and by the guardrail hook, which are
+  in-process policy rather than a kernel boundary. The practical consequence is
+  that for claude, a path's protection depends on which tool reaches for it, so
+  a rule added in only one of the two layers is not a boundary.
