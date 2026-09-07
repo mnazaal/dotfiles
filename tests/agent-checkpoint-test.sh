@@ -127,7 +127,7 @@ r=$(new_repo unwritable)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod -R a-w "$r/.git"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
 chmod -R u+w "$r/.git"
 [ "$rc" -ne 0 ] || fail "a checkpoint that captured nothing must exit non-zero"
 printf '%s' "$out" | grep -q 'NOT recoverable' ||
@@ -276,7 +276,7 @@ r=$(new_repo danglingref)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod -R a-w "$r/.git/refs"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
 chmod -R u+w "$r/.git/refs"
 [ "$rc" -eq 0 ] ||
 	fail "a snapshot that exists must exit 0 even when its ref could not be written"

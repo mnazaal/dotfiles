@@ -48,7 +48,10 @@ linked="$home/projects/demo-wt"
 	mkdir -p "$tmp/nohooks"
 	git commit -q --allow-empty -m init
 	git worktree add -q --detach "$linked" HEAD
-) >/dev/null 2>&1 || { printf 'sandbox profiles: could not build the linked-worktree fixture\n' >&2; exit 1; }
+) >/dev/null 2>&1 || {
+	printf 'sandbox profiles: could not build the linked-worktree fixture\n' >&2
+	exit 1
+}
 
 run() { # cwd [sandbox args...] -> dry-run argv
 	local cwd=$1
