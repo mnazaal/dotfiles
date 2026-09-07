@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 /** Claude Code PreToolUse adapter for the shared guardrails core. */
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { resolve } from "node:path";
 import { createGuardrails, skillReceipts, skillStateStore, toolEventFromInput } from "../../.agents/guardrails/core.ts";
-
-const rails = createGuardrails("claude");
 
 let data: any;
 try {
@@ -15,7 +16,45 @@ try {
 
 const tool = data.tool_name ?? "";
 const ti = data.tool_input ?? {};
-const event = toolEventFromInput(tool, ti, data.cwd ?? process.cwd());
+
+/**
+ * The core relaxes the machinery-in-bash rule only inside a container it can
+ * see (/run/.containerenv). Claude Code's own sandbox is bubblewrap and leaves
+ * no marker, yet its denyWrite list pins the same paths at the kernel for every
+ * Bash call -- so the rule fired where it protected nothing and denied honest
+ * reads. The decision is read from settings.json, which is machinery-pinned
+ * and so not agent-forgeable; a project-local override that disables the
+ * sandbox is honoured too (an agent can write settings.local.json). The rule
+ * stays armed for the one call that opts out (dangerouslyDisableSandbox).
+ * Not covered: a user launching with `--settings` that disables the sandbox --
+ * that is a user action outside the model-error threat model.
+ */
+function sandboxSetting(path: string): boolean | undefined {
+  try {
+    const s = JSON.parse(readFileSync(path, "utf8"));
+    return typeof s?.sandbox?.enabled === "boolean" ? s.sandbox.enabled : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function nativeSandboxActive(cwd: string): boolean {
+  const user = resolve(homedir(), ".claude/settings.json");
+  let enabled = false;
+  try {
+    const s = JSON.parse(readFileSync(user, "utf8"));
+    enabled = s?.sandbox?.enabled === true && s?.sandbox?.failIfUnavailable === true;
+  } catch {
+    return false;
+  }
+  for (const local of [resolve(cwd, ".claude/settings.json"), resolve(cwd, ".claude/settings.local.json")]) {
+    if (sandboxSetting(local) === false) return false;
+  }
+  return enabled;
+}
+const cwd = data.cwd ?? process.cwd();
+const inSandbox = tool === "Bash" && ti.dangerouslyDisableSandbox !== true && nativeSandboxActive(cwd) ? true : undefined;
+const rails = createGuardrails("claude", { inSandbox });
+const event = toolEventFromInput(tool, ti, cwd);
 
 // Keyed by a hash of the transcript path: it identifies the session without
 // putting a filesystem path into a filename.
