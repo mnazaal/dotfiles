@@ -73,23 +73,12 @@ test:
 check-agent-role-sync:
 	@python3 .agents/render-agent-roles.py --check
 
-# Drift check for the hand-maintained native permission duplicate of
-# .agents/guardrails/sensitive-paths.json: Claude's settings.json mirrors the
-# credential paths as deny rules.
+# Drift check between the shared policy (what the hook enforces for BOTH agents)
+# and Claude's own permission layers. Bidirectional: a path missing from
+# settings.json leaves claude's typed tools uncovered, and a path settings.json
+# denies but the policy omits leaves PI uncovered, since pi has no native layer.
 check-guardrails-native-sync:
-	@set -eu; \
-	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
-	status=0; \
-	credentials="$$(awk '/"credentials": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~[^"]*"' | tr -d '"')"; \
-	if [ -z "$$credentials" ]; then \
-		printf 'native-sync: extracted no credential paths from %s — the awk extraction depends on the current JSON formatting\n' \
-			"$$paths_file" >&2; \
-		exit 1; \
-	fi; \
-	for p in $$credentials; do \
-		grep -qF "$$p" "$(CURDIR)/.claude/settings.json" || { printf 'native permission drift: credential path %s missing from %s\n' "$$p" ".claude/settings.json" >&2; status=1; }; \
-	done; \
-	exit "$$status"
+	@python3 .agents/guardrails/check-native-sync.py "$(CURDIR)"
 
 # Drift check for the machinery paths the sandbox must pin read-only. Policy
 # lists them in sensitive-paths.json; machinery-ro.profile is what enforces them
