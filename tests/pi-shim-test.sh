@@ -99,4 +99,21 @@ expect 'runs the real binary directly when sandboxed' "$out" 'real-pi-ran --vers
 	exit 1
 }
 
+# Deployed under both names, so assert the dispatch: the ACP adapter the editors
+# spawn must get the same policy, and the real binary it runs must follow the
+# name the shim was invoked as rather than being hardcoded to `pi`.
+cat >"$bun/bin/pi-acp" <<'EOF'
+#!/usr/bin/env bash
+printf 'real-pi-acp-ran %s\n' "$*"
+EOF
+chmod +x "$bun/bin/pi-acp"
+ln -sf pi "$tmp/pi-acp"
+cp "$shim" "$tmp/pi"
+rm -f "$capture"
+env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME \
+	PATH="$bin:$PATH" BUN_INSTALL="$bun" "$tmp/pi-acp" --version
+args=$(<"$capture")
+expect 'the acp name selects the acp binary' "$args" "$bun/bin/pi-acp"
+expect 'the acp name still selects the pi profile' "$args" $'-p\nagent-pi'
+
 printf 'pi shim: all behaviors pass\n'

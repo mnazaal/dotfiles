@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# pi — run the pi coding agent confined, with nothing typed before it.
+# pi / pi-acp — run the pi coding agent confined, with nothing typed before it.
+#
+# Deployed under BOTH names (pi-acp is a symlink to this file) and dispatches on
+# the name it was invoked as: the terminal entry point and the ACP adapter the
+# editors spawn need identical policy, and the way to guarantee that is one
+# file rather than two that drift.
 #
 # pi ships no sandbox of its own and says so in its docs/security.md, so the
 # boundary has to come from outside the process. This shim IS that outside: it
@@ -13,9 +18,10 @@ set -euo pipefail
 
 # Resolve the real binary ABSOLUTELY. `command -v pi` finds this shim, so a
 # PATH lookup here would re-exec this file forever.
-real="${BUN_INSTALL:-$HOME/.local/share/bun}/bin/pi"
+self=${0##*/}
+real="${BUN_INSTALL:-$HOME/.local/share/bun}/bin/$self"
 [ -x "$real" ] || {
-	printf 'pi: the real binary is not executable at %s\n' "$real" >&2
+	printf '%s: the real binary is not executable at %s\n' "$self" "$real" >&2
 	exit 127
 }
 
@@ -29,16 +35,19 @@ fi
 
 # Fail closed: without the wrapper the only outcome left is an unconfined agent.
 command -v sandbox >/dev/null 2>&1 || {
-	printf 'pi: sandbox not found on PATH; refusing to run unconfined\n' >&2
+	printf '%s: sandbox not found on PATH; refusing to run unconfined\n' "$self" >&2
 	exit 127
 }
 
+# Every diagnostic above and below goes to stderr. The ACP adapter speaks
+# JSON-RPC over stdout, so a single stray line there desyncs the editor.
+#
 # The MCP key is resolved HERE, outside the boundary, because machinery-ro masks
 # the password store inside — `pass` cannot work in there. Fail closed as the
 # launcher did: a harness that starts without its key fails later and less
 # legibly, at the first MCP call.
 ASTA_MCP_API_KEY=$(pass show asta-mcp) || {
-	printf 'pi: could not read asta-mcp from pass\n' >&2
+	printf '%s: could not read asta-mcp from pass\n' "$self" >&2
 	exit 1
 }
 export ASTA_MCP_API_KEY

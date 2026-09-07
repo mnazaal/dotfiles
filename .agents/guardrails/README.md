@@ -83,7 +83,7 @@ message.
 
 ## Toggles
 
-- **`machinery_enabled`** (per agent) — protect the guardrail/sandbox/renv files
+- **`machinery_enabled`** (per agent) — protect the guardrail and sandbox files
   themselves from rewrite or bash access while still allowing normal read tools.
   Set an agent `false` only while bootstrapping.
 - **`find_policy`** (per agent) — `always` (gate any find) / `exec` (only when an

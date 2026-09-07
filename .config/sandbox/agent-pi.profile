@@ -1,5 +1,5 @@
-# agent-pi — pi. Used by `renv pi`, which sets
-# RENV_WRAP=(sandbox -p agent-pi --).
+# agent-pi — pi. Used by ~/.local/scripts/pi, the shim that shadows the real
+# binary on PATH and execs it under `sandbox -p agent-pi`.
 #
 # Inherits the shared agent base, so both harnesses reach the same places: a
 # difference in what an agent can see should be a decision, not a side effect of

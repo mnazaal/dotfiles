@@ -7,13 +7,14 @@ local function options()
     provider = default_provider,
     acp_providers = {
       [default_provider] = {
-        -- Through renv, like every other agent launch: it sets the branch
-        -- prefix the shared git hooks read, resolves secrets, and wraps the
-        -- process in the sandbox profile. Launching the binary directly ran it
-        -- unconfined, and with an empty prefix the hooks read the session as a
-        -- human and would let it commit to main.
-        command = "renv",
-        args = { "pi-acp" },
+        -- ~/.local/scripts/pi-acp, the shim that shadows the real binary on
+        -- PATH: it resolves secrets outside the boundary and execs the adapter
+        -- under the sandbox profile. Naming the real binary here would run it
+        -- unconfined, and the branch prefix pi's guardrails extension sets
+        -- would still be absent, so the git hooks would read the session as a
+        -- human and let it commit to main.
+        command = "pi-acp",
+        args = {},
       },
     },
   }
