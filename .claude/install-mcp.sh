@@ -23,8 +23,14 @@
 #   claude mcp add -s user grepika -- bunx -y @agentika/grepika --mcp
 set -eu
 
-command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
-pass show asta-mcp >/dev/null || { echo "pass entry 'asta-mcp' is missing" >&2; exit 1; }
+command -v jq >/dev/null || {
+	echo "jq is required" >&2
+	exit 1
+}
+pass show asta-mcp >/dev/null || {
+	echo "pass entry 'asta-mcp' is missing" >&2
+	exit 1
+}
 
 config="$HOME/.claude.json"
 
