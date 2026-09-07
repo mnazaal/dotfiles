@@ -16,7 +16,6 @@ RO_LAST+=(
 	"$H/dotfiles/.config/pi/agent/extensions"
 	"$H/dotfiles/.config/pi/agent/settings.json"
 	"$H/dotfiles/.config/sandbox"
-	"$H/dotfiles/.config/renv"
 	"$H/dotfiles/.config/git/hooks"
 	"$H/dotfiles/.local/scripts"
 	"$H/dotfiles/.local/share/gnupg/gpg-agent.conf"
