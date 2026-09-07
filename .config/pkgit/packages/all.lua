@@ -11,6 +11,44 @@ local repos = {
     url = "https://github.com/ccache/ccache.git",
     targets = lib.cmake({ flags = { "-DCMAKE_INSTALL_SYSCONFDIR=etc", "-DDEPS=AUTO", "-DENABLE_TESTING=OFF" } }),
   },
+  -- libcurl for the onedrive client only, NOT a system-wide curl. Ubuntu 24.04
+  -- ships 8.5.0, which upstream lists as having HTTP/2 defects that can
+  -- truncate transfers; their catalogue of 14 bugs is fully cleared by 8.14.1,
+  -- so the pin is a release above that. Note the list also names some *newer*
+  -- releases (8.9.1, 8.10.0, 8.13.0, 8.13.1, 8.14.0) — "latest" is not
+  -- automatically safe, so check that list before moving this pin.
+  --
+  -- Install into an ISOLATED prefix, not ~/.local:
+  --   PREFIX="$HOME/.local/opt/curl" pkgit -i curl
+  --   PREFIX="$HOME/.local/opt/curl" pkgit -b curl,update
+  -- The same PREFIX is required every time, because pkgit derives its source
+  -- dir from it too ($PREFIX/share/pkgit). ~/.local/lib already holds many
+  -- self-built libraries; adding a libcurl there would change library
+  -- resolution for everything, whereas .local/scripts/onedrive-cron puts this
+  -- prefix on LD_LIBRARY_PATH for one process only.
+  --
+  -- A custom target rather than lib.cmake: only lib.meson implements the
+  -- `checkout` option, and this recipe must pin an exact release.
+  --
+  -- CURL_CA_BUNDLE is set explicitly because a self-built curl does not
+  -- otherwise inherit the distribution's CA path, and every HTTPS request
+  -- would fail certificate verification.
+  curl = {
+    url = "https://github.com/curl/curl.git",
+    targets = lib.target({
+      build = function()
+        local code = lib.sh("git checkout --detach curl-8_22_0")
+        if code ~= 0 then return code end
+        return lib.sh("cmake -S . -B build -DCMAKE_BUILD_TYPE=Release"
+          .. " -DCMAKE_INSTALL_PREFIX=" .. lib.q(prefix)
+          .. " -DCURL_USE_OPENSSL=ON"
+          .. " -DCURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt"
+          .. " -DCURL_CA_PATH=/etc/ssl/certs"
+          .. " && cmake --build build")
+      end,
+      install = function() return lib.sh("cmake --install build") end,
+    }),
+  },
   dunst = { url = "https://github.com/dunst-project/dunst.git", targets = lib.make_prefix() },
   emacs = {
     url = "https://git.savannah.gnu.org/git/emacs.git",

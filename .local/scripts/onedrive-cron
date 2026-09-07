@@ -15,6 +15,23 @@ set -euo pipefail
 ONEDRIVE_BIN="${ONEDRIVE_BIN:-/usr/bin/onedrive}"
 ONEDRIVE_CONFIG="$HOME/.config/onedrive/config"
 
+# Ubuntu 24.04 ships curl 8.5.0, which upstream lists as carrying HTTP/2 defects
+# that can truncate transfers or exit the client mid-run; forcing HTTP/1.1 in the
+# config mitigates the symptom but not the library. A release above 8.14.1 —
+# which clears upstream's full catalogue of 14 curl bugs — is built into an
+# isolated prefix by the `curl` recipe in .config/pkgit/packages/all.lua:
+#
+#   PREFIX="$HOME/.local/opt/curl" pkgit -i curl
+#
+# The prefix is deliberately not ~/.local, which already holds many self-built
+# libraries: this puts the directory on LD_LIBRARY_PATH for this process only,
+# rather than changing library resolution everywhere. Guarded on the directory
+# existing, so the script still works before the build has been done.
+CURL_PREFIX="${CURL_PREFIX:-$HOME/.local/opt/curl}"
+if [[ -d "$CURL_PREFIX/lib" ]]; then
+	export LD_LIBRARY_PATH="$CURL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
 if [[ ! -x "$ONEDRIVE_BIN" ]]; then
 	echo "onedrive-cron: onedrive binary not executable: $ONEDRIVE_BIN" >&2
 	exit 1
