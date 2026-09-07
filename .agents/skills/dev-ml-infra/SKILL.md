@@ -1,6 +1,6 @@
 ---
 name: dev-ml-infra
-description: Use for ML experiment infrastructure and data handling: train/val/test splits, grouped and temporal splitting, preprocessing statistics and caches, dataloader determinism, data leakage prevention, hydra-zen configs, config management, experiment tracking, MLflow, wandb, tracker seams, progress bars, tqdm, long-run log output, training-pipeline smoke tests.
+description: "Use for ML experiment infrastructure and data handling: train/val/test splits, grouped and temporal splitting, preprocessing statistics and caches, dataloader determinism, data leakage prevention, hydra-zen configs, config management, experiment tracking, MLflow, wandb, tracker seams, progress bars, tqdm, long-run log output, training-pipeline smoke tests."
 ---
 
 # Skill: Dev ML Infra

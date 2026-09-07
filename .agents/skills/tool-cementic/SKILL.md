@@ -1,6 +1,6 @@
 ---
 name: tool-cementic
-description: Use when the task involves cementic, the local semantic search CLI: indexing directories, searching, managing collections/revisions, or the extract/chunk/embed pipeline.
+description: "Use when the task involves cementic, the local semantic search CLI: indexing directories, searching, managing collections/revisions, or the extract/chunk/embed pipeline."
 ---
 
 # Skill: cementic

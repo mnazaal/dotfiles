@@ -1,6 +1,6 @@
 ---
 name: research-map
-description: Use when asked to map out a project, understand the full project, or point to the code implementing each part; also for paper-to-codebase mapping, architecture/dataflow overview, mermaid diagrams, equation-to-code mapping, paper-code divergences. Sinks - chat, README's stamped Overview block, or the full form as notes/main.html.
+description: "Use when asked to map out a project, understand the full project, or point to the code implementing each part; also for paper-to-codebase mapping, architecture/dataflow overview, mermaid diagrams, equation-to-code mapping, paper-code divergences. Sinks - chat, README's stamped Overview block, or the full form as notes/main.html."
 ---
 
 # Skill: Research Map

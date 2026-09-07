@@ -1,6 +1,6 @@
 ---
 name: context-project-docs
-description: Use before creating or editing standing project Markdown or naming files in notes/: PLAN.md, CONTEXT.md, LOG.md, README, CHANGELOG, SUMMARY/NOTES/TODO-style project files; canonical doc set, notes/ naming and reserved files (main.html, claims.md), no document proliferation, conciseness rules.
+description: "Use before creating or editing standing project Markdown or naming files in notes/: PLAN.md, CONTEXT.md, LOG.md, README, CHANGELOG, SUMMARY/NOTES/TODO-style project files; canonical doc set, notes/ naming and reserved files (main.html, claims.md), no document proliferation, conciseness rules."
 ---
 
 # Skill: Context Project Docs

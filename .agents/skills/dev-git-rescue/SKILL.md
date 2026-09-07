@@ -1,6 +1,6 @@
 ---
 name: dev-git-rescue
-description: Use for git history rewriting and recovery: interactive rebase, squash/reword/reorder, scripted history rewrites, reflog rescue, lost commits/branches, revert vs reset, dropped stashes, bisect.
+description: "Use for git history rewriting and recovery: interactive rebase, squash/reword/reorder, scripted history rewrites, reflog rescue, lost commits/branches, revert vs reset, dropped stashes, bisect."
 ---
 
 # Skill: Dev Git Rescue

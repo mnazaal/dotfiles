@@ -1,6 +1,6 @@
 ---
 name: dev-git
-description: Use when committing work or choosing integration path: stage correctly, write an informative commit message, add honest AI attribution trailers, then decide merge/PR/park/abandon.
+description: "Use when committing work or choosing integration path: stage correctly, write an informative commit message, add honest AI attribution trailers, then decide merge/PR/park/abandon."
 ---
 
 # Skill: Dev Git

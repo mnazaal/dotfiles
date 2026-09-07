@@ -1,6 +1,6 @@
 ---
 name: understand-project
-description: Use to rebuild understanding of a research project from its own records: walk me through this project, I have lost the thread, explain what was done and why, what does this claim rest on, what is the generative model, why does this proof work, where does it break, help me defend this to a reviewer. Works on a project being run, joined, resumed after a gap, or reviewed. Retrospective comprehension, not choosing what to do next.
+description: "Use to rebuild understanding of a research project from its own records: walk me through this project, I have lost the thread, explain what was done and why, what does this claim rest on, what is the generative model, why does this proof work, where does it break, help me defend this to a reviewer. Works on a project being run, joined, resumed after a gap, or reviewed. Retrospective comprehension, not choosing what to do next."
 ---
 
 # Skill: Understand Project

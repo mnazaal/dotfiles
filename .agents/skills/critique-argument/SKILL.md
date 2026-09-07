@@ -1,6 +1,6 @@
 ---
 name: critique-argument
-description: Use to adversarially stress-test a claim, research idea, plan, design rationale, or piece of argumentative writing for weaknesses. Use when asked to critique, red-team, push back on, find holes in, or steelman/strawman-check an argument, before the user commits time to it.
+description: "Use to adversarially stress-test a claim, research idea, plan, design rationale, or piece of argumentative writing for weaknesses. Use when asked to critique, red-team, push back on, find holes in, or steelman/strawman-check an argument, before the user commits time to it."
 ---
 
 # Skill: Critique Argument

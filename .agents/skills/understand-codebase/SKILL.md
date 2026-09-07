@@ -1,6 +1,6 @@
 ---
 name: understand-codebase
-description: Use to build a working understanding of a codebase for the human rather than the agent: walk me through this library, what is the public API, how does this actually work, what is this abstraction for, which parts are vendored or ported, what would break if I deleted this. Covers code written with agent help, inherited code, and third-party code being adapted, reproduced, or evaluated as a dependency.
+description: "Use to build a working understanding of a codebase for the human rather than the agent: walk me through this library, what is the public API, how does this actually work, what is this abstraction for, which parts are vendored or ported, what would break if I deleted this. Covers code written with agent help, inherited code, and third-party code being adapted, reproduced, or evaluated as a dependency."
 ---
 
 # Skill: Understand Codebase

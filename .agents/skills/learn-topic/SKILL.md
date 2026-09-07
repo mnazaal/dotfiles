@@ -1,6 +1,6 @@
 ---
 name: learn-topic
-description: Use to learn a new topic or concept over a durable, multi-session workspace: build lessons, cheat-sheet reference docs, and a learning record tied to a stated goal. Use when the user wants to learn, study, get taught, ramp up on, or build understanding of a subject.
+description: "Use to learn a new topic or concept over a durable, multi-session workspace: build lessons, cheat-sheet reference docs, and a learning record tied to a stated goal. Use when the user wants to learn, study, get taught, ramp up on, or build understanding of a subject."
 ---
 
 # Skill: Learn Topic

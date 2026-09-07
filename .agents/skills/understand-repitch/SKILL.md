@@ -1,6 +1,6 @@
 ---
 name: understand-repitch
-description: Load the moment the user signals the last message or current state did not land — "wait, what?", "I'm lost", "hold on", "I don't follow", "re-explain", "say that again" — or asks for a re-pitch. Stop and re-explain at project altitude before doing anything else. For rebuilding their grasp of the whole project, use understand-project.
+description: "Load the moment the user signals the last message or current state did not land — \"wait, what?\", \"I'm lost\", \"hold on\", \"I don't follow\", \"re-explain\", \"say that again\" — or asks for a re-pitch. Stop and re-explain at project altitude before doing anything else. For rebuilding their grasp of the whole project, use understand-project."
 ---
 
 # Skill: Understand Repitch

@@ -1,6 +1,6 @@
 ---
 name: research-manuscript-workflow
-description: Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, reviewer responses and rebuttals, and agent-safe manuscript collaboration.
+description: "Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, reviewer responses and rebuttals, and agent-safe manuscript collaboration."
 ---
 
 # Skill: Research Manuscript Workflow

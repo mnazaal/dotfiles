@@ -1,6 +1,6 @@
 ---
 name: research-session
-description: Use for research session orientation, idea triage, and project framing: catch me up, what should I work on, research briefing, active/stale threads, evaluate a research idea or hunch, should we try X, pursue/refine/park/kill, frame the problem/setting/gap, what are we assuming, how does this scale, how is X parameterized.
+description: "Use for research session orientation, idea triage, and project framing: catch me up, what should I work on, research briefing, active/stale threads, evaluate a research idea or hunch, should we try X, pursue/refine/park/kill, frame the problem/setting/gap, what are we assuming, how does this scale, how is X parameterized."
 ---
 
 # Skill: Research Session

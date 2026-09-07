@@ -1,6 +1,6 @@
 ---
 name: agent-orchestration
-description: Use for multi-agent delegation: spawning subagents, parallel codebase exploration, independent research/review tasks, prompt scoping, avoiding duplicate work, and verifying delegated results.
+description: "Use for multi-agent delegation: spawning subagents, parallel codebase exploration, independent research/review tasks, prompt scoping, avoiding duplicate work, and verifying delegated results."
 ---
 
 # Skill: Agent Orchestration

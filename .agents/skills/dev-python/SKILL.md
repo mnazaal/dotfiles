@@ -1,6 +1,6 @@
 ---
 name: dev-python
-description: Use for Python code/projects: pyproject.toml, virtual environments, dependencies, packaging, tests, linting, scripts, notebooks, experiment layout, importable library code, project conventions.
+description: "Use for Python code/projects: pyproject.toml, virtual environments, dependencies, packaging, tests, linting, scripts, notebooks, experiment layout, importable library code, project conventions."
 ---
 
 # Skill: Dev Python

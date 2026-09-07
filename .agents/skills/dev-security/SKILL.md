@@ -1,6 +1,6 @@
 ---
 name: dev-security
-description: Use for security-sensitive work: secrets, credentials, auth, permissions, tokens, API keys, environment files, private data, suspected leakage, or safety review of config/logs.
+description: "Use for security-sensitive work: secrets, credentials, auth, permissions, tokens, API keys, environment files, private data, suspected leakage, or safety review of config/logs."
 ---
 
 # Skill: Dev Security

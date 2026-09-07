@@ -1,6 +1,6 @@
 ---
 name: research-plan
-description: Use when writing or revising a research-project plan document (PLAN.md): framing, decision records, novelty lit-gate, experiments, execution order, risks.
+description: "Use when writing or revising a research-project plan document (PLAN.md): framing, decision records, novelty lit-gate, experiments, execution order, risks."
 ---
 
 # Skill: Research Plan

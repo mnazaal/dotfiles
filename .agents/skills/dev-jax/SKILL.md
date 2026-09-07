@@ -1,6 +1,6 @@
 ---
 name: dev-jax
-description: Use for JAX code, reading PyTorch reference code, and slow or OOMing ML jobs (profiling, step timing, memory): jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML.
+description: "Use for JAX code, reading PyTorch reference code, and slow or OOMing ML jobs (profiling, step timing, memory): jax, jax.numpy, jit, vmap, scan, grad, pytrees, explicit PRNG keys/state, optax, blackjax, distrax, gpjax, flax, equinox, Bayesian/probabilistic/causal ML."
 ---
 
 # Skill: Dev JAX

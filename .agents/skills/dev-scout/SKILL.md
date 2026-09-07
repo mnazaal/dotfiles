@@ -1,6 +1,6 @@
 ---
 name: dev-scout
-description: Use for read-only codebase/repo exploration: scout repo, map architecture, entry points, modules, APIs, interfaces, seams, sticky parts, risks, missing tests/docs, no code changes.
+description: "Use for read-only codebase/repo exploration: scout repo, map architecture, entry points, modules, APIs, interfaces, seams, sticky parts, risks, missing tests/docs, no code changes."
 ---
 
 # Skill: Dev Scout

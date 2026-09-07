@@ -1,6 +1,6 @@
 ---
 name: research-run
-description: Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken/unknown verdicts, a run whose artifacts are missing.
+description: "Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken/unknown verdicts, a run whose artifacts are missing."
 ---
 
 # Skill: Research Run

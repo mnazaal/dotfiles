@@ -1,6 +1,6 @@
 ---
 name: decide-priority
-description: Use when ranking or deferring concrete work items: which task next, rollback/defer/continue, what to park and when to revisit it. Research idea verdicts (pursue/refine/park/kill) belong to research-session.
+description: "Use when ranking or deferring concrete work items: which task next, rollback/defer/continue, what to park and when to revisit it. Research idea verdicts (pursue/refine/park/kill) belong to research-session."
 ---
 
 # Skill: Decide Priority

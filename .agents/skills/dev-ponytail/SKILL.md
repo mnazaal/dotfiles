@@ -1,6 +1,6 @@
 ---
 name: dev-ponytail
-description: Use for minimal software solutions: YAGNI, simplest correct code, shortest path, dependency choices, architecture, refactors, tooling, deletion, avoid bloat/boilerplate/over-engineering. Load before adding a script, check, or tool to a repo, and before porting tooling from a sibling project.
+description: "Use for minimal software solutions: YAGNI, simplest correct code, shortest path, dependency choices, architecture, refactors, tooling, deletion, avoid bloat/boilerplate/over-engineering. Load before adding a script, check, or tool to a repo, and before porting tooling from a sibling project."
 ---
 
 # Skill: Dev Ponytail

@@ -1,6 +1,6 @@
 ---
 name: session-handoff
-description: Use for both ends of a work session. Ending — "continue next session", "write up a handoff", "write everything down" — records done + next + dead ends and persists ephemeral state. Resuming — "continue from where we left off", "resume this project", "pick up where we left off" — reads the handoff artifact back and reconstructs state so a cold session resumes with zero re-derivation.
+description: "Use for both ends of a work session. Ending — \"continue next session\", \"write up a handoff\", \"write everything down\" — records done + next + dead ends and persists ephemeral state. Resuming — \"continue from where we left off\", \"resume this project\", \"pick up where we left off\" — reads the handoff artifact back and reconstructs state so a cold session resumes with zero re-derivation."
 ---
 
 # Skill: Session Handoff

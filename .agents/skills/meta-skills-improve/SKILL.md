@@ -1,6 +1,6 @@
 ---
 name: meta-skills-improve
-description: Use after long agent sessions or repeated workflow friction to improve personal agent skills: extract reusable procedures, update routing, clarify rules, remove contradictions, and draft safe changes for ~/.agents/skills.
+description: "Use after long agent sessions or repeated workflow friction to improve personal agent skills: extract reusable procedures, update routing, clarify rules, remove contradictions, and draft safe changes for ~/.agents/skills."
 ---
 
 # Skill: Meta Skills Improve

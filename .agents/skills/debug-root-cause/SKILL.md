@@ -1,6 +1,6 @@
 ---
 name: debug-root-cause
-description: Use for root-cause debugging: bugs, test failures, crashes, build failures, tool failures, unexpected behavior, flaky results, performance regressions, repro loops, hypotheses before fixes.
+description: "Use for root-cause debugging: bugs, test failures, crashes, build failures, tool failures, unexpected behavior, flaky results, performance regressions, repro loops, hypotheses before fixes."
 ---
 
 # Skill: Debug Root Cause

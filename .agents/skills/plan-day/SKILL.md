@@ -1,6 +1,6 @@
 ---
 name: plan-day
-description: Use for good morning, start my day, plan my day, daily briefing, or what should I do next today using Org agenda and Emacs TODO context.
+description: "Use for good morning, start my day, plan my day, daily briefing, or what should I do next today using Org agenda and Emacs TODO context."
 ---
 
 # Skill: Plan Day

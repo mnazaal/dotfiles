@@ -1,6 +1,6 @@
 ---
 name: research-protocol
-description: Mandatory for academic papers, literature, citations, related work, author lookup, field surveys, bibliographies; verify papers/citations, no fabricated citations, load before external academic/literature claims.
+description: "Mandatory for academic papers, literature, citations, related work, author lookup, field surveys, bibliographies; verify papers/citations, no fabricated citations, load before external academic/literature claims."
 ---
 
 # Skill: Research Protocol

@@ -1,6 +1,6 @@
 ---
 name: research-lit-search
-description: Use for literature search: related work, paper search, field survey, subfield map, topic/method/query papers, citation/reference exploration, research clusters and gaps.
+description: "Use for literature search: related work, paper search, field survey, subfield map, topic/method/query papers, citation/reference exploration, research clusters and gaps."
 ---
 
 # Skill: Research Lit Search

@@ -1,6 +1,6 @@
 ---
 name: plan-interview
-description: Load BEFORE asking the user two or more clarifying questions, any single question that would change the scope, approach, or design of the work, or any question laying out options for the user to choose among — including before a structured question tool call, on a plan, implementation approach, research direction, or workflow change. A lone factual or confirmatory question does not need it. Also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim.
+description: "Load BEFORE asking the user two or more clarifying questions, any single question that would change the scope, approach, or design of the work, or any question laying out options for the user to choose among — including before a structured question tool call, on a plan, implementation approach, research direction, or workflow change. A lone factual or confirmatory question does not need it. Also when the user asks to be interviewed or asked one question at a time. Use critique-argument for adversarial stress-tests of a formed claim."
 ---
 
 # Skill: Plan Interview

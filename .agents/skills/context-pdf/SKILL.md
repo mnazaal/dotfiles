@@ -1,6 +1,6 @@
 ---
 name: context-pdf
-description: Use for PDF files: read, extract text/tables/images, merge, split, rotate, watermark, create, fill forms, encrypt, decrypt, OCR, scanned PDFs, page ranges.
+description: "Use for PDF files: read, extract text/tables/images, merge, split, rotate, watermark, create, fill forms, encrypt, decrypt, OCR, scanned PDFs, page ranges."
 ---
 
 # Skill: Context PDF

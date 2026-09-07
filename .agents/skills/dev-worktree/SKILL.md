@@ -1,6 +1,6 @@
 ---
 name: dev-worktree
-description: Use when working inside a git worktree (multiple checkouts of one repo, e.g. `.claude/worktrees/*`): running tests/tools, per-worktree virtualenvs, PATH resolution across sibling checkouts.
+description: "Use when working inside a git worktree (multiple checkouts of one repo, e.g. `.claude/worktrees/*`): running tests/tools, per-worktree virtualenvs, PATH resolution across sibling checkouts."
 ---
 
 # Skill: Dev Worktree

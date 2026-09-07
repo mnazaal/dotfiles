@@ -1,6 +1,6 @@
 ---
 name: tool-pzi
-description: Use when the task involves the user's personal paper library: adding papers by DOI/URL/PDF, searching entries, exporting BibTeX, checking or updating citation metadata.
+description: "Use when the task involves the user's personal paper library: adding papers by DOI/URL/PDF, searching entries, exporting BibTeX, checking or updating citation metadata."
 ---
 
 # Skill: tool-pzi

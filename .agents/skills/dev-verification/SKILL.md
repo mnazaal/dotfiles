@@ -1,6 +1,6 @@
 ---
 name: dev-verification
-description: Use before claiming work is complete, fixed, passing, ready, merged, reviewed, or verified; evidence-before-completion gate, fresh checks, command output, status proof.
+description: "Use before claiming work is complete, fixed, passing, ready, merged, reviewed, or verified; evidence-before-completion gate, fresh checks, command output, status proof."
 ---
 
 # Skill: Dev Verification

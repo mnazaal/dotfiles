@@ -1,6 +1,6 @@
 ---
 name: dev-jax-port
-description: Use for porting a reference ML implementation (e.g. PyTorch/Lightning) or scientific/optimization algorithm (NumPy/SciPy) to JAX: sample-replay parity testing, weight/state conversion to pytrees, bottom-up layer-by-layer verification, numerical-equivalence debugging, float32 vs float64 conditioning, choosing jax.nn vs Equinox.
+description: "Use for porting a reference ML implementation (e.g. PyTorch/Lightning) or scientific/optimization algorithm (NumPy/SciPy) to JAX: sample-replay parity testing, weight/state conversion to pytrees, bottom-up layer-by-layer verification, numerical-equivalence debugging, float32 vs float64 conditioning, choosing jax.nn vs Equinox."
 ---
 
 # Skill: Dev JAX Port

@@ -1,6 +1,6 @@
 ---
 name: dev-tdd
-description: Use for test-first development: features, bug fixes, regression tests, red-green-refactor, public-interface behavior tests, small vertical slices, seams for I/O and dependencies.
+description: "Use for test-first development: features, bug fixes, regression tests, red-green-refactor, public-interface behavior tests, small vertical slices, seams for I/O and dependencies."
 ---
 
 # Skill: Dev TDD
