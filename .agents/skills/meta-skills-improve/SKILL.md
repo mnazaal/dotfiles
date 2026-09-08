@@ -38,6 +38,29 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - If only a hook or script could enforce a lesson, record that and stop: do not write prose that will be ignored, and do not build the mechanism unasked.
 - Codify a preference only after seeing it twice. Once, and contradicted once, is noise.
 
+## Reachability: which channel can carry a rule at all
+
+Before rewriting a rule that is not being followed, decide whether any rewrite
+could help. Three channels exist and they are not interchangeable:
+
+- **A gate** fires on an event the agent EMITS — a command, a write, a fetch.
+  Deterministic, and the strongest channel available.
+- **Injection** puts the text in front of the agent at the moment of a specific
+  event, without requiring it to decide to load anything. Where it applies it
+  can beat a gate, because it delivers instead of denying-and-forcing-a-retry.
+- **Prose** relies on the agent noticing that a rule applies.
+
+The limit worth knowing: every gate keys on something the agent DOES, so a
+behaviour whose trigger is the ABSENCE of an action — asking before acting,
+verifying before starting, orienting before working, delegating instead of
+reading — emits no event and therefore cannot be gated at all. For those, prose
+is the ceiling and no amount of rewording raises it. Say so and stop, rather
+than rewriting the rule a third time; the honest alternatives are a channel that
+does not depend on the agent's judgement, or accepting partial compliance.
+
+The dual of this is already in Rules: if only a hook could enforce a lesson,
+record that and stop.
+
 ## Firing Audit
 
 The highest-value input to this skill, and the one reading can never supply.

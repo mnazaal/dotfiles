@@ -1,6 +1,6 @@
 ---
 name: dev-verification
-description: "Use before claiming work is complete, fixed, passing, ready, merged, reviewed, or verified; evidence-before-completion gate, fresh checks, command output, status proof."
+description: "Use before claiming work is complete, fixed, passing, ready, merged, reviewed or verified, AND before starting work whose premise is unverified; evidence-before-completion gate, check the premise before building on it, fresh checks, command output, status proof."
 ---
 
 # Skill: Dev Verification
@@ -9,6 +9,12 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 
 - Follow AGENTS.md “Shell Output Capture”: long/background verification writes full output and exit status to files; add unbuffered output only when the command supports it and you need live log checks. Never rely on `cmd | tail`/`head` evidence.
 - Evidence before claims.
+- Verify the premise BEFORE building on it, not only the result before claiming
+  it. A fact taken from an index, a summary, a memory line or someone's report
+  is unverified until opened: quoting a figure whose own source file marks it
+  superseded is the cheap version of this, and designing a fix around a
+  mechanism nobody ran is the expensive one. Cost is asymmetric — checking costs
+  one command, and being wrong costs the work built on top.
 - No completion, fixed, passing, ready, reviewed, or verified claim without fresh verification evidence.
 - Run the verification that proves the claim or state why blocked.
 - To tell whether a backgrounded job is actually working vs. stalled, compare accumulated CPU time (`ps -o time`) to wall-clock elapsed — near-zero CPU growth over minutes means blocked/hung, not busy.
