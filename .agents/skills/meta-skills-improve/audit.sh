@@ -15,6 +15,10 @@
 # Assumes one session per transcript file, and that each skill load appears in
 # the text as "skill":"<name>". Adjust MARKER if the harness records it
 # differently — that is the only harness-specific assumption here.
+#
+# Sections 1-5 are grep/awk over the raw text and need nothing installed.
+# Sections 6-8 read per-record JSON, so they need python3; without it they say
+# so and are skipped, rather than reporting zero as though it were a result.
 
 set -uo pipefail
 
@@ -148,3 +152,190 @@ for skill in $(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" |
                  s, NR, a[int((NR+1)/2)], 100*early/NR, 100*late/NR
         }'
 done
+
+if ! command -v python3 >/dev/null 2>&1; then
+	echo
+	echo "sections 6-8 skipped: python3 not installed (they parse per-record JSON)"
+	exit 0
+fi
+
+echo
+python3 - "$TRANSCRIPTS" <<'PYCOST'
+import json, os, sys, collections
+
+root = sys.argv[1]
+files = [os.path.join(d, f) for d, _, fs in os.walk(root)
+         for f in fs if f.endswith(".jsonl")]
+
+# The harness writes a cost-state record REPEATEDLY within one session (up to 19
+# observed in a single file), each a running total. Summing them multiplies the
+# spend; the last one per file is the session's figure.
+total = 0.0
+by_project = collections.Counter()
+by_model = collections.Counter()
+per_file = []
+covered = 0
+for f in files:
+    last = None
+    for line in open(f, encoding="utf-8", errors="replace"):
+        if '"cost-state"' not in line:
+            continue
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        if r.get("type") == "cost-state":
+            last = r
+    if last is None:
+        continue
+    covered += 1
+    usd = last.get("totalCostUSD") or 0.0
+    total += usd
+    by_project[os.path.basename(os.path.dirname(f))] += usd
+    for model, u in (last.get("modelUsage") or {}).items():
+        by_model[model] += u.get("costUSD") or 0.0
+    per_file.append((usd, f))
+
+print("=== 6. cost ===")
+print("Read from the harness's own cost-state record, so no price table is kept")
+print("here and none can go stale. Coverage is partial by version: a transcript")
+print("written before the harness emitted the record contributes nothing, and")
+print("that is a gap in the series, not a cheap session.")
+if not files:
+    print("  no transcripts found")
+elif not covered:
+    print("  no cost-state records found in %d transcripts" % len(files))
+else:
+    print("  coverage: %d of %d transcripts carry the record" % (covered, len(files)))
+    print("  total (sum of per-session last records): $%.2f" % total)
+    print("  by model:")
+    for m, v in by_model.most_common():
+        print("    %-40s $%.2f" % (m, v))
+    print("  top projects:")
+    for pr, v in by_project.most_common(10):
+        print("    %-40s $%.2f" % (pr, v))
+    print("  most expensive sessions (open the path to see what happened):")
+    for usd, f in sorted(per_file, reverse=True)[:10]:
+        print("    $%-9.2f %s" % (usd, f))
+PYCOST
+
+echo
+python3 - "$TRANSCRIPTS" <<'PYPROMPT'
+import json, os, sys
+
+root = sys.argv[1]
+# A subagent transcript's "user" message is the PARENT agent's task description,
+# not the user's -- counting those measures how this agent writes briefs to
+# itself. Section 4 excludes them for the same reason.
+files = [os.path.join(d, f) for d, _, fs in os.walk(root)
+         for f in fs if f.endswith(".jsonl") and "/subagents/" not in os.path.join(d, f)]
+
+# A "user" row is only a real prompt when it carries no tool result. Even then
+# the harness injects its own text through the same channel -- slash-command
+# envelopes, skill bodies, system reminders -- so without these filters the
+# corpus is mostly machine writing and the themes read as the agent's, not the
+# user's. Long entries are pasted context rather than prompting, and they
+# dominate any frequency reading, so they are dropped too.
+#
+# The shell-prompt glyph earns its place in this list the hard way: a `!`-run
+# command pastes its own OUTPUT back as a user message, under the length cap and
+# carrying no marker. Before this filter the forty most recent "prompts" were
+# almost entirely command output, which reads as a corpus and is not one.
+INJECTED = ("<command-message>", "<command-name>", "<system-reminder>",
+            "<local-command-stdout>", "Base directory for this skill:",
+            "Caveat: The messages below were generated")
+PASTED_OUTPUT_PREFIXES = ("\u276f", "$ ", "# ")
+MAXLEN = 2000
+
+rows = []
+for f in files:
+    try:
+        mtime = os.path.getmtime(f)
+    except OSError:
+        continue
+    for line in open(f, encoding="utf-8", errors="replace"):
+        if '"user"' not in line:
+            continue
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        if r.get("type") != "user" or "toolUseResult" in r:
+            continue
+        content = (r.get("message") or {}).get("content")
+        texts = []
+        if isinstance(content, str):
+            texts = [content]
+        elif isinstance(content, list):
+            texts = [b.get("text", "") for b in content
+                     if isinstance(b, dict) and b.get("type") == "text"]
+        for t in texts:
+            t = t.strip()
+            if not t or len(t) > MAXLEN:
+                continue
+            if any(m in t for m in INJECTED):
+                continue
+            if t.startswith(PASTED_OUTPUT_PREFIXES):
+                continue
+            rows.append((mtime, " ".join(t.split()), f))
+
+print("=== 7. what you actually asked for ===")
+print("Sections 1-5 measure whether an existing skill fired. This measures the")
+print("other direction: what keeps getting asked that NO skill covers, which is")
+print("where a new skill comes from. Read it for repeats, not for any one line.")
+if not rows:
+    print("  no user prompts found after filtering")
+else:
+    print("  %d prompts after dropping injected text and anything over %d chars"
+          % (len(rows), MAXLEN))
+    print("  most recent 40:")
+    rows.sort(reverse=True)
+    for _, text, f in rows[:40]:
+        print("    %s" % text[:150])
+PYPROMPT
+
+echo
+python3 - "$TRANSCRIPTS" <<'PYERR'
+import json, os, sys
+
+root = sys.argv[1]
+files = [os.path.join(d, f) for d, _, fs in os.walk(root)
+         for f in fs if f.endswith(".jsonl")]
+
+per_file = []
+tool_total = err_total = 0
+for f in files:
+    errs = tools = 0
+    for line in open(f, encoding="utf-8", errors="replace"):
+        if "toolUseResult" not in line:
+            continue
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        tr = r.get("toolUseResult")
+        if tr is None:
+            continue
+        tools += 1
+        if (isinstance(tr, dict) and tr.get("is_error")) or \
+           (isinstance(tr, str) and tr.startswith("Error")):
+            errs += 1
+    tool_total += tools
+    err_total += errs
+    if errs:
+        per_file.append((errs, tools, f))
+
+print("=== 8. where the agent struggled ===")
+print("A failed tool call is not itself a problem -- probing is how work gets")
+print("done. A session with a high RATE is the signal: it usually means a guard")
+print("firing on routine work, or a tool being driven from a wrong assumption.")
+if not tool_total:
+    print("  no tool results found")
+else:
+    print("  %d of %d tool results errored (%.1f%%) across %d transcripts"
+          % (err_total, tool_total, 100.0 * err_total / tool_total, len(files)))
+    print("  worst sessions by rate, minimum 20 tool calls:")
+    ranked = [(e / t, e, t, f) for e, t, f in per_file if t >= 20]
+    for rate, e, t, f in sorted(ranked, reverse=True)[:15]:
+        print("    %5.1f%%  %3d/%-4d  %s" % (100 * rate, e, t, f))
+PYERR
