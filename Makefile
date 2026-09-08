@@ -1,11 +1,12 @@
-.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter
+.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages pi-packages
 
 help:
 	@printf '%s\n' \
 		'link   - stow repository files' \
 		'clean  - silently remove links this repository deployed (DEEP=1 also sweeps $$HOME for links left by renames)' \
 		'test   - run isolated repository behavior tests' \
-		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)'
+		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)' \
+		'pi-packages - install pi packages that settings.json declares but are missing'
 
 link:
 	stow --target="$(HOME)" --no-folding .
@@ -29,7 +30,7 @@ clean:
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
 
-check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter
+check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -150,3 +151,89 @@ export SKILL_FRONTMATTER_PY
 
 check-skill-frontmatter:
 	@python3 -c "$$SKILL_FRONTMATTER_PY"
+
+# A `packages` entry in pi's settings.json DECLARES a package; it does not
+# install one. pi auto-installs only for PROJECT settings (.pi/settings.json)
+# after the project is trusted -- never for user settings -- so hand-editing the
+# file leaves an entry that silently fetches nothing. Five entries sat that way
+# for months here, including the one configured by the piClaudePermissions
+# block, which made settings.json read as though a permission layer were in
+# force when none was loaded.
+#
+# So the config cannot apply itself, and this pair is the substitute: the check
+# makes the drift loud, and `make pi-packages` fixes it on a new machine or
+# after editing the file. Both share one resolver so they cannot disagree about
+# what "missing" means.
+define PI_PACKAGES_PY
+import json, os, shutil, sys
+
+mode = sys.argv[1]
+repo = os.environ.get("REPO") or "."
+settings = os.path.join(repo, ".config/pi/agent/settings.json")
+
+# pi finds its config from PI_CODING_AGENT_DIR and otherwise falls back to
+# ~/.pi/agent, which is what it does on a machine that has not set the variable.
+agent_dir = os.environ.get("PI_CODING_AGENT_DIR") or os.path.expanduser("~/.pi/agent")
+node_modules = os.path.join(agent_dir, "npm", "node_modules")
+
+if not os.path.exists(settings):
+    sys.exit(0)
+try:
+    declared = (json.load(open(settings, encoding="utf-8")) or {}).get("packages") or []
+except ValueError as e:
+    print("pi-packages: %s is not valid JSON (%s)" % (settings, e), file=sys.stderr)
+    sys.exit(1)
+if not declared:
+    sys.exit(0)
+
+# Skip rather than fail where pi is not installed at all: this repo deploys to
+# machines that do not run pi, and a check that fails there is a check nobody
+# can keep green. Same degradation as the shellcheck and shfmt steps.
+if not shutil.which("pi"):
+    if mode == "check":
+        print("warn: pi not installed; skipping pi-package check")
+    sys.exit(0)
+
+missing = []
+unmappable = []
+for entry in declared:
+    source = entry if isinstance(entry, str) else (entry or {}).get("source")
+    if not source:
+        continue
+    if not source.startswith("npm:"):
+        # git:, https: and path sources do not map to a predictable directory
+        # name, so their presence cannot be judged from the filesystem.
+        unmappable.append(source)
+        continue
+    spec = source[4:]
+    # Strip a trailing @version. A leading @ is a scope, not a version.
+    at = spec.rfind("@")
+    name = spec[:at] if at > 0 else spec
+    if not os.path.isdir(os.path.join(node_modules, *name.split("/"))):
+        missing.append(source)
+
+if mode == "missing":
+    for m in missing:
+        print(m)
+    sys.exit(0)
+
+for u in unmappable:
+    print("note: %s is not an npm source; presence not checked" % u)
+if missing:
+    print("pi-package drift: declared in settings.json but not installed:", file=sys.stderr)
+    for m in missing:
+        print("  %s" % m, file=sys.stderr)
+    print("  a packages entry does not install anything -- run: make pi-packages", file=sys.stderr)
+    sys.exit(1)
+endef
+export PI_PACKAGES_PY
+
+check-pi-packages:
+	@REPO="$(CURDIR)" python3 -c "$$PI_PACKAGES_PY" check
+
+pi-packages:
+	@REPO="$(CURDIR)" python3 -c "$$PI_PACKAGES_PY" missing | while IFS= read -r src; do \
+		[ -n "$$src" ] || continue; \
+		printf 'installing %s\n' "$$src"; \
+		pi install "$$src" || exit 1; \
+	done
