@@ -38,7 +38,14 @@ note() {
 }
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
-[ -n "$(git status --porcelain 2>/dev/null)" ] || exit 0
+
+# A failing `git status` is NOT a clean tree. Discarding its status made the two
+# indistinguishable, so a held index.lock, an unreadable index or an ownership
+# refusal all reported "nothing to snapshot" and returned success.
+if ! status=$(git status --porcelain 2>/dev/null); then
+	fatal "could not read the working tree (git status failed)"
+fi
+[ -n "$status" ] || exit 0
 
 # An unborn HEAD (a repo with no commits yet) has no tree to read and no commit
 # to point at. That is where work is LEAST recoverable, so snapshot it anyway,
@@ -50,6 +57,7 @@ else
 fi
 
 idx=$(mktemp -u 2>/dev/null) || fatal "could not create a temporary index"
+addfail="$idx.addfail"
 tree=$(
 	export GIT_INDEX_FILE="$idx"
 	if [ ${#parent[@]} -gt 0 ]; then
@@ -63,11 +71,28 @@ tree=$(
 	# every repo, and a caller gating on that blocks the session outright. The
 	# read-tree above already put the committed version of any masked-but-tracked
 	# file in the index, so those keep their HEAD content rather than vanishing.
-	git add -A --ignore-errors 2>/dev/null || true
+	#
+	# The status still matters, so it is recorded beside the index rather than
+	# mixed into this capture, which carries the tree sha alone.
+	git add -A --ignore-errors 2>/dev/null || : >"$addfail"
 	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
+add_failed=0
+[ -e "$addfail" ] && add_failed=1
+rm -f "$addfail" 2>/dev/null || true
 [ -n "$tree" ] || fatal "could not write a tree (unreadable or unwritable repo?)"
+
+# `git add --ignore-errors` reports failure when ANY path was skipped, which is
+# the case it exists to tolerate -- one masked or unreadable file must not cost
+# the snapshot. What must NOT pass is indexing failing so completely that the
+# tree still equals HEAD's: that snapshot is byte-identical to the last commit
+# and would claim to hold work it does not contain. Only that combination is
+# fatal, so the discriminator is the tree, not the exit status.
+if [ "$add_failed" -eq 1 ] && [ ${#parent[@]} -gt 0 ] &&
+	[ "$tree" = "$(git rev-parse -q --verify 'HEAD^{tree}' 2>/dev/null)" ]; then
+	fatal "could not index the working tree (the snapshot would hold nothing new)"
+fi
 
 # Nothing changed since this agent's last checkpoint: the newest ref already
 # holds this exact tree. Skip it. Measured on the real repo before this guard,

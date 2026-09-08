@@ -285,4 +285,48 @@ printf '%s' "$out" | grep -q 'dangling at' ||
 printf '%s' "$out" | grep -q 'NOT recoverable' &&
 	fail "a dangling but existing snapshot must not claim the work is unrecoverable"
 
+# --- 18. an unreadable working tree is not a clean one -----------------------
+# `git status` failing and `git status` reporting nothing used to be the same
+# event: the status was discarded, so a held index.lock or an unreadable index
+# returned "nothing to snapshot" and exit 0 while work sat uncaptured.
+r=$(new_repo statusfail)
+printf 'MODIFIED\n' >"$r/tracked.txt"
+chmod 000 "$r/.git/index"
+rc=0
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+chmod 644 "$r/.git/index"
+[ "$rc" -ne 0 ] || fail "a working tree that cannot be read must not report success"
+printf '%s' "$out" | grep -q 'git status failed' ||
+	fail "expected the unreadable tree to be named, got: $out"
+
+# --- 19. indexing that captures nothing is a failure, not a checkpoint --------
+# --ignore-errors must tolerate ONE bad path without costing the snapshot, but
+# must not let indexing fail so completely that the tree still equals HEAD's --
+# that snapshot is byte-identical to the last commit while claiming to hold the
+# turn's work. The discriminator is the tree, not the exit status.
+r=$(new_repo addfail)
+printf 'MODIFIED\n' >"$r/tracked.txt"
+chmod 000 "$r/tracked.txt"
+rc=0
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+chmod 644 "$r/tracked.txt"
+[ "$rc" -ne 0 ] ||
+	fail "a snapshot holding nothing new must not report success (got: $out)"
+
+# --- 20. one bad path still costs only that path -----------------------------
+# The converse of 19, so a repair cannot satisfy one by breaking the other.
+r=$(new_repo partialadd)
+printf 'REAL EDIT\n' >>"$r/other.txt"
+git -C "$r" add other.txt
+git -C "$r" commit -q -m other
+printf 'MUST SURVIVE\n' >>"$r/other.txt"
+mkdir -p "$r/sub"
+printf 'x\n' >"$r/sub/unreadable.txt"
+chmod 000 "$r/sub/unreadable.txt"
+run_in "$r" || fail "one unreadable path must not abort a snapshot that captured real work"
+chmod 644 "$r/sub/unreadable.txt"
+snap=$(refs_of "$r")
+git -C "$r" show "$snap:other.txt" | grep -q 'MUST SURVIVE' ||
+	fail "the real edit was lost from a snapshot taken beside an unreadable path"
+
 printf 'agent-checkpoint: all behaviors pass\n'
