@@ -103,7 +103,6 @@ option; in chat, this is the shape of each numbered question in a round.
 - Use `decide-priority` when choosing among known options.
 - Use `dev-ponytail` when the plan may be over-engineered.
 - Use `debug-root-cause` when the plan is actually an unclear bug fix.
-- Use `research-protocol` before academic-paper, literature, citation, related-work, bibliography, author-lookup, or field-survey content.
 - Use `research-plan` for the decision log's shape and home, and for persisting a settled direction into `PLAN.md`.
 - Use `meta-skills-improve` when the interview reveals a reusable workflow or skill improvement.
 

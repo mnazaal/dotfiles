@@ -59,7 +59,7 @@ ty check                 # greenfield default; fall back to pyright/mypy where t
 - Mixing notebooks/scripts with core library behavior.
 - Inventing a new tracker/config system when project already has one.
 - `-p no:xdist` when `addopts` hardcodes `-n <workers>` — conflicts and errors; use `-n0` to override instead.
-- Treat slow or worker-crashing parallel test runs as verification/resource questions first (`dev-verification`); rerun with lower/no parallelism before debugging code.
+- Treat slow or worker-crashing parallel test runs as verification/resource questions first (`dev-verification`).
 
 ## Related Skills
 

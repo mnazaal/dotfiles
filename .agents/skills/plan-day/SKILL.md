@@ -104,7 +104,6 @@ SCHEDULED: <YYYY-MM-DD day>
 
 - Use `decide-priority` when choosing among competing tasks or tradeoffs.
 - Use `plan-interview` when today's constraints or goals are too ambiguous to plan directly.
-- Use `research-protocol` before academic-paper, literature, citation, related-work, bibliography, author-lookup, or field-survey content.
 - Use `research-run` when today's next action is experiment/log/result follow-up.
 - Use `dev-*` or `debug-*` only after a concrete software task or bug is selected.
 - Use `dev-verification` when checking whether a claimed status is actually complete.

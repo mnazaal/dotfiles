@@ -30,7 +30,7 @@ For non-PDF external sources (URLs, arXiv links, pasted text, transcripts): clas
 
 - This skill analyzes research content.
 - Use `context-pdf` for PDF mechanics: OCR, page extraction, merging, splitting, forms, encryption, or artifact transforms.
-- `~/org` is read-only for agents (AGENTS.md); keep research citation/verification rules here via `research-protocol`.
+- Keep research citation/verification rules here via `research-protocol`.
 
 ## Related Skills
 

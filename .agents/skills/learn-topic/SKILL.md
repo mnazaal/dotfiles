@@ -51,7 +51,6 @@ Treat the current directory as the workspace for this topic. Create files lazily
 ## Related Skills
 
 - `plan-interview` when the learning goal itself needs interviewing.
-- Source material from the personal Org store: `~/org` is read-only for agents (AGENTS.md).
 - `research-protocol` when the topic is academic-paper-shaped — route citations through it instead of ad hoc sourcing.
 - `understand-project` / `understand-codebase` when the subject is a specific project or
   codebase rather than a topic — those read the artifact itself as ground truth,

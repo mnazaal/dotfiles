@@ -36,6 +36,5 @@ description: "Use for PDF files: read, extract text/tables/images, merge, split,
 
 ## Related Skills
 
-- Extracted notes for the personal Org store: propose as snippets — `~/org` is read-only for agents (AGENTS.md).
 - `research-paper` for reading academic PDFs.
 - `dev-security` for PDF passwords, secrets, signatures, or sensitive content.

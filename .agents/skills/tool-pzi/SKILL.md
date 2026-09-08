@@ -76,4 +76,3 @@ pzi delete smith2024graph        # moves its PDF to papers/.orphans/ unless --ke
 - `research-protocol` before citing library entries in academic work.
 - `research-lit-search` for discovering new papers to capture.
 - `tool-cementic` for full-text semantic search over local papers.
-- Org-note exports: propose as snippets — `~/org` is read-only for agents (AGENTS.md).
