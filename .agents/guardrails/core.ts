@@ -548,7 +548,32 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 
   type Danger = { reason: string; category: string };
 
+  /**
+   * The WORST danger in the command, not the first one found.
+   *
+   * This returned on first match until 2026-09-08, which let any allow-tier
+   * command hide every deny-tier one behind it: `rm -rf /tmp/x` is
+   * recursive-force-rm, which is `allow` for claude, so the scan stopped there
+   * and `rm -rf /tmp/x; sudo …` was permitted. Measured at the time, that
+   * prefix flipped privilege escalation, `rm -rf ~`, force-push, mkfs, host
+   * shutdown, pipe-to-shell, reflog/gc pruning and the git-hooks bypass from
+   * deny to allow -- the entire deny tier was one prefix from advisory. The bug
+   * predated the launcher migration by at least three weeks.
+   *
+   * Scanning on is also more correct for the `cd` tracking below: a return in
+   * the middle of a command line abandoned the effective-directory state that
+   * later segments depend on.
+   */
   function dangerReason(cmd: string, cwd: string): Danger | undefined {
+    const RANK = { deny: 3, ask: 2, allow: 1 } as const;
+    let worst: Danger | undefined;
+    // Returns true once nothing later could outrank what we hold, so the common
+    // dangerous case still stops early.
+    const record = (d: Danger): boolean => {
+      if (!worst || RANK[severityOf(d.category)] > RANK[severityOf(worst.category)]) worst = d;
+      return severityOf(worst.category) === "deny";
+    };
+
     // Effective directory, tracked across segments. `cd ~ && rm -rf dotfiles`
     // resolves its target against ~, not against the directory the tool call
     // started in -- without this the most common destructive form is invisible.
@@ -560,7 +585,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     for (const { text: seg, pipedFromPrev } of splitSegmentsTagged(cmd)) {
       if (!pipedFromPrev) pipelineFetches = false;
       const tamper = confinementTamperReason(tokenize(seg));
-      if (tamper) return { reason: tamper, category: "confinement" };
+      if (tamper && record({ reason: tamper, category: "confinement" })) return worst;
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
       const { command, args } = parsed;
@@ -569,7 +594,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       // the shell-runner recursion below, and a bare `| sh` with no download in
       // front of it is a local script, which the path rules already judge.
       if (pipedFromPrev && pipelineFetches && SHELL_RUNNERS.has(command) && !dashCArg(args)) {
-        return { reason: "pipes a download into a shell", category: "remote-code" };
+        if (record({ reason: "pipes a download into a shell", category: "remote-code" })) return worst;
       }
       if (NETWORK_FETCHERS.has(command)) pipelineFetches = true;
       if (command === "cd") {
@@ -579,10 +604,18 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         else here = resolveAny(target, here);
         continue;
       }
-      if (ESCALATORS.has(command)) return { reason: "privilege escalation", category: "escalation" };
-      if (DESTRUCTIVE.has(command) || DESTRUCTIVE_PREFIXES.some(p => command.startsWith(p)))
-        return { reason: "destructive command", category: "disk-destructive" };
-      if (HOST_CONTROL.has(command)) return { reason: "host power control", category: "host-control" };
+      if (ESCALATORS.has(command)) {
+        if (record({ reason: "privilege escalation", category: "escalation" })) return worst;
+        continue;
+      }
+      if (DESTRUCTIVE.has(command) || DESTRUCTIVE_PREFIXES.some(p => command.startsWith(p))) {
+        if (record({ reason: "destructive command", category: "disk-destructive" })) return worst;
+        continue;
+      }
+      if (HOST_CONTROL.has(command)) {
+        if (record({ reason: "host power control", category: "host-control" })) return worst;
+        continue;
+      }
       if (command === "rm" && hasRmRecursiveForce(args)) {
         const targets = args.filter(a => !a.startsWith("-"));
         // After `cd -` the directory is unknowable. A false deny costs a
@@ -591,44 +624,49 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
           t => !t.startsWith("/") && !t.startsWith("~") && !t.startsWith("$"),
         );
         const TOPLEVEL = "recursive-force-rm-toplevel";
+        let d: Danger;
         // No target in the argv means the list arrives on stdin -- the
         // `find ... | xargs rm -rf` idiom. What it would delete is unknowable
         // here, so it takes the same treatment as an unresolvable cwd below.
-        if (targets.length === 0) {
-          return { reason: "rm -rf with targets from stdin", category: TOPLEVEL };
-        }
-        if (!hereKnown && relative) {
-          return { reason: "rm -rf with an unresolvable cwd", category: TOPLEVEL };
-        }
-        if (targets.some(t => isTopLevelRmTarget(t, here, cwd))) {
-          return { reason: "rm -rf of a top-level path", category: TOPLEVEL };
-        }
-        return { reason: "recursive force rm", category: "recursive-force-rm" };
+        if (targets.length === 0) d = { reason: "rm -rf with targets from stdin", category: TOPLEVEL };
+        else if (!hereKnown && relative) d = { reason: "rm -rf with an unresolvable cwd", category: TOPLEVEL };
+        else if (targets.some(t => isTopLevelRmTarget(t, here, cwd))) d = { reason: "rm -rf of a top-level path", category: TOPLEVEL };
+        else d = { reason: "recursive force rm", category: "recursive-force-rm" };
+        if (record(d)) return worst;
+        continue;
       }
-      if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args)))
-        return { reason: "world-writable permissions", category: "world-writable" };
+      if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args))) {
+        if (record({ reason: "world-writable permissions", category: "world-writable" })) return worst;
+        continue;
+      }
       if (command === "git") {
-        const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" };
-        const p = gitRecoveryPruneReason(args); if (p) return { reason: p, category: "git-recovery-prune" };
-        const c = gitCleanIgnoredReason(args); if (c) return { reason: c, category: "git-clean-ignored" };
+        const r = gitBypassReason(args);
+        if (r && record({ reason: r, category: "git-guard-bypass" })) return worst;
+        const pr = gitRecoveryPruneReason(args);
+        if (pr && record({ reason: pr, category: "git-recovery-prune" })) return worst;
+        const c = gitCleanIgnoredReason(args);
+        if (c && record({ reason: c, category: "git-clean-ignored" })) return worst;
       }
       if (command === "find") {
-        if (findPolicy === "always") return { reason: "find — prefer grepika/read tools", category: "find" };
-        if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) return { reason: "find with -exec/-delete", category: "find" };
+        if (findPolicy === "always") {
+          if (record({ reason: "find — prefer grepika/read tools", category: "find" })) return worst;
+        } else if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) {
+          if (record({ reason: "find with -exec/-delete", category: "find" })) return worst;
+        }
       }
       // `eval` never reaches the shell-runner branch below: it takes its script
       // as ordinary arguments rather than behind -c, so `eval 'rm -rf ~'`
       // arrives as one quoted token that tokenize() strips to a single argument.
       if (command === "eval") {
         const inner = args.join(" ");
-        if (inner) { const nested = dangerReason(inner, here); if (nested) return nested; }
+        if (inner) { const nested = dangerReason(inner, here); if (nested && record(nested)) return worst; }
       }
       if (SHELL_RUNNERS.has(command)) {
         const inner = dashCArg(args);
-        if (inner) { const nested = dangerReason(inner, here); if (nested) return nested; }
+        if (inner) { const nested = dangerReason(inner, here); if (nested && record(nested)) return worst; }
       }
     }
-    return undefined;
+    return worst;
   }
 
 
