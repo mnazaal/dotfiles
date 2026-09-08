@@ -123,8 +123,8 @@ const TABLE: Row[] = [
   // one direction and break the other.
   { command: "sudo apt install ripgrep; rm -rf /tmp/x", expected: "deny", note: "deny first, allow second" },
   // Controls: scanning every segment must not make ordinary work stricter.
-  { command: "rm -rf /tmp/a; rm -rf /tmp/b", expected: { claude: "allow", default: "ask" }, note: "two allow-tier hits stay allow-tier" },
-  { command: "cd /tmp && rm -rf build", expected: { claude: "allow", default: "ask" }, note: "cd tracking still governs the target" },
+  { command: "rm -rf /tmp/a; rm -rf /tmp/b", expected: "ask", note: "two same-tier hits stay that tier" },
+  { command: "cd /tmp && rm -rf build", expected: "ask", note: "cd tracking still governs the target" },
 
   // --- filesystem makers: matched by prefix, not enumeration -----------------
   // Ten enumerated mkfs.* rows still let mkfs.f2fs and mkfs.exfat through
@@ -214,12 +214,12 @@ const TABLE: Row[] = [
   // agents snapshot per turn, not which harness is trusted.
   {
     command: "rm -rf build",
-    expected: { claude: "allow", default: "ask" },
-    note: "inside the project, checkpoint covers it",
+    expected: "ask",
+    note: "ask, not allow: a checkpoint never captures gitignored trees",
   },
   {
     command: "rm -rf ./build/cache",
-    expected: { claude: "allow", default: "ask" },
+    expected: "ask",
     note: "nested inside the project",
   },
 
@@ -239,7 +239,7 @@ const TABLE: Row[] = [
   // and recovery together exactly as deleting a direct child of home would.
   { command: `rm -rf ${fixture}/repo`, expected: "deny", note: "a directory holding .git is a repo root wherever it sits" },
   { command: `cd ${fixture} && rm -rf repo`, expected: "deny", note: "same, relative after cd" },
-  { command: `rm -rf ${fixture}/plain`, expected: { claude: "allow", default: "ask" }, note: "no .git: an ordinary directory" },
+  { command: `rm -rf ${fixture}/plain`, expected: "ask", note: "no .git: an ordinary directory" },
   // Deleting a .git takes the history AND the agent-checkpoint refs that live
   // inside it, so the recovery earning the allow tier dies with what it would
   // have recovered. The kernel does not backstop it: .git, .git/refs and
@@ -251,7 +251,7 @@ const TABLE: Row[] = [
   // A glob names its parent's contents, so it is judged on the directory it
   // expands inside rather than on a literal token that never exists on disk.
   { command: `rm -rf ${fixture}/repo/*`, expected: "deny", note: "empties a repo while reading as an ordinary path" },
-  { command: `rm -rf ${fixture}/plain/*`, expected: { claude: "allow", default: "ask" }, note: "a glob inside an ordinary directory stays ordinary" },
+  { command: `rm -rf ${fixture}/plain/*`, expected: "ask", note: "a glob inside an ordinary directory stays ordinary" },
   { command: "rm -rf .", expected: "deny", note: "the whole working directory" },
   { command: "rm -rf ..", expected: "deny", note: "an ancestor of the working directory" },
   {
@@ -287,7 +287,7 @@ const TABLE: Row[] = [
   { command: "cd .. && rm -rf project", expected: "deny", note: "relative target after cd up" },
   {
     command: "cd build && rm -rf src",
-    expected: { claude: "allow", default: "ask" },
+    expected: "ask",
     note: "cd tracking must not over-broaden: still inside the project",
   },
   {
@@ -337,11 +337,11 @@ const TABLE: Row[] = [
   // The protected-segment rule (.git, node_modules) exists for the typed write
   // tools; applied to every bash token it denied routine work while the
   // kernel pin and the checkpoint already cover .git.
-  { command: "rm -rf node_modules && npm install", expected: { claude: "allow", default: "ask" }, note: "routine; in-project recursive rm" },
+  { command: "rm -rf node_modules && npm install", expected: "ask", note: "routine; in-project recursive rm" },
   { command: "du -sh node_modules", expected: "allow" },
   { command: "cat .git/HEAD", expected: "allow", note: "a read of the repo's own state" },
   { command: "du -sh .git", expected: "allow", note: "the other read the bash branch was removed for" },
-  { command: "rm -rf node_modules", expected: { claude: "allow", default: "ask" }, note: "routine, and not a persistence route" },
+  { command: "rm -rf node_modules", expected: "ask", note: "routine, but node_modules is gitignored and so unsnapshotted" },
   // Repo-local hooks execute on the next commit. The typed Write tool denies
   // this path, so bash must too, or the rule is a tool-switch away from moot.
   { command: "echo hi > .git/hooks/pre-commit", expected: "deny", note: "a hook that runs on the next commit" },

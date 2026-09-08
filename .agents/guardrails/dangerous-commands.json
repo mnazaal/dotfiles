@@ -88,7 +88,7 @@
     "claude": "off",
     "pi": "exec"
   },
-  "_severity": "Per-category decision for command rules. A string applies to every agent; an object keys by agent like find_policy. An unlisted category resolves to 'ask', so this is fail-safe.",
+  "_severity": "recursive-force-rm is ASK for every agent since 2026-09-08: the allow tier rested on agent-checkpoint covering the target, and a checkpoint never captures gitignored trees because git add -A honours .gitignore -- so build outputs, caches and results/ were never in a snapshot. Per-category decision for command rules. A string applies to every agent; an object keys by agent like find_policy. An unlisted category resolves to 'ask', so this is fail-safe.",
   "severity": {
     "escalation": "deny",
     "confinement": "deny",
@@ -100,10 +100,7 @@
       "claude": "allow",
       "pi": "ask"
     },
-    "recursive-force-rm": {
-      "claude": "allow",
-      "pi": "ask"
-    },
+    "recursive-force-rm": "ask",
     "host-control": "deny",
     "remote-code": "deny",
     "git-recovery-prune": "deny"
