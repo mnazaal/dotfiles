@@ -164,8 +164,11 @@ python3 - "$TRANSCRIPTS" <<'PYCOST'
 import json, os, sys, collections
 
 root = sys.argv[1]
+# Subagent transcripts never carry a cost-state record, so counting them in the
+# denominator understates coverage -- it read 11% where the main-session figure
+# is 39%. Sections 4 and 7 exclude them for the same reason.
 files = [os.path.join(d, f) for d, _, fs in os.walk(root)
-         for f in fs if f.endswith(".jsonl")]
+         for f in fs if f.endswith(".jsonl") and "/subagents/" not in os.path.join(d, f)]
 
 # The harness writes a cost-state record REPEATEDLY within one session (up to 19
 # observed in a single file), each a running total. Summing them multiplies the
@@ -206,7 +209,8 @@ if not files:
 elif not covered:
     print("  no cost-state records found in %d transcripts" % len(files))
 else:
-    print("  coverage: %d of %d transcripts carry the record" % (covered, len(files)))
+    print("  coverage: %d of %d main-session transcripts carry the record"
+          % (covered, len(files)))
     print("  total (sum of per-session last records): $%.2f" % total)
     print("  by model:")
     for m, v in by_model.most_common():
@@ -243,17 +247,22 @@ files = [os.path.join(d, f) for d, _, fs in os.walk(root)
 # almost entirely command output, which reads as a corpus and is not one.
 INJECTED = ("<command-message>", "<command-name>", "<system-reminder>",
             "<local-command-stdout>", "Base directory for this skill:",
-            "Caveat: The messages below were generated")
+            "Caveat: The messages below were generated",
+            # Both arrive through the user channel and are the harness talking:
+            # subagent completion notices were 8% of the kept corpus, and
+            # interrupt notices another 2%.
+            "<task-notification>", "[Request interrupted")
 PASTED_OUTPUT_PREFIXES = ("\u276f", "$ ", "# ")
 MAXLEN = 2000
 
 rows = []
+toolong = 0
 for f in files:
     try:
         mtime = os.path.getmtime(f)
     except OSError:
         continue
-    for line in open(f, encoding="utf-8", errors="replace"):
+    for lineno, line in enumerate(open(f, encoding="utf-8", errors="replace")):
         if '"user"' not in line:
             continue
         try:
@@ -271,13 +280,17 @@ for f in files:
                      if isinstance(b, dict) and b.get("type") == "text"]
         for t in texts:
             t = t.strip()
-            if not t or len(t) > MAXLEN:
+            if not t:
+                continue
+            if len(t) > MAXLEN:
+                if not any(m in t for m in INJECTED):
+                    toolong += 1
                 continue
             if any(m in t for m in INJECTED):
                 continue
             if t.startswith(PASTED_OUTPUT_PREFIXES):
                 continue
-            rows.append((mtime, " ".join(t.split()), f))
+            rows.append((mtime, lineno, " ".join(t.split()), f))
 
 print("=== 7. what you actually asked for ===")
 print("Sections 1-5 measure whether an existing skill fired. This measures the")
@@ -286,11 +299,15 @@ print("where a new skill comes from. Read it for repeats, not for any one line."
 if not rows:
     print("  no user prompts found after filtering")
 else:
-    print("  %d prompts after dropping injected text and anything over %d chars"
-          % (len(rows), MAXLEN))
+    print("  %d prompts after dropping injected text; %d further genuine prompts"
+          " exceeded %d chars and are NOT shown -- the considered briefs sit at"
+          " that end, so read them separately if a theme looks thin"
+          % (len(rows), toolong, MAXLEN))
     print("  most recent 40:")
-    rows.sort(reverse=True)
-    for _, text, f in rows[:40]:
+    # (mtime, lineno) -- sorting on the text was alphabetical within a file, so
+    # "most recent 40" showed the alphabetically-last 40 of the newest session.
+    rows.sort(key=lambda r: (r[0], r[1]), reverse=True)
+    for _, _, text, f in rows[:40]:
         print("    %s" % text[:150])
 PYPROMPT
 

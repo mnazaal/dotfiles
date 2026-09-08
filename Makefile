@@ -115,21 +115,38 @@ check-machinery-ro-sync:
 # strings rather than grepping for quote characters, so any spelling that is
 # genuinely valid passes and one that merely looks valid does not.
 define SKILL_FRONTMATTER_PY
-import glob, sys
+import glob, os, sys
 try:
     import yaml
 except ImportError:
     print("warn: PyYAML not installed; skipping skill-frontmatter check")
     sys.exit(0)
 status = 0
-files = sorted(glob.glob(".agents/skills/*/SKILL.md"))
-if not files:
-    print("skill-frontmatter: no SKILL.md files found -- wrong directory?", file=sys.stderr)
+# Enumerate DIRECTORIES, not SKILL.md files: globbing the file makes a skill
+# whose SKILL.md is missing or misnamed invisible, which is precisely the
+# silently-dropped-from-routing failure this check exists to catch.
+dirs = sorted(d for d in glob.glob(".agents/skills/*") if os.path.isdir(d))
+if not dirs:
+    print("skill-frontmatter: no skill directories found -- wrong directory?", file=sys.stderr)
     sys.exit(1)
+files = []
+for d in dirs:
+    f = os.path.join(d, "SKILL.md")
+    if os.path.isfile(f):
+        files.append(f)
+    else:
+        print("skill-frontmatter: %s: no SKILL.md (the skill cannot load)" % d, file=sys.stderr)
+        status = 1
 for f in files:
     text = open(f, encoding="utf-8").read()
     if not text.startswith("---\n"):
         print("skill-frontmatter: %s: no frontmatter block" % f, file=sys.stderr)
+        status = 1
+        continue
+    # A block that is never closed makes split() hand back the whole file, which
+    # then parses as YAML and passes. Require the closing delimiter.
+    if len(text.split("---\n", 2)) < 3:
+        print("skill-frontmatter: %s: frontmatter block is not closed" % f, file=sys.stderr)
         status = 1
         continue
     try:
