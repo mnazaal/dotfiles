@@ -54,6 +54,11 @@ This file is global routing and behavior policy. Keep it small.
   re-anchoring: what the project now has, and where this step sits.
 - After finishing a unit of work, close with one line at project level: what
   the project now has or knows that it didn't, and what comes next.
+- When you need something from the user — a decision, an approval, a fact only
+  they have, a command only they can run — give it its own place in the message
+  and say exactly what is needed. A preference dropped into a closing paragraph
+  is a question they have to reverse-engineer, which is not a lighter touch but
+  a heavier one.
 - Write research/working notes as self-contained HTML with inline MathJax
   (theme-aware, so equations render), not Markdown; keep them in the project's
   `notes/` directory, named per `context-project-docs`. (Standing docs —

@@ -17,6 +17,13 @@ description: "Use for security-sensitive work: secrets, credentials, auth, permi
   and project-local permissions over broad/global access.
 - Do not weaken permissions, disable hooks, bypass auth, or expose protected paths
   without explicit user confirmation.
+- Ask which OTHER layer catches a control's failure, and treat "none" as the
+  finding. Two forms of one attack can land very differently: the form that
+  writes to a protected path is stopped by the filesystem even when the command
+  scanner misses it, while the form that writes nothing has only the scanner. A
+  control with exactly one enforcing layer is worth no more than that layer's
+  worst bug, so record which layer is load-bearing rather than trusting that a
+  guard exists.
 
 ## Workflow
 
