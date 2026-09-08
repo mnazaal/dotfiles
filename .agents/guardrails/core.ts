@@ -440,6 +440,26 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
   const DESTRUCTIVE_PREFIXES: string[] = dc.destructive_prefixes ?? [];
   const HOST_CONTROL = new Set<string>(dc.host_control ?? []);
   const NETWORK_FETCHERS = new Set<string>(dc.network_fetchers ?? []);
+  // $TMPDIR is resolved here rather than stored, so the policy file stays
+  // portable to a machine whose scratch directory sits elsewhere.
+  const SCRATCH_ROOTS: string[] = (dc.scratch_roots ?? [])
+    .map((r: string) => (r === "$TMPDIR" ? process.env.TMPDIR ?? "" : r))
+    .filter((r: string) => r !== "")
+    .map((r: string) => resolve(r));
+
+  /**
+   * Strictly below a throwaway directory. The ask tier on recursive rm exists
+   * because agent-checkpoint cannot recover the target; for a scratch tree that
+   * is what the directory is FOR, so the prompt buys nothing. The root itself is
+   * never exempt -- another session's in-flight work lives directly under it.
+   */
+  function isScratchTarget(resolved: string): boolean {
+    // A root is never its own scratch: $TMPDIR sits below /tmp, so without this
+    // `rm -rf $TMPDIR` was exempt via the wider root and would have taken every
+    // other session's in-flight work with it.
+    if (SCRATCH_ROOTS.includes(resolved)) return false;
+    return SCRATCH_ROOTS.some(root => resolved.startsWith(root + "/"));
+  }
   const WRAPPERS = new Set<string>(dc.command_wrappers ?? []);
   const SHELL_RUNNERS = new Set<string>(dc.shell_runners ?? []);
   const FIND_EXEC = new Set<string>(dc.find_exec_primaries ?? []);
@@ -689,6 +709,8 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (targets.length === 0) d = { reason: "rm -rf with targets from stdin", category: TOPLEVEL };
         else if (!hereKnown && relative) d = { reason: "rm -rf with an unresolvable cwd", category: TOPLEVEL };
         else if (targets.some(t => isTopLevelRmTarget(t, here, cwd))) d = { reason: "rm -rf of a top-level path", category: TOPLEVEL };
+        else if (targets.every(t => isScratchTarget(resolveAny(t, here))))
+          d = { reason: "recursive force rm under a scratch root", category: "recursive-force-rm-scratch" };
         else d = { reason: "recursive force rm", category: "recursive-force-rm" };
         if (record(d)) return worst;
         continue;

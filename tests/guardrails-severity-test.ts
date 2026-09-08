@@ -27,6 +27,8 @@ const cwd = "/tmp/project";
 // rule is filesystem-backed (a directory holding .git is a root wherever it
 // sits), so the rows below need real directories, not string patterns.
 const fixture = mkdtempSync(join(tmpdir(), "guardrails-severity-"));
+// The engine resolves $TMPDIR itself; mirror it so the rows read the same root.
+const scratch = process.env.TMPDIR ? process.env.TMPDIR.replace(/\/$/, "") : tmpdir();
 mkdirSync(join(fixture, "repo", ".git"), { recursive: true });
 mkdirSync(join(fixture, "plain"), { recursive: true });
 
@@ -112,6 +114,16 @@ const TABLE: Row[] = [
   // that was measurably masked, because a single example would not have caught
   // a partial repair.
   { command: "rm -rf /tmp/x; sudo apt install ripgrep", expected: "deny", note: "escalation behind an allow-tier prefix" },
+  // --- a throwaway directory needs no prompt, its root still does -------------
+  // The ask tier on recursive rm exists because the checkpoint cannot recover
+  // the target. Below a scratch root that is what the directory is FOR, so the
+  // prompt buys nothing. The roots THEMSELVES stay ask: $TMPDIR sits below /tmp,
+  // and removing it takes every other session's in-flight work.
+  { command: `rm -rf ${scratch}/teststate`, expected: "allow", note: "strictly below the scratch root" },
+  { command: `rm -rf ${scratch}/a/b/c`, expected: "allow", note: "any depth below it" },
+  { command: `rm -rf ${scratch}`, expected: "ask", note: "the root itself is never exempt" },
+  { command: "rm -rf /tmp", expected: "deny", note: "denied because it contains the cwd, not by the scratch rule" },
+  { command: `rm -rf ${scratch}/keep build`, expected: "ask", note: "every target must be scratch, not just one" },
   { command: "rm -rf /tmp/x; rm -rf ~", expected: "deny", note: "the home-directory rule behind its own tier" },
   { command: "rm -rf /tmp/x; git push origin +main", expected: "deny" },
   { command: "rm -rf /tmp/x; mkfs.ext4 /dev/sda1", expected: "deny" },
@@ -239,7 +251,7 @@ const TABLE: Row[] = [
   // and recovery together exactly as deleting a direct child of home would.
   { command: `rm -rf ${fixture}/repo`, expected: "deny", note: "a directory holding .git is a repo root wherever it sits" },
   { command: `cd ${fixture} && rm -rf repo`, expected: "deny", note: "same, relative after cd" },
-  { command: `rm -rf ${fixture}/plain`, expected: "ask", note: "no .git: an ordinary directory" },
+  { command: `rm -rf ${fixture}/plain`, expected: "allow", note: "no .git, and the fixture sits under the scratch root; the repo/plain contrast still holds against the deny row above" },
   // Deleting a .git takes the history AND the agent-checkpoint refs that live
   // inside it, so the recovery earning the allow tier dies with what it would
   // have recovered. The kernel does not backstop it: .git, .git/refs and
@@ -251,7 +263,7 @@ const TABLE: Row[] = [
   // A glob names its parent's contents, so it is judged on the directory it
   // expands inside rather than on a literal token that never exists on disk.
   { command: `rm -rf ${fixture}/repo/*`, expected: "deny", note: "empties a repo while reading as an ordinary path" },
-  { command: `rm -rf ${fixture}/plain/*`, expected: "ask", note: "a glob inside an ordinary directory stays ordinary" },
+  { command: `rm -rf ${fixture}/plain/*`, expected: "allow", note: "same, reached through the glob parent" },
   { command: "rm -rf .", expected: "deny", note: "the whole working directory" },
   { command: "rm -rf ..", expected: "deny", note: "an ancestor of the working directory" },
   {

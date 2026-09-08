@@ -43,6 +43,10 @@
     "wget",
     "fetch"
   ],
+  "_scratch_roots": "The session scratch directory, and only that. A recursive rm STRICTLY BELOW it is allowed without prompting: the ask tier exists because agent-checkpoint cannot recover the target, and for a scratch tree that is the point of the directory rather than a loss. /tmp is deliberately NOT here -- project checkouts and agent worktrees holding uncommitted work live under it. The root itself is never exempt either.",
+  "scratch_roots": [
+    "$TMPDIR"
+  ],
   "command_wrappers": [
     "command",
     "builtin",
@@ -103,6 +107,7 @@
     "recursive-force-rm": "ask",
     "host-control": "deny",
     "remote-code": "deny",
-    "git-recovery-prune": "deny"
+    "git-recovery-prune": "deny",
+    "recursive-force-rm-scratch": "allow"
   }
 }
