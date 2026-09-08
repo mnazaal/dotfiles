@@ -242,6 +242,14 @@ function M.cmake(opts)
     local flags = {
       "-DCMAKE_BUILD_TYPE=Release",
       "-DCMAKE_INSTALL_PREFIX=" .. M.q(prefix),
+      -- A binary carries its own library path, relative to itself, so a
+      -- private prefix needs no ld.so.conf entry, no LD_LIBRARY_PATH and no
+      -- root, and survives being relocated or living under a different $HOME.
+      -- `$ORIGIN/../lib` covers executables in bin/; `$ORIGIN` covers libraries
+      -- in lib/ that link against each other. M.q single-quotes, so $ORIGIN
+      -- reaches the linker instead of being expanded by the shell.
+      "-DCMAKE_INSTALL_RPATH=" .. M.q("$ORIGIN/../lib:$ORIGIN"),
+      "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON",
     }
     if opts.ccache then
       table.insert(flags, "-DCMAKE_C_COMPILER_LAUNCHER=ccache")
