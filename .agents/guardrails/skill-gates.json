@@ -112,6 +112,19 @@
         "dev-worktree"
       ],
       "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "worktree"
+        ]
+      },
+      "message": "creating or removing a git worktree"
+    },
+    {
+      "skills": [
+        "dev-worktree"
+      ],
+      "trigger": {
         "type": "capability",
         "all_of": [
           "test-command",
