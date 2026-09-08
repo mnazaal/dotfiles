@@ -74,6 +74,36 @@ const TABLE: Row[] = [
   // --- privilege escalation: never legitimate, so silent rather than prompted --
   { command: "sudo apt install ripgrep", expected: "deny" },
 
+  // --- one extra token must not defeat a rule ---------------------------------
+  // Audited 2026-09-08: twelve shapes each returned allow where the plain form
+  // denied, because the tokenizer took the first word literally. They share one
+  // root cause, so one row per shape -- a single example would not catch a
+  // partial repair. Every one of these is something the shell strips before it
+  // looks the command up.
+  { command: "\\sudo apt install ripgrep", expected: "deny", note: "leading backslash only suppresses alias lookup" },
+  { command: "\\rm -rf ~", expected: "deny" },
+  { command: "(sudo apt install ripgrep)", expected: "deny", note: "subshell" },
+  { command: "{ sudo apt install ripgrep ; }", expected: "deny", note: "brace group" },
+  { command: "exec sudo apt install ripgrep", expected: "deny" },
+  { command: "if true; then sudo apt install ripgrep; fi", expected: "deny", note: "the segment opens with a keyword" },
+  { command: ">/dev/null sudo apt install ripgrep", expected: "deny", note: "leading redirection" },
+  { command: "2>&1 sudo apt install ripgrep", expected: "deny" },
+  { command: "sh -ec 'rm -rf ~'", expected: "deny", note: "bundled shell flags: the script is the NEXT arg" },
+  { command: "bash -lc 'rm -rf ~'", expected: "deny" },
+  { command: "bash -cx 'sudo apt install ripgrep'", expected: "deny", note: "reading the flag tail as the script hid this" },
+  { command: "timeout 5 -- sudo apt install ripgrep", expected: "deny", note: "the -- a wrapper leaves behind is not the command" },
+  { command: "git -C /tmp gc --prune=now", expected: "deny", note: "git's own -C must not hide the subcommand" },
+  { command: "git -C /tmp reflog expire --expire=now --all", expected: "deny" },
+  // Controls: the same shapes must not start denying ordinary work.
+  { command: "( cd /tmp && ls )", expected: "allow" },
+  { command: "if true; then echo ok; fi", expected: "allow" },
+  { command: "2>/dev/null ls", expected: "allow" },
+  { command: "timeout 30 -- bun test", expected: "allow" },
+  { command: "git -C /tmp status", expected: "allow" },
+  { command: "git -C /tmp gc", expected: "allow", note: "plain gc prunes nothing reachable" },
+  { command: "sh -ec 'echo hi'", expected: "allow" },
+  { command: "exec bash -c 'echo hi'", expected: "allow" },
+
   // --- an earlier allow-tier hit must not hide a later deny --------------------
   // Until 2026-09-08 the scan returned the FIRST danger it found and resolved
   // that one's severity, so any allow-tier command used as a prefix smuggled

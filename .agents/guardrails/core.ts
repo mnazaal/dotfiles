@@ -101,7 +101,11 @@ function splitSegmentsTagged(cmd: string): Segment[] {
     if (ch === "'") { inSQ = true; continue; }
     if (ch === '"') { inDQ = true; continue; }
     const two = (ch === "&" && cmd[i + 1] === "&") || (ch === "|" && cmd[i + 1] === "|");
-    if (i === cmd.length || two || ch === "\n" || ch === ";" || ch === "&" || ch === "|") {
+    // `&` inside a redirection (`2>&1`, `&>f`) joins a file descriptor; only a
+    // free-standing `&` backgrounds a command. Splitting on the former made
+    // `2>&1 sudo id` a segment whose command was `1`, hiding everything after.
+    const fdDup = ch === "&" && !two && (cmd[i - 1] === ">" || cmd[i - 1] === "<" || cmd[i + 1] === ">");
+    if (!fdDup && (i === cmd.length || two || ch === "\n" || ch === ";" || ch === "&" || ch === "|")) {
       const seg = cmd.slice(start, i);
       if (seg.trim()) out.push({ text: seg, pipedFromPrev: piped });
       // A single `|` continues one pipeline; `||`, `&&`, `;`, `&` start a new one.
@@ -176,8 +180,14 @@ function isWorldWritableMode(arg: string): boolean {
 
 function dashCArg(args: string[]): string | undefined {
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "-c") return args[i + 1];
-    if (args[i].startsWith("-c") && !args[i].startsWith("--") && args[i].length > 2) return args[i].slice(2);
+    const a = args[i];
+    if (a === "-c") return args[i + 1];
+    // Bundled short flags: `sh -ec 'script'`, `bash -lc …`, `bash -cx …`. The
+    // script is the NEXT argument, not the rest of the flag word -- reading it
+    // as the latter turned `bash -cx 'sudo id'` into the script "x" and let the
+    // real one through unexamined.
+    if (/^-[A-Za-z]+$/.test(a) && a.includes("c")) return args[i + 1];
+    if (a.startsWith("-c") && !a.startsWith("--") && a.length > 2) return a.slice(2);
   }
   return undefined;
 }
@@ -255,16 +265,55 @@ function skipWrapperArgs(wrapper: string, toks: string[], i: number): number {
 }
 
 /** Leading command + args of one segment, skipping assignments and known wrappers. */
+/**
+ * Shell words that precede a command without being one. A segment can open with
+ * a keyword (`then` after `if …;`), a grouping token, or a redirection, and the
+ * command follows. Each of these let any rule be evaded with one extra token
+ * until 2026-09-08: `(sudo id)`, `{ sudo id ; }`, `if true; then sudo id; fi`
+ * and `>/dev/null sudo id` all read as commands named `(sudo`, `{`, `then` and
+ * `>/dev/null`, none of which is in any rule list.
+ */
+const SHELL_KEYWORDS = new Set([
+  "if", "then", "elif", "else", "fi", "while", "until", "do", "done",
+  "for", "case", "esac", "select", "function", "!", "{", "}", "(", ")",
+]);
+
+/** `>f`, `2>&1`, `<f`, `&>f` — a redirection, not a command. */
+function isRedirection(tok: string): boolean {
+  return /^[0-9]*[<>&]?[<>]/.test(tok);
+}
+
 function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; args: string[] } | undefined {
   const toks = tokenize(seg);
   let i = 0;
-  while (i < toks.length && isAssignment(toks[i])) i++;
-  while (i < toks.length && wrappers.has(basename(toks[i]))) {
-    const wrapper = basename(toks[i]);
-    i = skipWrapperArgs(wrapper, toks, i + 1);
+  // Each pass may expose another: `( exec env FOO=1 sudo … )`.
+  for (let moved = true; moved && i < toks.length;) {
+    moved = false;
+    while (i < toks.length && isAssignment(toks[i])) { i++; moved = true; }
+    while (i < toks.length && (SHELL_KEYWORDS.has(toks[i]) || isRedirection(toks[i]))) { i++; moved = true; }
+    // A `--` left by a wrapper's own option parsing separates options from the
+    // command; `timeout 5 -- sudo id` otherwise reports its command as `--`.
+    while (i < toks.length && toks[i] === "--") { i++; moved = true; }
+    while (i < toks.length && wrappers.has(basename(stripCommandPrefix(toks[i])))) {
+      const wrapper = basename(stripCommandPrefix(toks[i]));
+      i = skipWrapperArgs(wrapper, toks, i + 1);
+      moved = true;
+    }
   }
   if (i >= toks.length) return undefined;
-  return { command: basename(toks[i]), args: toks.slice(i + 1) };
+  return { command: basename(stripCommandPrefix(toks[i])), args: toks.slice(i + 1) };
+}
+
+/**
+ * Remove what the shell removes before it looks the command up: a leading
+ * backslash (which only suppresses alias expansion -- `\sudo` runs sudo) and
+ * any grouping punctuation fused to the word, as in `(sudo`.
+ */
+function stripCommandPrefix(tok: string): string {
+  let t = tok;
+  while (t.length > 1 && (t[0] === "(" || t[0] === "{")) t = t.slice(1);
+  while (t.startsWith("\\")) t = t.slice(1);
+  return t;
 }
 
 /** First non-flag arg, skipping value-taking global options (e.g. git -C <dir>). */
@@ -284,6 +333,12 @@ function resolveAny(input: string, cwd: string): string {
   if (input === "$HOME" || input === "${HOME}") return HOME;
   if (input.startsWith("$HOME/")) return resolve(HOME, input.slice(6));
   if (input.startsWith("${HOME}/")) return resolve(HOME, input.slice(8));
+  // $PWD is how a shell names the directory the guard already knows as cwd;
+  // without this `$PWD/.claude/hooks/guardrails.ts` resolved to a literal path
+  // component and missed every machinery rule.
+  if (input === "$PWD" || input === "${PWD}") return resolve(cwd);
+  if (input.startsWith("$PWD/")) return resolve(cwd, input.slice(5));
+  if (input.startsWith("${PWD}/")) return resolve(cwd, input.slice(7));
   if (input.startsWith("/")) return resolve(input);
   return resolve(cwd, input);
 }
@@ -515,7 +570,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
    * an ordinary read. Only the forms that discard history are named.
    */
   function gitRecoveryPruneReason(args: string[]): string | undefined {
-    const sub = args.find(a => !a.startsWith("-"));
+    // subcommandOf, not the first non-flag token: `git -C . gc --prune=now`
+    // otherwise reads its subcommand as `.` and passes. Its sibling
+    // gitCleanIgnoredReason already does this.
+    const sub = subcommandOf(args, GIT_VALUE_OPTS);
     const rest = args.filter(a => a !== sub);
     if (sub === "gc" && rest.some(t => t === "--prune" || t.startsWith("--prune=")))
       return "prunes unreachable objects (takes dangling checkpoint snapshots)";

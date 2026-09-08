@@ -53,7 +53,8 @@
     "setsid",
     "stdbuf",
     "xargs",
-    "timeout"
+    "timeout",
+    "exec"
   ],
   "shell_runners": [
     "sh",
