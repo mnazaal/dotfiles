@@ -95,6 +95,29 @@ const TABLE: Row[] = [
   { command: "bash -cx 'sudo apt install ripgrep'", expected: "deny", note: "reading the flag tail as the script hid this" },
   { command: "timeout 5 -- sudo apt install ripgrep", expected: "deny", note: "the -- a wrapper leaves behind is not the command" },
   { command: "git -C /tmp gc --prune=now", expected: "deny", note: "git's own -C must not hide the subcommand" },
+
+  // --- moving a branch the agent may not own ---------------------------------
+  // The reference-transaction hook holds this policy, but it was NOT consulted
+  // for `git reset --hard`: driven directly it rejects a main ref move, the
+  // prefix is exported, and the reset still succeeded. update-ref and branch -f
+  // were already denied here; these are the remaining forms that move a branch.
+  // cwd is /tmp/project, which is not a checkout, so currentBranch() returns ""
+  // and the reset rows below exercise the checkout/switch forms instead.
+  { command: "git checkout -B main abc123", expected: "deny", note: "force-moves a branch outside the agent prefix" },
+  { command: "git switch -C main abc123", expected: "deny" },
+  { command: "git checkout -B claude/topic abc123", expected: "allow", note: "the agent's own namespace is its to move" },
+  { command: "git switch -C worktree-claude-x abc123", expected: "allow", note: "the worktree- allowance the hook also makes" },
+  { command: "git checkout -b claude/topic", expected: "allow", note: "-b creates, it does not move an existing branch" },
+
+  // --- the global git config is stow-deployed machinery -----------------------
+  // `git config --global` edits a file in this repository from anywhere on the
+  // system. That is how an agent silently replaced the commit identity, and no
+  // rule fired because the tool was named in none of them.
+  { command: "git config --global user.email x@example.invalid", expected: "deny" },
+  { command: "git config --system core.editor vim", expected: "deny" },
+  { command: "git config --global --get user.email", expected: "allow", note: "reads stay allowed" },
+  { command: "git config --global --list", expected: "allow" },
+  { command: "git config user.email x@example.invalid", expected: "allow", note: "repo-local config is not machinery" },
   { command: "git -C /tmp reflog expire --expire=now --all", expected: "deny" },
   // Controls: the same shapes must not start denying ordinary work.
   { command: "( cd /tmp && ls )", expected: "allow" },

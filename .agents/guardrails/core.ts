@@ -13,7 +13,7 @@
  * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
 import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 
 const HOME = homedir();
@@ -530,6 +530,82 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
   }
 
   // command guard ------------------------------------------------------------
+  /** The branch a repo currently has checked out, or "" if unreadable. A
+   * `git reset` names no branch: it moves whichever one HEAD points at. */
+  function currentBranch(cwd: string): string {
+    let dir = resolve(cwd);
+    for (let i = 0; i < 40; i++) {
+      try {
+        const dotgit = join(dir, ".git");
+        if (existsSync(dotgit)) {
+          let gitdir = dotgit;
+          if (!statSync(dotgit).isDirectory()) {
+            const m = /^gitdir:\s+(.+)$/m.exec(readFileSync(dotgit, "utf8"));
+            if (!m) return "";
+            gitdir = m[1].trim();
+          }
+          const h = join(gitdir, "HEAD");
+          if (!existsSync(h)) return "";
+          const r = /^ref:\s+refs\/heads\/(.+)$/m.exec(readFileSync(h, "utf8"));
+          return r ? r[1].trim() : "";
+        }
+      } catch { return ""; }
+      const up = dirname(dir);
+      if (up === dir) break;
+      dir = up;
+    }
+    return "";
+  }
+
+  /**
+   * Moving a branch the agent may not own. Mirrors the reference-transaction git
+   * hook rather than inventing a second policy: same prefix, same worktree-
+   * allowance, silent when no prefix is set because that is a human.
+   *
+   * It exists because the hook was NOT consulted for `git reset --hard`
+   * (observed 2026-09-08: driven directly the hook rejects a main ref move, the
+   * variable is exported, and the reset still succeeded). update-ref and
+   * branch -f were already denied; these are the remaining forms that move one.
+   */
+  function protectedBranchMove(args: string[], cwd: string): string | undefined {
+    const prefix = process.env.AGENT_BRANCH_PREFIX ?? "";
+    if (!prefix) return undefined;
+    const ownable = (b: string) =>
+      b === "" || b.startsWith(prefix + "/") || b.startsWith("worktree-" + prefix);
+    const sub = subcommandOf(args, GIT_VALUE_OPTS);
+    const rest = args.slice(args.indexOf(sub) + 1);
+    if (sub === "reset") {
+      // Only a reset carrying a commit-ish moves the branch.
+      if (rest.filter(a => !a.startsWith("-")).length === 0) return undefined;
+      const b = currentBranch(cwd);
+      if (!ownable(b)) return `moves the ${b} branch (git reset)`;
+      return undefined;
+    }
+    if (sub === "checkout" || sub === "switch") {
+      const i = rest.findIndex(a => a === "-B" || a === "-C");
+      if (i === -1) return undefined;
+      const target = rest[i + 1] ?? "";
+      if (!ownable(target)) return `force-moves the ${target} branch (git ${sub} ${rest[i]})`;
+    }
+    return undefined;
+  }
+
+  /**
+   * A write to the GLOBAL git config. That file is stow-deployed from this
+   * repository, so `git config --global` edits the repo from anywhere on the
+   * system -- which is how an agent silently replaced the commit identity on
+   * 2026-09-08. hooksPath was already guarded; this covers the rest of the file.
+   * Reads stay allowed and a repo-local `git config` is untouched.
+   */
+  function globalConfigWriteReason(args: string[]): string | undefined {
+    if (subcommandOf(args, GIT_VALUE_OPTS) !== "config") return undefined;
+    if (!args.some(a => a === "--global" || a === "--system")) return undefined;
+    const READS = new Set(["--get", "--get-all", "--get-regexp", "--get-urlmatch",
+      "--list", "-l", "--name-only", "--show-origin", "--show-scope", "-e", "--edit"]);
+    if (args.some(a => READS.has(a))) return undefined;
+    return "writes the global git config (stow-deployed machinery)";
+  }
+
   function gitBypassReason(args: string[]): string | undefined {
     let i = 0;
     const n = args.length;
@@ -724,6 +800,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (r && record({ reason: r, category: "git-guard-bypass" })) return worst;
         const pr = gitRecoveryPruneReason(args);
         if (pr && record({ reason: pr, category: "git-recovery-prune" })) return worst;
+        const bm = protectedBranchMove(args, here);
+        if (bm && record({ reason: bm, category: "git-guard-bypass" })) return worst;
+        const gc = globalConfigWriteReason(args);
+        if (gc && record({ reason: gc, category: "git-guard-bypass" })) return worst;
         const c = gitCleanIgnoredReason(args);
         if (c && record({ reason: c, category: "git-clean-ignored" })) return worst;
       }
