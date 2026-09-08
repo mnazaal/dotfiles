@@ -235,6 +235,8 @@
         "~/dotfiles/.zshenv"
       ],
       "denyRead": [
+        "~/**/.env",
+        "~/**/.env.*",
         "~/.aws",
         "~/.claude/.credentials.json",
         "~/.config/git/credentials",

@@ -68,6 +68,16 @@ guarded = set(credentials) | set(machinery)
 rules = {r[r.index("(") + 1 : -1].removesuffix("/**") for r in deny if r.startswith(("Read(", "Edit("))}
 rules |= set(filesystem.get("denyWrite", [])) | deny_read
 for rule in sorted(rules):
+    # A rule that still holds a wildcard here cannot be compared against the
+    # shared policy at all: that policy lists literal paths, so `~/**/.env` is
+    # absent from it however complete it is, and demanding a match would report
+    # a hole that does not exist. The `/**` suffix form is already normalised
+    # away above; what reaches this point is an embedded wildcard. pi is not
+    # left behind by the skip, because those paths are covered for both agents
+    # by the segment guard in core.ts (`.env`, `.env.*`, `.git/hooks`) rather
+    # than by a path list.
+    if "*" in rule:
+        continue
     if rule.startswith("~/") and rule not in guarded:
         problems.append(f"settings.json denies a path the shared policy omits: {rule}")
 
