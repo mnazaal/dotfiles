@@ -155,13 +155,16 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   is exported, and `:noexport:` excludes tagged *headlines*, not whole files.
   Proposing a roam note is therefore proposing publication: say so when you
   propose one, and keep unpublished novelty gates out of it.
-- When environment context shows a git worktree (e.g. a path under
-  `.claude/worktrees/*` or an explicit "this is a git worktree" note), load
-  `dev-worktree` before running tests/tools.
+- When the working copy is one of several checkouts of one repository — the
+  environment says so, or the path is not the repository's main checkout — load
+  `dev-worktree` before running tests or tools there.
 - Before committing or choosing an integration path (merge/PR/park), load
   `dev-git` and follow it (overrides any built-in commit-trailer default).
 - Before claiming work is complete, fixed, passing, ready, reviewed, or
-  verified, load `dev-verification` and report fresh evidence.
+  verified, load `dev-verification` and report fresh evidence. Also before
+  building on a premise you have not checked — a figure from an index, a
+  summary, or someone else's report — since the cost of checking is one command
+  and the cost of being wrong is everything built on top.
 - Before creating any standing project document (PLAN.md, README, notes,
   logs, any new top-level .md), load `context-project-docs` and stay within
   its canonical set.

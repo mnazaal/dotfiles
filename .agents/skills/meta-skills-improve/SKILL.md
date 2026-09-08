@@ -69,10 +69,17 @@ could help. Three channels exist and they are not interchangeable:
 The limit worth knowing: every gate keys on something the agent DOES, so a
 behaviour whose trigger is the ABSENCE of an action — asking before acting,
 verifying before starting, orienting before working, delegating instead of
-reading — emits no event and therefore cannot be gated at all. For those, prose
-is the ceiling and no amount of rewording raises it. Say so and stop, rather
-than rewriting the rule a third time; the honest alternatives are a channel that
-does not depend on the agent's judgement, or accepting partial compliance.
+reading — emits no event and therefore cannot be GATED at all.
+
+Separate that from the description question, which the Firing Audit answers
+below and which this does not overrule. A description can still be wrong for an
+absence-triggered behaviour, and fixing it still helps: it decides whether the
+skill is in front of the agent at all. What no rewording buys is DETERMINISM —
+the rule will still be followed sometimes and not others. So reword the
+description once if it is genuinely misleading, then stop and say the ceiling
+has been reached, rather than rewriting the body a third time expecting
+compliance. The honest alternatives are a channel that does not depend on the
+agent's judgement, or accepting partial compliance and saying so.
 
 The dual of this is already in Rules: if only a hook could enforce a lesson,
 record that and stop.
