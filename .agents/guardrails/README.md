@@ -81,6 +81,28 @@ message.
   a classifier test before they gain coverage; this is preferable to silently
   coupling policy to a current integration.
 
+## Design rules
+
+Learned from other people's configurations as much as from this one.
+
+- **Never replace enforcement with a prompt.** A tool allowlist that the runtime
+  applies and an instruction saying "do not edit anything" are not two spellings
+  of one idea: the first cannot be reasoned around and the second is advisory.
+  Trading the first for the second reads as simplification and is a downgrade,
+  and the measured gap between gated and ungated compliance in this config is
+  large enough to make that concrete.
+- **One policy, one engine.** Two mechanisms enforcing the same rule drift, and
+  the drift is silent. Deriving one from the other by matching the TEXT of the
+  first — a floor computed by string-matching the source of a regex list — is
+  the worst form: reword the pattern and the floor loses a rule with nothing to
+  notice.
+- **A toggle may never fail open.** If a guard cannot prompt because there is no
+  UI, that is the case for refusing, not for allowing. An "auto-allow when
+  headless" flag inverts the guard exactly where it is least supervised.
+- **Prefer a prefix or a shape to an enumeration** where the family is
+  open-ended. Ten enumerated `mkfs.*` names still missed two, and the next
+  filesystem would have reopened the hole with no symptom.
+
 ## Toggles
 
 - **`machinery_enabled`** (per agent) — protect the guardrail and sandbox files

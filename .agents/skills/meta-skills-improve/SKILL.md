@@ -38,6 +38,22 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - If only a hook or script could enforce a lesson, record that and stop: do not write prose that will be ignored, and do not build the mechanism unasked.
 - Codify a preference only after seeing it twice. Once, and contradicted once, is noise.
 
+## Placement decides whether a rule survives
+
+Where a rule lives predicts its lifespan better than how well it is written. A
+rule embedded in a document about something else dies when that something else
+is retired, however good the rule was; the same rule in a file of its own, that
+loads on its own trigger, outlives the thing it was written for and accumulates
+detail. Two consequences:
+
+- Do not attach a general rule to a specific roster, tool or workflow. Prose
+  that names the members of a set becomes wrong the moment the set changes,
+  and it takes the good content with it.
+- A rule that must apply to EVERY message cannot live behind a trigger. Style
+  and register rules are the clearest case: gated on a description, they fire
+  only when someone asks for prose editing and never on the ordinary messages
+  where the register actually slips. Those belong in the always-loaded layer.
+
 ## Reachability: which channel can carry a rule at all
 
 Before rewriting a rule that is not being followed, decide whether any rewrite

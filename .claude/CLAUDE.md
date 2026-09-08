@@ -22,6 +22,24 @@ The shared rules above are written tool-agnostically (for the pi agent). Map the
   pytest`, `.venv/bin/python -m pytest`, or `uv run pytest`. Use `uv` for
   environment/dependency management only.
 
+## Memory store
+
+The cross-session memory is file-per-fact with a `MEMORY.md` index. Two rules,
+both learned by being bitten:
+
+- **The index is a summary frozen at write time.** It is what loads every
+  session, so it is what gets quoted — and a fact superseded INSIDE its own file
+  does not propagate to the line pointing at that file. A figure was quoted from
+  an index line that its own file marked stale, and was wrong by 5x. So: when a
+  fact is superseded, edit the index line in the SAME pass, or make the index
+  line say to open the file. Before quoting any number from an index line, open
+  the file.
+- **Nothing retires a memory, so the store only grows.** Prefer rewriting an
+  existing file over adding a sibling, merge two entries that cover one topic,
+  and delete what turned out wrong rather than leaving it beside its correction.
+  Reserve additions for facts that will still matter in a month. If the index
+  passes roughly 60 lines, spend a pass merging before adding.
+
 ## Style
 
 Default to concise, high-signal output: bullets, tight phrasing, expand only when

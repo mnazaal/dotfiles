@@ -36,6 +36,23 @@ description: "Use for minimal software solutions: YAGNI, simplest correct code, 
 - Optimize for reversibility and low maintenance.
 - Stop when requirements are satisfied.
 
+## What decays
+
+Observed across personal tool configurations, including retirements by other
+practitioners:
+
+- **A single-source adapter behind a credential is the decay class.** One
+  integration per site or per API, each with its own key, is what gets abandoned
+  first — replaced by one general capability, or by nothing when the need turns
+  out to have been occasional. Weigh that before building the second one.
+- **Rebuilding what the runtime already knows decays even when it is large.**
+  A hand-rolled reimplementation of something the surrounding tool computes
+  exactly is the shape most reliably retired later, and sunk cost does not save
+  it: it is retired precisely because it must chase an upstream that moves.
+- **Retire references in the same pass as the thing.** A retirement that leaves
+  a live document pointing at the retired thing has not finished; the pointer
+  reads as current and costs the next reader the same investigation twice.
+
 ## Anti-Patterns
 
 - Architecture for imagined future needs.
