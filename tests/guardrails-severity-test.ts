@@ -23,12 +23,27 @@ import { createGuardrails } from "../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
 
+// The engine reads both of these from the environment, and the harness supplies
+// them to its own shell while a login shell supplies neither -- so the table
+// pins them rather than inheriting them, or it asserts one thing for whoever
+// runs it and another for everyone else. Unset, the engine DROPS its scratch
+// root instead of falling back to the OS temp dir, and the branch-move guard
+// returns before examining anything; seven rows then read the opposite of what
+// they say, and `make check` is green for the agent and red for the user. The
+// pinned root must sit strictly BELOW the OS temp dir, because the rows for a
+// root itself assume the root is not that directory.
+const scratchRoot = process.env.TMPDIR ?? mkdtempSync(join(tmpdir(), "guardrails-scratch-"));
+process.env.TMPDIR = scratchRoot;
+process.env.AGENT_BRANCH_PREFIX ??= "claude";
+
 // A sibling repository and a plain directory, both OUTSIDE cwd: the repo-root
 // rule is filesystem-backed (a directory holding .git is a root wherever it
-// sits), so the rows below need real directories, not string patterns.
+// sits), so the rows below need real directories, not string patterns. This
+// runs after the pin above so the fixture lands under the scratch root, which
+// two of the rows depend on.
 const fixture = mkdtempSync(join(tmpdir(), "guardrails-severity-"));
 // The engine resolves $TMPDIR itself; mirror it so the rows read the same root.
-const scratch = process.env.TMPDIR ? process.env.TMPDIR.replace(/\/$/, "") : tmpdir();
+const scratch = scratchRoot.replace(/\/$/, "");
 mkdirSync(join(fixture, "repo", ".git"), { recursive: true });
 mkdirSync(join(fixture, "plain"), { recursive: true });
 
