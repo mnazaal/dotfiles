@@ -36,9 +36,10 @@ check: test check-agent-role-sync check-guardrails-native-sync check-machinery-r
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
 		head -n 1 "$$file" | grep -Eq '^#!.*(sh|bash)' && printf '%s\n' "$$file"; \
 	done | sort)"; \
+	SC_STATUS=0; \
 	if command -v shellcheck >/dev/null 2>&1; then \
 		if [ -n "$$SHELL_SCRIPTS" ]; then \
-			shellcheck --severity=warning $$SHELL_SCRIPTS; \
+			shellcheck --severity=warning $$SHELL_SCRIPTS || SC_STATUS=$$?; \
 		else \
 			echo "warn: no shell scripts found for shellcheck"; \
 		fi; \
@@ -58,6 +59,10 @@ check: test check-agent-role-sync check-guardrails-native-sync check-machinery-r
 		fi; \
 	else \
 		echo "warn: shfmt not installed; skipping shfmt"; \
+	fi; \
+	if [ "$$SC_STATUS" -ne 0 ]; then \
+		echo "ShellCheck reported findings above; `make check` fails on them." >&2; \
+		exit "$$SC_STATUS"; \
 	fi
 
 test:
@@ -186,12 +191,16 @@ except ValueError as e:
 if not declared:
     sys.exit(0)
 
-# Skip rather than fail where pi is not installed at all: this repo deploys to
-# machines that do not run pi, and a check that fails there is a check nobody
-# can keep green. Same degradation as the shellcheck and shfmt steps.
-if not shutil.which("pi"):
+# Skip where pi is not in use on this machine. The gate must NOT be
+# shutil.which("pi"): .local/scripts/pi is a shim THIS REPO DEPLOYS, so after
+# `make link` the binary is always on PATH and the check failed on every
+# deployed machine while skipping on undeployed ones -- exactly backwards, and
+# the opposite of the intent stated above it. pi creates npm/ the first time it
+# installs anything, so its presence is the honest signal that pi runs here.
+if not os.path.isdir(os.path.join(agent_dir, "npm")):
     if mode == "check":
-        print("warn: pi not installed; skipping pi-package check")
+        print("warn: no pi package directory at %s; skipping pi-package check"
+              % os.path.join(agent_dir, "npm"))
     sys.exit(0)
 
 missing = []
@@ -232,7 +241,9 @@ check-pi-packages:
 	@REPO="$(CURDIR)" python3 -c "$$PI_PACKAGES_PY" check
 
 pi-packages:
-	@REPO="$(CURDIR)" python3 -c "$$PI_PACKAGES_PY" missing | while IFS= read -r src; do \
+	@set -e; \
+	missing="$$(REPO="$(CURDIR)" python3 -c "$$PI_PACKAGES_PY" missing)"; \
+	printf '%s\n' "$$missing" | while IFS= read -r src; do \
 		[ -n "$$src" ] || continue; \
 		printf 'installing %s\n' "$$src"; \
 		pi install "$$src" || exit 1; \
