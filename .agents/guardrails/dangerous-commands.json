@@ -10,15 +10,6 @@
   ],
   "destructive": [
     "mkfs",
-    "mkfs.ext2",
-    "mkfs.ext3",
-    "mkfs.ext4",
-    "mkfs.fat",
-    "mkfs.vfat",
-    "mkfs.ntfs",
-    "mkfs.btrfs",
-    "mkfs.xfs",
-    "mkfs.zfs",
     "mkswap",
     "dd",
     "shred",
@@ -27,7 +18,30 @@
     "parted",
     "pvcreate",
     "vgcreate",
-    "lvcreate"
+    "lvcreate",
+    "wipefs",
+    "gdisk",
+    "sgdisk",
+    "cgdisk",
+    "cryptsetup"
+  ],
+  "_destructive_prefixes": "Matched with startsWith, because the filesystem-maker family is open-ended: enumerating ten mkfs.* names still missed mkfs.f2fs and mkfs.exfat, and the next new filesystem reopens the hole with no symptom.",
+  "destructive_prefixes": [
+    "mkfs.",
+    "newfs_"
+  ],
+  "_host_control": "Powering the workstation off or rebooting it is never the agent's call, and it ends the session mid-task.",
+  "host_control": [
+    "shutdown",
+    "reboot",
+    "poweroff",
+    "halt"
+  ],
+  "_network_fetchers": "Only meaningful piped into a bare shell -- see remote-code. A fetcher on its own is ordinary work.",
+  "network_fetchers": [
+    "curl",
+    "wget",
+    "fetch"
   ],
   "command_wrappers": [
     "command",
@@ -88,6 +102,9 @@
     "recursive-force-rm": {
       "claude": "allow",
       "pi": "ask"
-    }
+    },
+    "host-control": "deny",
+    "remote-code": "deny",
+    "git-recovery-prune": "deny"
   }
 }

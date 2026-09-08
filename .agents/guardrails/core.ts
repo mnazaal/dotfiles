@@ -83,10 +83,17 @@ function perAgent(spec: unknown, agent: string): unknown {
 
 // --- stateless string helpers (no config dependency) ------------------------
 
+/**
+ * A segment plus the one thing the old string-only split threw away: whether a
+ * single `|` joined it to the segment before. `curl … | sh` is only dangerous
+ * because of that pipe -- both halves are ordinary commands on their own.
+ */
+type Segment = { text: string; pipedFromPrev: boolean };
+
 /** Split on ; && || | & and newlines, respecting simple quotes. */
-function splitSegments(cmd: string): string[] {
-  const out: string[] = [];
-  let start = 0, inSQ = false, inDQ = false;
+function splitSegmentsTagged(cmd: string): Segment[] {
+  const out: Segment[] = [];
+  let start = 0, inSQ = false, inDQ = false, piped = false;
   for (let i = 0; i <= cmd.length; i++) {
     const ch = cmd[i] ?? "";
     if (inSQ) { if (ch === "'") inSQ = false; continue; }
@@ -96,11 +103,17 @@ function splitSegments(cmd: string): string[] {
     const two = (ch === "&" && cmd[i + 1] === "&") || (ch === "|" && cmd[i + 1] === "|");
     if (i === cmd.length || two || ch === "\n" || ch === ";" || ch === "&" || ch === "|") {
       const seg = cmd.slice(start, i);
-      if (seg.trim()) out.push(seg);
+      if (seg.trim()) out.push({ text: seg, pipedFromPrev: piped });
+      // A single `|` continues one pipeline; `||`, `&&`, `;`, `&` start a new one.
+      piped = ch === "|" && !two;
       start = i + (two ? 2 : 1);
     }
   }
   return out;
+}
+
+function splitSegments(cmd: string): string[] {
+  return splitSegmentsTagged(cmd).map(s => s.text);
 }
 
 /** Split into words on any char of `seps`, stripping quotes. */
@@ -369,6 +382,9 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 
   const ESCALATORS = new Set<string>(dc.escalators ?? []);
   const DESTRUCTIVE = new Set<string>(dc.destructive ?? []);
+  const DESTRUCTIVE_PREFIXES: string[] = dc.destructive_prefixes ?? [];
+  const HOST_CONTROL = new Set<string>(dc.host_control ?? []);
+  const NETWORK_FETCHERS = new Set<string>(dc.network_fetchers ?? []);
   const WRAPPERS = new Set<string>(dc.command_wrappers ?? []);
   const SHELL_RUNNERS = new Set<string>(dc.shell_runners ?? []);
   const FIND_EXEC = new Set<string>(dc.find_exec_primaries ?? []);
@@ -483,6 +499,31 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     return undefined;
   }
 
+  /**
+   * Git subcommands that destroy RECOVERY rather than work, kept separate from
+   * the hook-bypass family because they are a different kind of harm.
+   *
+   * Neither touches the checkpoint refs -- measured 2026-09-08: those are
+   * reachable roots and survive both, objects included. What dies is the margin
+   * around them. `gc --prune` collects the DANGLING snapshot, the case
+   * agent-checkpoint itself reports as recoverable by `git fsck --lost-found`
+   * "until gc runs" -- this is the command that ends that window. `reflog
+   * expire` drops the reflog, which `dev-git-rescue` leans on to undo a bad
+   * reset, rebase or branch delete.
+   *
+   * Plain `git gc` and plain `git reflog` stay allowed: routine maintenance and
+   * an ordinary read. Only the forms that discard history are named.
+   */
+  function gitRecoveryPruneReason(args: string[]): string | undefined {
+    const sub = args.find(a => !a.startsWith("-"));
+    const rest = args.filter(a => a !== sub);
+    if (sub === "gc" && rest.some(t => t === "--prune" || t.startsWith("--prune=")))
+      return "prunes unreachable objects (takes dangling checkpoint snapshots)";
+    if (sub === "reflog" && rest.some(t => t === "expire"))
+      return "expires the reflog (the undo history for a bad reset)";
+    return undefined;
+  }
+
   function confinementTamperReason(toks: string[]): string | undefined {
     if (toks.includes("AGENT_BRANCH_PREFIX")) {
       if (toks.includes("unset")) return "unsets AGENT_BRANCH_PREFIX (branch confinement)";
@@ -513,12 +554,24 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     // started in -- without this the most common destructive form is invisible.
     let here = cwd;
     let hereKnown = true;
-    for (const seg of splitSegments(cmd)) {
+    // Does anything earlier in THIS pipeline download? Reset whenever a
+    // separator other than a single `|` starts a new one.
+    let pipelineFetches = false;
+    for (const { text: seg, pipedFromPrev } of splitSegmentsTagged(cmd)) {
+      if (!pipedFromPrev) pipelineFetches = false;
       const tamper = confinementTamperReason(tokenize(seg));
       if (tamper) return { reason: tamper, category: "confinement" };
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
       const { command, args } = parsed;
+      // `curl … | sh` executes code nobody in this session has read. Narrowed to
+      // a fetch upstream of a shell reading STDIN: `… | sh -c '…'` is handled by
+      // the shell-runner recursion below, and a bare `| sh` with no download in
+      // front of it is a local script, which the path rules already judge.
+      if (pipedFromPrev && pipelineFetches && SHELL_RUNNERS.has(command) && !dashCArg(args)) {
+        return { reason: "pipes a download into a shell", category: "remote-code" };
+      }
+      if (NETWORK_FETCHERS.has(command)) pipelineFetches = true;
       if (command === "cd") {
         const target = firstNonFlag(args);
         if (!target) here = HOME;
@@ -527,7 +580,9 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         continue;
       }
       if (ESCALATORS.has(command)) return { reason: "privilege escalation", category: "escalation" };
-      if (DESTRUCTIVE.has(command)) return { reason: "destructive command", category: "disk-destructive" };
+      if (DESTRUCTIVE.has(command) || DESTRUCTIVE_PREFIXES.some(p => command.startsWith(p)))
+        return { reason: "destructive command", category: "disk-destructive" };
+      if (HOST_CONTROL.has(command)) return { reason: "host power control", category: "host-control" };
       if (command === "rm" && hasRmRecursiveForce(args)) {
         const targets = args.filter(a => !a.startsWith("-"));
         // After `cd -` the directory is unknowable. A false deny costs a
@@ -554,6 +609,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         return { reason: "world-writable permissions", category: "world-writable" };
       if (command === "git") {
         const r = gitBypassReason(args); if (r) return { reason: r, category: "git-guard-bypass" };
+        const p = gitRecoveryPruneReason(args); if (p) return { reason: p, category: "git-recovery-prune" };
         const c = gitCleanIgnoredReason(args); if (c) return { reason: c, category: "git-clean-ignored" };
       }
       if (command === "find") {
