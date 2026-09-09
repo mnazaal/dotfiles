@@ -293,7 +293,7 @@ r=$(new_repo statusfail)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod 000 "$r/.git/index"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
 chmod 644 "$r/.git/index"
 [ "$rc" -ne 0 ] || fail "a working tree that cannot be read must not report success"
 printf '%s' "$out" | grep -q 'git status failed' ||
@@ -308,7 +308,7 @@ r=$(new_repo addfail)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod 000 "$r/tracked.txt"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
 chmod 644 "$r/tracked.txt"
 [ "$rc" -ne 0 ] ||
 	fail "a snapshot holding nothing new must not report success (got: $out)"
