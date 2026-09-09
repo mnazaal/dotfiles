@@ -1,10 +1,11 @@
-.PHONY: help link clean check test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages pi-packages
+.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages pi-packages
 
 help:
 	@printf '%s\n' \
 		'link   - stow repository files' \
 		'clean  - silently remove links this repository deployed (DEEP=1 also sweeps $$HOME for links left by renames)' \
 		'test   - run isolated repository behavior tests' \
+		'session-entry - point the GDM session at mango-session (needs root, once per machine)' \
 		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)' \
 		'pi-packages - install pi packages that settings.json declares but are missing'
 
@@ -40,6 +41,15 @@ clean:
 			-path "$(CURDIR)" -prune -o \
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
+
+# The one piece of this deployment that cannot be declarative: GDM reads only
+# system session directories, so the entry naming the session is root-owned and
+# outside this repository. Keeping the command here puts it in the repository
+# instead of in someone's memory, and dotfiles-doctor warns whenever the live
+# entry stops naming mango-session -- which a mango reinstall would do silently.
+session-entry:
+	sudo sed -i 's|^Exec=.*|Exec=$(HOME)/.local/scripts/mango-session|' /usr/share/wayland-sessions/mango.desktop
+	@grep -n '^Exec=' /usr/share/wayland-sessions/mango.desktop
 
 check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
