@@ -8,6 +8,7 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 ## Rules
 
 - Follow AGENTS.md “Shell Output Capture”: long/background verification writes full output and exit status to files; add unbuffered output only when the command supports it and you need live log checks. Never rely on `cmd | tail`/`head` evidence.
+- A wrapper's exit status is not the command's. `{ cmd; echo $?; } > log`, a pipeline, and the harness's own completion notification all report the WRAPPER's success, so a failed build reads as green. Read the status line recorded inside the log, and treat a reported exit code for anything but the bare command as no evidence at all.
 - Evidence before claims.
 - Verify the premise BEFORE building on it, not only the result before claiming
   it. A fact taken from an index, a summary, a memory line or someone's report
@@ -65,6 +66,7 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 | a mechanism explains an observed magnitude | that mechanism's own size measured directly, in isolation — arithmetic that reconstructs the observed number from published constants is a story fitted to it, and the direct measurement routinely lands a factor away. The residual is then the real finding |
 | A is faster than B | both timings from one interleaved run (separate runs drift), best-of-N, and every timed run asserted to have produced its expected artifact — a run that failed early is the fastest run. A difference smaller than the spread between repeats of the *same* input is noise, not a result. For compiled/JIT code discard a warm-up iteration before timing: first-call compilation can dominate a short measurement and invert the ranking, and a per-unit cost that RISES as the problem gets smaller is the tell |
 | a mechanism claim holds of the runs | the claim evaluated at the parameter values actually used, not only argued in general — a claim can be true and *vacuous* (a containment that holds because no arm ever approaches the boundary), and the proof is exactly what hides it |
+| safe to remove an item from a cross-referenced corpus | inbound references to it counted and shown to be zero — its own size, emptiness or content cannot establish this, because in a linked corpus (notes, modules, docs) a stub earns its place by being pointed at |
 
 ## Anti-Patterns
 
