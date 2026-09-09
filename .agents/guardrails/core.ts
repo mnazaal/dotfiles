@@ -17,6 +17,10 @@ import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 
 const HOME = homedir();
+// Read once, beside HOME, and used both to resolve "$TMPDIR/..." targets and to
+// derive the scratch roots. Empty when unset, which disables both -- fail-safe:
+// nothing becomes exempt.
+const TMPDIR = process.env.TMPDIR ?? "";
 
 /**
  * Is this process inside the container sandbox? Machinery is unwritable at the
@@ -339,6 +343,17 @@ function resolveAny(input: string, cwd: string): string {
   if (input === "$PWD" || input === "${PWD}") return resolve(cwd);
   if (input.startsWith("$PWD/")) return resolve(cwd, input.slice(5));
   if (input.startsWith("${PWD}/")) return resolve(cwd, input.slice(7));
+  // $TMPDIR is how AGENTS.md tells an agent to name the session scratch
+  // directory, so leaving it literal made the recursive-rm scratch exemption
+  // unreachable for the ONE form it exists to cover: `rm -rf "$TMPDIR/x"`
+  // resolved to <cwd>/$TMPDIR/x and fell to the ask tier, prompting the user
+  // for every scratch cleanup. Expanded only when the variable is actually
+  // set -- an empty value must not turn "$TMPDIR/x" into "/x".
+  if (TMPDIR) {
+    if (input === "$TMPDIR" || input === "${TMPDIR}") return resolve(TMPDIR);
+    if (input.startsWith("$TMPDIR/")) return resolve(TMPDIR, input.slice(8));
+    if (input.startsWith("${TMPDIR}/")) return resolve(TMPDIR, input.slice(10));
+  }
   if (input.startsWith("/")) return resolve(input);
   return resolve(cwd, input);
 }
@@ -1107,7 +1122,13 @@ export function createGuardrails(agent: string, opts: GuardOptions = {}) {
     const operation = event.operation ?? inferOperation(event.tool, event);
 
     const r = guard.evaluate({ command: event.command, paths, cwd, operation });
-    if (r.decision !== "allow") return r;
+    // Strictest wins across the two subsystems. This used to return ANY
+    // non-allow danger result immediately, so a weaker `ask` masked the
+    // skill-gate `deny` the same call earned -- and bypass-permissions mode
+    // auto-approves `ask`, so one `rm -rf` anywhere in a call silently
+    // disabled every bash gate in it. A danger `deny` is still final: no gate
+    // can make the call safer.
+    if (r.decision === "deny") return r;
 
     const loaded = loadedSkills instanceof Set ? loadedSkills : new Set(loadedSkills ?? []);
     const hits = skillGate.requiredSkills({ ...event, paths, urls, cwd, operation });
@@ -1121,7 +1142,10 @@ export function createGuardrails(agent: string, opts: GuardOptions = {}) {
         skills: missing,
       };
     }
-    return { decision: "allow" };
+    // No gate fired, so the danger scan's own verdict stands -- `ask` with its
+    // reason, or `allow`. Returning a bare allow here would have discarded an
+    // `ask` the scan had already earned.
+    return r;
   }
 
   return { evaluate };

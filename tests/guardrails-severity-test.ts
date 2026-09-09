@@ -162,6 +162,13 @@ const TABLE: Row[] = [
   { command: `rm -rf ${scratch}`, expected: "ask", note: "the root itself is never exempt" },
   { command: "rm -rf /tmp", expected: "deny", note: "denied because it contains the cwd, not by the scratch rule" },
   { command: `rm -rf ${scratch}/keep build`, expected: "ask", note: "every target must be scratch, not just one" },
+  // The forms an agent actually writes. AGENTS.md tells it to name scratch
+  // paths with $TMPDIR, and the resolver expanded ~, $HOME and $PWD but not
+  // $TMPDIR -- so the exemption could not fire for the one form it exists to
+  // cover, and every scratch cleanup prompted the user.
+  { command: 'rm -rf "$TMPDIR/teststate"', expected: "allow", note: "the $TMPDIR form resolves to the scratch root" },
+  { command: 'rm -rf "${TMPDIR}/a/b"', expected: "allow", note: "braced form too" },
+  { command: 'rm -rf "$TMPDIR"', expected: "ask", note: "the root itself stays unexempt in the $TMPDIR form as well" },
   { command: "rm -rf /tmp/x; rm -rf ~", expected: "deny", note: "the home-directory rule behind its own tier" },
   { command: "rm -rf /tmp/x; git push origin +main", expected: "deny" },
   { command: "rm -rf /tmp/x; mkfs.ext4 /dev/sda1", expected: "deny" },
@@ -425,6 +432,29 @@ test("test-command capability: runner subcommands count as a test run", () => {
     const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
     expect(`${command}: ${r.decision}`).toBe(`${command}: allow`);
   }
+});
+
+// A danger decision used to short-circuit the skill gates: `evaluate`
+// returned ANY non-allow result before consulting them, so a weaker `ask`
+// masked the `deny` the same call had earned -- and bypass-permissions mode
+// auto-approves `ask`, which meant one `rm -rf` anywhere in a call silently
+// disabled every bash gate in it. Strictest wins now.
+test("skill gates survive an ask-tier danger in the same call", () => {
+  const rails = createGuardrails("claude");
+  const gated = "git worktree add --detach /tmp/x HEAD";
+  const askTier = `rm -rf ${scratch}/keep build`;
+  expect(rails.evaluate({ tool: "bash", command: gated, cwd }, new Set()).decision).toBe("deny");
+  expect(rails.evaluate({ tool: "bash", command: askTier, cwd }, new Set()).decision).toBe("ask");
+  const both = rails.evaluate({ tool: "bash", command: `${askTier}\n${gated}`, cwd }, new Set());
+  expect(both.decision).toBe("deny");
+  expect((both.skills ?? []).includes("dev-worktree")).toBe(true);
+  // With the gate satisfied, the danger scan's own verdict must still stand
+  // rather than being flattened to allow.
+  const satisfied = rails.evaluate(
+    { tool: "bash", command: `${askTier}\n${gated}`, cwd },
+    new Set(["dev-worktree"]),
+  );
+  expect(satisfied.decision).toBe("ask");
 });
 
 const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
