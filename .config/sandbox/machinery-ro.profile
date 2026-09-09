@@ -45,6 +45,17 @@ RO_LAST+=(
 	"$H/.local/share/cargo/bin"
 	"$H/.local/share/go/bin"
 	"$H/.local/share/pkgit/kitty/HEAD/kitty/launcher"
+	# The fourth of the same class, 2026-09-09. Pinned as the TREE, not as the
+	# PATH entry: that entry is $H/.local/share/fnm/aliases/default/bin, and
+	# aliases/default is a SYMLINK into node-versions/<v>/installation. bwrap
+	# mkdirs a mountpoint before binding it and cannot mkdir through a symlink
+	# whose target is not yet in the namespace, so pinning the entry itself
+	# aborts the launch outright ("Can't mkdir .../aliases/default/bin").
+	# Pinning the tree also closes the route the leaf pin left open: aliases/
+	# becomes read-only, so the symlink cannot be repointed at a writable dir.
+	# Nothing writes here in normal use -- node is read from the default alias,
+	# and fnm install/alias are deliberate acts run outside a sandbox.
+	"$H/.local/share/fnm"
 )
 
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv

@@ -93,6 +93,34 @@ assert_mounts() { # label output required mounts... -- forbidden mount fragments
 	done
 }
 
+# A PATH directory is protected when it, OR ANY ANCESTOR, is bound read-only
+# AFTER the writable bind -- that is the property; pinning the leaf is only one
+# way to satisfy it. Asserting the leaf literally is wrong twice over: a pin
+# whose path crosses a symlink cannot be emitted at all (bwrap mkdirs the
+# mountpoint first), and the fixture below materialises every entry as a real
+# directory, so the literal form passes on a shape the host does not have.
+# Found 2026-09-09: $H/.local/share/fnm/aliases/default/bin is a symlinked path;
+# pinning it passed this suite and aborted every real launch.
+assert_path_entry_pinned() { # cwd profile writable-bind entry
+	local dir=$1 profile=$2 earlier=$3 entry=$4 output rest cand tried=""
+	output=$(run "$dir" -p "$profile")
+	case "$output" in *"$earlier"*) ;; *)
+		printf '%s profile missing mount: %s\n' "$profile" "$earlier" >&2
+		exit 1
+		;;
+	esac
+	rest=${output#*"$earlier"}
+	cand=$entry
+	while [ -n "$cand" ] && [ "$cand" != "/" ]; do
+		tried="$tried $cand"
+		case "$rest" in *"--ro-bind $cand $cand"*) return 0 ;; esac
+		cand=${cand%/*}
+	done
+	printf '%s profile leaves %s writable: no read-only pin after the writable bind on it or any ancestor (tried:%s)\n' \
+		"$profile" "$entry" "$tried" >&2
+	exit 1
+}
+
 assert_mount_order() { # cwd profile earlier-mount later-mount
 	local dir=$1 profile=$2 earlier=$3 later=$4 output rest
 	output=$(run "$dir" -p "$profile")
@@ -509,8 +537,8 @@ for entry in "${host_path[@]}"; do
 	esac
 done
 for dir in "${pathdirs[@]}"; do
-	assert_mount_order "$project" agent-pi \
+	assert_path_entry_pinned "$project" agent-pi \
 		"--bind $home/.local/share $home/.local/share" \
-		"--ro-bind $dir $dir"
+		"$dir"
 done
 printf 'sandbox profiles: all %s PATH directories under a writable bind are pinned\n' "${#pathdirs[@]}"
