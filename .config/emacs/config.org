@@ -1259,8 +1259,10 @@ context. =C-c x c= changes code under point, =C-c x q= asks without editing.
 Handled TODOs are toggled to =DONE:= by rerunning the command on the line.
 
 Turn review stays in magit: =magit-diff-range= against the newest
-=refs/agent-checkpoint/claude/*= ref shows what the last turn changed, and
-=magit-reset-worktree= restores from one.
+=refs/agent-checkpoint/*/*= ref shows what the last turn changed, and
+=magit-reset-worktree= restores from one. Glob the prefix rather than naming
+=claude=: =agent-checkpoint= namespaces refs by =AGENT_BRANCH_PREFIX= so two
+harnesses in one repo keep separate trails, and pi's prefix is =pi=.
 
 Note it writes prompt history under =.ai.code.files/= at the git root, which
 is globally ignored in =.config/git/ignore=.
