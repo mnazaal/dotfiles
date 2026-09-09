@@ -4,7 +4,6 @@ RO+=(
 	"$H/.local/bin"
 	"$H/.local/share/fnm"
 	"$H/.local/share/bun"
-	"$H/.gitconfig"
 	"$H/.config/git"
 )
 
