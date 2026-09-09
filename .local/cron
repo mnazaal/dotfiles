@@ -3,6 +3,11 @@
 # default ~/.password-store ("<entry> is not in the password store") and gpg in
 # ~/.gnupg (pinentry "Inappropriate ioctl for device").
 # m h  dom mon dow   command
+# This file is the source of truth for the schedule, and this entry is what
+# makes that true: cron never reads it, so an edit here would otherwise stay
+# inert until someone remembered to reinstall it by hand. Consequence: an edit
+# made with `crontab -e` is reverted within 15 minutes. Edit this file instead.
+*/15 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/crontab-sync.lock" -c "$HOME/.local/scripts/crontab-sync" >> "$HOME/.local/state/crontab-sync.log" 2>&1'
 */10 * * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/ical2org.lock" -c "$HOME/.local/scripts/cal-sync-cron" >> "$HOME/.local/state/ical2org.log" 2>&1'
 # The two mbsync jobs share one lock so they never write the maildir or the
 # notmuch database concurrently; the hourly one uses -xn too, so it skips

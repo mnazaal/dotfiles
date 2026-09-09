@@ -8,8 +8,19 @@ help:
 		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)' \
 		'pi-packages - install pi packages that settings.json declares but are missing'
 
+# Deploying also brings the live crontab into step. stow only creates symlinks,
+# and cron reads its own copy rather than the tracked file, so `make link` would
+# otherwise leave the schedule describing the last hand-run `crontab` call.
+# crontab-sync is idempotent and validates before installing.
+#
+# Guarded on HOME being the real login home: crontab is per-USER, not per-HOME,
+# so an unguarded call would install this repository's crontab over the live one
+# every time the test suite runs `make link HOME=<tmpdir>`.
 link:
 	stow --target="$(HOME)" --no-folding .
+	@if [ "$(HOME)" = "$$(getent passwd "$$(id -un)" | cut -d: -f6)" ]; then \
+		"$(HOME)/.local/scripts/crontab-sync"; \
+	fi
 
 # Undo what link deployed, driven by the repository tree rather than by a walk
 # of $HOME: stow removes its own links, and the rmdir pass clears directories

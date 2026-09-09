@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+crontab-sync - make the live crontab equal the tracked one
+
+USAGE:
+  crontab-sync [--help]
+
+DESCRIPTION:
+  Compares the live crontab with ~/.local/cron, ignoring comments and blank
+  lines, and reinstalls it when they differ. cron never reads the repository
+  copy -- `crontab <file>` is the only way in -- so without this the tracked
+  file and the live schedule drift apart in silence. That is how the OneDrive
+  job came to be commented out live and absent from the tracked file at the
+  same time, running nowhere and recorded nowhere.
+
+  The tracked file is the source of truth: an edit made with `crontab -e` is
+  reverted at the next run. Edit ~/.local/cron instead.
+
+  Prints nothing when the two already agree, so it is quiet under cron.
+
+ENVIRONMENT:
+  CRON_FILE   tracked crontab to install (default ~/.local/cron)
+EOF
+}
+
+case "${1:-}" in
+-h | --help)
+	show_help
+	exit 0
+	;;
+"") ;;
+*)
+	printf 'crontab-sync: unknown argument: %s\n' "$1" >&2
+	exit 2
+	;;
+esac
+
+CRON_FILE="${CRON_FILE:-$HOME/.local/cron}"
+
+# Report failures the way ical2org does: cron has no tty, so a message on
+# stderr alone waits in a log nobody reads. It also exports no bus address,
+# hence naming the session bus socket explicitly.
+fail() { # message
+	printf '%s crontab-sync: %s\n' "$(date '+%F %T')" "$1" >&2
+	if [ ! -t 1 ] && command -v notify-send >/dev/null 2>&1; then
+		bus="/run/user/$(id -u)/bus"
+		if [ -S "$bus" ]; then
+			DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+				notify-send --app-name=crontab-sync --urgency=critical \
+				"crontab sync failed" "$1" || true
+		fi
+	fi
+	exit 1
+}
+
+# Not an error: a machine without cron has nothing to keep in step.
+command -v crontab >/dev/null 2>&1 || exit 0
+
+[ -f "$CRON_FILE" ] || fail "tracked crontab not found: $CRON_FILE"
+
+# Compare only the lines cron acts on. The live copy carries the distribution's
+# comment header from `crontab -e`, which is not drift, and matching on it would
+# reinstall on every run.
+entries() { grep -vE '^[[:space:]]*(#|$)' "$@" || true; }
+
+live_entries=$(crontab -l 2>/dev/null | entries)
+tracked_entries=$(entries "$CRON_FILE")
+
+[ "$live_entries" = "$tracked_entries" ] && exit 0
+
+# Validate before replacing. `crontab -n` is a dry run: on a malformed file it
+# exits non-zero with "errors in crontab file, can't install", so a bad tracked
+# file leaves the live schedule alone rather than wiping it.
+out=$(crontab -n "$CRON_FILE" 2>&1) || fail "$CRON_FILE is not a valid crontab, live schedule left alone: $out"
+
+out=$(crontab "$CRON_FILE" 2>&1) || fail "could not install $CRON_FILE: $out"
+
+printf '%s crontab-sync: installed %s (%s entries)\n' \
+	"$(date '+%F %T')" "$CRON_FILE" "$(printf '%s\n' "$tracked_entries" | grep -c . || true)"
