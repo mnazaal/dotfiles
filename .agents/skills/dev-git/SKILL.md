@@ -73,6 +73,11 @@ rejected-commit round-trip.
 4. Present options: PR, merge, continue, park, cleanup, abandon.
 5. Execute only chosen safe path.
 6. Report final state and next action.
+7. Hand over only what is runnable NOW. A cleanup command gated on a result that
+   has not arrived — "once the gate is green, `git branch -d …`" — belongs in the
+   message after that result, not the one before it: the condition is prose and
+   the command is a copy-paste block, and the block wins. Deleting the branch is
+   also what makes the work hard to isolate if the pending result turns out bad.
 
 ## Boundary
 
