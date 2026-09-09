@@ -15,6 +15,10 @@
 */5 * * * * /bin/sh -c 'export PATH="$HOME/.local/bin:$PATH" PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync gmail-fast && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
 23 * * * * /bin/sh -c 'export PATH="$HOME/.local/bin:$PATH" PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache/mbsync" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/mbsync/mbsync.lock" -c "$HOME/.local/bin/mbsync gmail-archive && $HOME/.local/scripts/notmuch-cron new" >> "$HOME/.local/state/mbsync.log" 2>&1'
 0 7 * * * /bin/sh -c 'export PASSWORD_STORE_DIR="$HOME/.local/share/pass" GNUPGHOME="$HOME/.local/share/gnupg"; mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/rss2email.lock" -c "$HOME/.local/scripts/rss2email-cron run" >> "$HOME/.local/state/rss2email.log" 2>&1'
+# Rotation, not truncation: the two largest logs reached 106 MB and 35 MB
+# before anyone noticed. Daily, off-peak; logrotate itself decides whether
+# anything is over the size threshold.
+17 4 * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/logrotate.lock" -c "$HOME/.local/scripts/logrotate-cron" >> "$HOME/.local/state/logrotate-cron.log" 2>&1'
 # OneDrive: no pass/gnupg exports needed -- the abraunegg client keeps its own
 # refresh token under ~/.config/onedrive. Runs one --sync pass and exits.
 */15 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/onedrive.lock" -c "$HOME/.local/scripts/onedrive-cron" >> "$HOME/.local/state/onedrive-cron.log" 2>&1'

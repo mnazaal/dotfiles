@@ -1,0 +1,65 @@
+#!/bin/bash
+
+set -euo pipefail
+
+show_help() {
+	cat <<'EOF'
+logrotate-cron - rotate this user's logs from the tracked config
+
+USAGE:
+  logrotate-cron [logrotate-options...]
+  logrotate-cron --help
+
+DESCRIPTION:
+  Expands @HOME@ in ~/.config/logrotate.conf and runs logrotate against a
+  user-owned state file. The placeholder exists because logrotate expands
+  neither `~` nor environment variables inside a log pattern, and hardcoding
+  the home path would pin the tracked config to one machine.
+
+  Options are passed through, so `logrotate-cron -f` forces a rotation and
+  `logrotate-cron -d` shows what it would do without doing it.
+
+ENVIRONMENT:
+  LOGROTATE_CONF   config to use (default ~/.config/logrotate.conf)
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+	show_help
+	exit 0
+fi
+
+CONF="${LOGROTATE_CONF:-$HOME/.config/logrotate.conf}"
+STATE="$HOME/.local/state/logrotate.status"
+# /usr/sbin is not on cron's PATH, so name it outright rather than resolving it.
+LOGROTATE=/usr/sbin/logrotate
+
+fail() { # message
+	printf '%s logrotate-cron: %s\n' "$(date '+%F %T')" "$1" >&2
+	if [ ! -t 1 ] && command -v notify-send >/dev/null 2>&1; then
+		bus="/run/user/$(id -u)/bus"
+		if [ -S "$bus" ]; then
+			DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+				notify-send --app-name=logrotate-cron --urgency=critical \
+				"log rotation failed" "$1" || true
+		fi
+	fi
+	exit 1
+}
+
+[ -x "$LOGROTATE" ] || fail "logrotate not installed at $LOGROTATE"
+[ -f "$CONF" ] || fail "config not found: $CONF"
+
+mkdir -p "$(dirname "$STATE")"
+
+conf_expanded=$(mktemp)
+trap 'rm -f "$conf_expanded"' EXIT
+sed "s|@HOME@|$HOME|g" "$CONF" >"$conf_expanded"
+
+out=$("$LOGROTATE" -s "$STATE" "$conf_expanded" "$@" 2>&1) || fail "logrotate failed: $out"
+
+# Quiet on success, like the other cron wrappers: a healthy run prints nothing,
+# so anything in the log is something to read.
+if [ -n "$out" ]; then
+	printf '%s\n' "$out"
+fi
