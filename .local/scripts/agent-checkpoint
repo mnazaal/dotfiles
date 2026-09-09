@@ -13,9 +13,18 @@
 # Uses a temporary index, not `git stash create`, which silently omits untracked
 # files. The real index, working tree, HEAD, and stash stack are never touched.
 # Exit status IS the contract, because a caller has to tell "no snapshot" from
-# "snapshot taken, filed oddly": nonzero means the work is NOT captured, zero
-# means it is. Callers that gate on this script (the per-Bash hook) block only
-# on nonzero. Keying on stderr instead conflates the two and blocks on success.
+# "snapshot taken, filed oddly": nonzero means a snapshot was attempted and the
+# work is NOT captured. Zero means no snapshot was NEEDED or one was taken.
+# Callers that gate on this script (the per-Bash hook) block only on nonzero.
+# Keying on stderr instead conflates the two and blocks on success.
+#
+# Outside a repository there is nowhere to snapshot into, and that path exits 0
+# SILENTLY and deliberately (test case 1): the per-turn hook prints stderr into
+# every turn, and ~/org, ~/.cache and ~/.local/share are non-repos worked in
+# daily, so a message there is a banner on every turn rather than information.
+# Whether destructive commands should be allowed where there is no recovery at
+# all is a POLICY question for dangerous-commands.json, not one this script can
+# answer.
 set -uo pipefail
 
 # The guardrail `allow` tier for world-writable and recursive-force-rm is earned
