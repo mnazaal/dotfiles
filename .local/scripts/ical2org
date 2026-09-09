@@ -58,28 +58,6 @@ PASS_FILE="${PASS_FILE:-$HOME/.local/share/pass/${CALENDAR_NAME}-ics.gpg}"
 ORGFILE="${ORGFILE:-$HOME/org/agenda/${CALENDAR_NAME}.org}"
 HSTS_FILE="$HOME/.local/share/wget-hsts"
 
-if ! command -v "$ICS2ORG" >/dev/null 2>&1; then
-	echo "Error: ical2orgpy not found at $ICS2ORG" >&2
-	echo "Install with: uv tool install ical2orgpy" >&2
-	exit 1
-fi
-
-if ! command -v gpg &>/dev/null; then
-	echo "Error: gpg is required but not installed" >&2
-	exit 1
-fi
-
-if [ ! -f "$PASS_FILE" ]; then
-	echo "Error: Encrypted URL file not found: $PASS_FILE" >&2
-	exit 1
-fi
-
-mkdir -p "$(dirname "$ORGFILE")"
-
-ICSFILE=$(mktemp)
-URLFILE=$(mktemp)
-trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
-
 # Report which calendar failed, at which stage, and when. gpg failures carry
 # no timestamp and no calendar name of their own, so an unattributed
 # "decryption failed" in a shared log was previously unreadable.
@@ -88,8 +66,47 @@ fail() { # message [captured output]
 	if [ -n "${2:-}" ]; then
 		printf '%s\n' "$2" >&2
 	fi
+	notify_failure "$1"
 	exit 1
 }
+
+# A cron failure went nowhere anyone looks: 425 gpg failures accumulated in the
+# log before an audit found them, and the calendar had silently stopped syncing
+# on every day the passphrase cache went cold overnight. Notify only when there
+# is no tty -- an interactive run already prints the error above. cron exports
+# no bus address either, so name the session bus socket explicitly and stay
+# quiet if it is not there (no session, e.g. a headless run).
+notify_failure() {
+	# An `if`, not `[ -t 1 ] && return 0`: under `set -e` that list exits the
+	# whole script with the test's own status before anything is sent.
+	if [ -t 1 ]; then
+		return 0
+	fi
+	command -v notify-send >/dev/null 2>&1 || return 0
+	bus="/run/user/$(id -u)/bus"
+	[ -S "$bus" ] || return 0
+	DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+		notify-send --app-name=ical2org --urgency=critical \
+		"Calendar sync failed: $CALENDAR_NAME" "$1" || true
+}
+
+if ! command -v "$ICS2ORG" >/dev/null 2>&1; then
+	fail "ical2orgpy not found at $ICS2ORG (install: uv tool install ical2orgpy)"
+fi
+
+if ! command -v gpg &>/dev/null; then
+	fail "gpg is required but not installed"
+fi
+
+if [ ! -f "$PASS_FILE" ]; then
+	fail "encrypted URL file not found: $PASS_FILE"
+fi
+
+mkdir -p "$(dirname "$ORGFILE")"
+
+ICSFILE=$(mktemp)
+URLFILE=$(mktemp)
+trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
 
 # Decrypt the URL and download the calendar without exposing the URL in argv.
 #
