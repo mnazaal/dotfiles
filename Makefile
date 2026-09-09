@@ -61,7 +61,7 @@ check: test check-agent-role-sync check-guardrails-native-sync check-machinery-r
 		echo "warn: shfmt not installed; skipping shfmt"; \
 	fi; \
 	if [ "$$SC_STATUS" -ne 0 ]; then \
-		echo "ShellCheck reported findings above; `make check` fails on them." >&2; \
+		echo "ShellCheck reported findings above; 'make check' fails on them." >&2; \
 		exit "$$SC_STATUS"; \
 	fi
 
