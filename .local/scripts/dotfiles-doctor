@@ -335,14 +335,22 @@ fi
 # starts the compositor with the bare system PATH and none of XDG_DATA_HOME,
 # GNUPGHOME or PASSWORD_STORE_DIR. warn, not fail: repairing it needs root, and
 # a headless host has no session entry at all.
-session_entry=/usr/share/wayland-sessions/mango.desktop
-if [[ -r "$session_entry" ]]; then
+# Both locations, because a user-level entry SHADOWS the system one wherever
+# GDM reads it, and mango's own install writes one: a stale copy there would
+# silently take the session back to the bare PATH while the system entry still
+# looked correct. The user copy is redundant with the system one and was
+# deleted on 2026-09-09; this catches a reinstall putting it back.
+for session_entry in /usr/share/wayland-sessions/mango.desktop \
+	"$HOME/.local/share/wayland-sessions/mango.desktop"; do
+	[[ -r "$session_entry" ]] || continue
 	if grep -qE '^Exec=.*mango-session' "$session_entry"; then
-		ok "desktop session runs through mango-session"
+		ok "desktop session runs through mango-session: ${session_entry/#$HOME/\~}"
+	elif [[ "$session_entry" == "$HOME"/* ]]; then
+		warn "a user-level session entry bypasses mango-session and may shadow the system one; it is redundant: rm $session_entry"
 	else
-		warn "desktop session bypasses mango-session, so it starts with the bare system PATH; repair: sudo sed -i 's|^Exec=.*|Exec=$HOME/.local/scripts/mango-session|' $session_entry"
+		warn "desktop session bypasses mango-session, so it starts with the bare system PATH; repair: make -C ${repo/#$HOME/\~} session-entry"
 	fi
-fi
+done
 
 # `mango -p` parses the config and names every keyword it rejected, but exits 0
 # whatever it finds, so its OUTPUT is the only signal -- three input.conf lines

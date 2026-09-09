@@ -169,6 +169,18 @@ const TABLE: Row[] = [
   { command: 'rm -rf "$TMPDIR/teststate"', expected: "allow", note: "the $TMPDIR form resolves to the scratch root" },
   { command: 'rm -rf "${TMPDIR}/a/b"', expected: "allow", note: "braced form too" },
   { command: 'rm -rf "$TMPDIR"', expected: "ask", note: "the root itself stays unexempt in the $TMPDIR form as well" },
+  // A variable assigned earlier in the same call. Without tracking it the
+  // target is the opaque token "$W", which asks -- and the shape the agent
+  // reaches for first is exactly `W="$TMPDIR/x"; rm -rf "$W"`. Tracking cuts
+  // both ways: a variable holding a repository root now DENIES, where the
+  // opaque form only asked.
+  { command: 'W="$TMPDIR/build"\nrm -rf "$W"', expected: "allow", note: "a variable holding a scratch path" },
+  { command: 'A="$TMPDIR"\nB="$A/build"\nrm -rf "$B"', expected: "allow", note: "chained assignments resolve in order" },
+  { command: 'W="$TMPDIR/build"; rm -rf "$W"', expected: "allow", note: "same line, semicolon separated" },
+  { command: 'D="$HOME"\nrm -rf "$D"', expected: "deny", note: "a variable holding home is denied, not merely asked" },
+  { command: 'rm -rf "$NEVER_ASSIGNED_HERE"', expected: "ask", note: "an unknown variable stays opaque, so the answer stays ask" },
+  { command: 'W=$(mktemp -d)\nrm -rf "$W"', expected: "ask", note: "a command substitution is not a literal; the scanner does not guess" },
+  { command: 'W="$TMPDIR"\nrm -rf "$W"', expected: "ask", note: "the root through a variable is still the root" },
   { command: "rm -rf /tmp/x; rm -rf ~", expected: "deny", note: "the home-directory rule behind its own tier" },
   { command: "rm -rf /tmp/x; git push origin +main", expected: "deny" },
   { command: "rm -rf /tmp/x; mkfs.ext4 /dev/sda1", expected: "deny" },

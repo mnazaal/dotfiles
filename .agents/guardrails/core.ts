@@ -154,6 +154,32 @@ function isAssignment(word: string): boolean {
     (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || c === "_" || (i > 0 && c >= "0" && c <= "9"));
 }
 
+/**
+ * Substitute variables this command set earlier in itself. Only simple literal
+ * assignments are tracked, so `W="$TMPDIR/x"; rm -rf "$W"` can be judged on
+ * what W holds rather than on the opaque token `$W` -- which fell to the ask
+ * tier and prompted for every scratch cleanup written that way.
+ *
+ * An unknown name is left alone, which keeps the target opaque and therefore
+ * keeps today's answer: this only ever makes a target MORE resolved, never less.
+ * It cuts both ways on purpose -- `D=~/projects/foo; rm -rf "$D"` now resolves
+ * to a repository root and is denied, where before it merely asked.
+ */
+function expandVars(word: string, vars: Map<string, string>): string {
+  if (!word.includes("$") || vars.size === 0) return word;
+  return word.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+    (whole, braced, bare) => vars.get(braced ?? bare) ?? whole);
+}
+
+/**
+ * A value worth remembering: a plain literal. Anything carrying a command
+ * substitution, a subshell or a separator is not something this scanner can
+ * evaluate, and guessing at it would be worse than leaving the token opaque.
+ */
+function isLiteralValue(value: string): boolean {
+  return !/[`;&|]/.test(value) && !value.includes("$(");
+}
+
 function hasRmRecursiveForce(args: string[]): boolean {
   let r = false, f = false;
   for (const a of args) {
@@ -749,6 +775,9 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     // started in -- without this the most common destructive form is invisible.
     let here = cwd;
     let hereKnown = true;
+    // Literal variables this command set, so a later `rm -rf "$W"` is judged on
+    // W's value. Tracked across segments for the same reason `here` is.
+    const vars = new Map<string, string>();
     // Does anything earlier in THIS pipeline download? Reset whenever a
     // separator other than a single `|` starts a new one.
     let pipelineFetches = false;
@@ -756,6 +785,14 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       if (!pipedFromPrev) pipelineFetches = false;
       const tamper = confinementTamperReason(tokenize(seg));
       if (tamper && record({ reason: tamper, category: "confinement" })) return worst;
+      // Before commandAndArgs, which skips assignments -- and before the
+      // `continue` below, since a bare `W=…` segment parses to no command at all.
+      for (const tok of tokenize(seg)) {
+        if (!isAssignment(tok)) break;
+        const eq = tok.indexOf("=");
+        const value = tok.slice(eq + 1);
+        if (isLiteralValue(value)) vars.set(tok.slice(0, eq), expandVars(value, vars));
+      }
       const parsed = commandAndArgs(seg, WRAPPERS);
       if (!parsed) continue;
       const { command, args } = parsed;
@@ -787,7 +824,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         continue;
       }
       if (command === "rm" && hasRmRecursiveForce(args)) {
-        const targets = args.filter(a => !a.startsWith("-"));
+        const targets = args.filter(a => !a.startsWith("-")).map(t => expandVars(t, vars));
         // After `cd -` the directory is unknowable. A false deny costs a
         // rerun; a false allow costs the repository.
         const relative = targets.some(
