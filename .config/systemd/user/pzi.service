@@ -22,6 +22,12 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+# The systemd user manager runs with the bare system PATH -- no ~/.local/bin,
+# no fnm -- so pzi's shutil.which("node") finds nothing here and falls back to
+# downloading a vendored Node. PZI_NODE names the binary directly and wins over
+# PATH; pointing it at fnm's `default` alias survives version bumps, and pzi
+# raises rather than silently downloading if it ever stops resolving.
+Environment=PZI_NODE=%h/.local/share/fnm/aliases/default/bin/node
 ExecStart=%h/.local/bin/pzi server
 StandardOutput=append:%h/.local/share/pzi/server-stdout.log
 StandardError=append:%h/.local/share/pzi/server-stderr.log
