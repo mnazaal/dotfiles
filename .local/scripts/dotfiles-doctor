@@ -56,7 +56,7 @@ sandboxed=0
 if [[ -n ${SANDBOX_ENGINE:-} || -e /run/.containerenv || -e /.dockerenv ]]; then
 	sandboxed=1
 fi
-skip() { printf 'skip: %s (not verifiable inside the sandbox)\n' "$1"; }
+skip() { printf 'skip: %s (%s)\n' "$1" "${2:-not verifiable inside the sandbox}"; }
 
 strict=0
 repo=""
@@ -91,18 +91,40 @@ else
 	fail "Makefile link/check targets missing"
 fi
 
-if [[ -d "$repo/.git" ]]; then
-	if command -v stow >/dev/null 2>&1; then
-		if stow --simulate --target="$HOME" --no-folding --dir="$repo" . >/dev/null 2>&1; then
+# Not [[ -d "$repo/.git" ]]: in a git worktree .git is a FILE, so that test
+# reported "repo root not detected" for every worktree. Ask git instead, and
+# tell a linked worktree apart from the main checkout -- $HOME is stowed from
+# the main checkout, so simulating a worktree over it collides on every tracked
+# file and says nothing about the deployment.
+repo_git_dir=$(git -C "$repo" rev-parse --git-dir 2>/dev/null || true)
+repo_common_git_dir=$(git -C "$repo" rev-parse --git-common-dir 2>/dev/null || true)
+if [[ -z "$repo_git_dir" ]]; then
+	warn "repo root not detected: $repo"
+elif [[ "$repo_git_dir" != "$repo_common_git_dir" ]]; then
+	skip "stow dry-run" "linked worktree; the deployment belongs to the main checkout"
+else
+	if [[ "$sandboxed" -eq 1 ]]; then
+		# Masked paths appear INSIDE the repository as /dev/null character
+		# devices, so stow reports conflicts over files that do not exist:
+		# .profile and .zshrc did on 2026-09-09. The answer in here is wrong,
+		# not merely unavailable, which is worse than not asking.
+		skip "stow dry-run"
+	elif command -v stow >/dev/null 2>&1; then
+		stow_output=$(stow --simulate --target="$HOME" --no-folding --dir="$repo" . 2>&1)
+		stow_status=$?
+		# GNU stow 2.4.2 exits 0 when it aborts on conflicts in simulate mode,
+		# so the exit status alone cannot answer this and the message must be
+		# read. Keeping it also means a failure says WHICH file collided --
+		# discarding it is why a real conflict once reported as a bare "fail".
+		if [[ "$stow_status" -eq 0 && "$stow_output" != *"WARNING! "* ]]; then
 			ok "stow dry-run"
 		else
 			fail "stow dry-run"
+			printf '%s\n' "$stow_output" | sed 's/^/      /'
 		fi
 	else
 		warn "stow not installed"
 	fi
-else
-	warn "repo root not detected: $repo"
 fi
 
 # Only ~/.zshenv is a root stub: it sets ZDOTDIR, after which zsh reads the
@@ -266,6 +288,75 @@ if [[ -f "$waybar_config" ]]; then
 		ok "waybar bluetooth module present"
 	else
 		warn "waybar bluetooth config exists but module not listed"
+	fi
+fi
+
+# cron never reads the repository copy -- it must be loaded by hand with
+# `crontab ~/.local/cron` -- so the live crontab and the tracked file drift in
+# silence. That is how the OneDrive sync came to be commented out in the live
+# crontab and absent from the tracked one, running nowhere and recorded nowhere.
+cron_file="$repo/.local/cron"
+if [[ ! -r "$cron_file" ]]; then
+	warn "tracked crontab unreadable: $cron_file"
+elif ! command -v crontab >/dev/null 2>&1; then
+	warn "crontab not installed"
+elif [[ "$sandboxed" -eq 1 ]]; then
+	skip "live crontab matches the tracked copy"
+else
+	live_cron=$(crontab -l 2>/dev/null || true)
+	if [[ -z "$live_cron" ]]; then
+		warn "no crontab loaded, so no tracked entry is scheduled: crontab $cron_file"
+	else
+		cron_drift=0
+		while IFS= read -r entry; do
+			[[ -z "$entry" ]] && continue
+			printf '%s\n' "$live_cron" | grep -qxF "$entry" && continue
+			fail "tracked cron entry is not scheduled: ${entry:0:70}"
+			cron_drift=1
+		done < <(grep -vE '^[[:space:]]*(#|$)' "$cron_file" || true)
+		while IFS= read -r entry; do
+			[[ -z "$entry" ]] && continue
+			grep -qxF "$entry" "$cron_file" && continue
+			warn "live cron entry is not tracked: ${entry:0:70}"
+			cron_drift=1
+		done < <(printf '%s\n' "$live_cron" | grep -vE '^[[:space:]]*(#|$)' || true)
+		[[ "$cron_drift" -eq 0 ]] && ok "live crontab matches the tracked copy"
+	fi
+fi
+
+# GDM reads system session directories only, so this file cannot live in the
+# repository, and reinstalling mango can silently restore `Exec=mango` -- which
+# starts the compositor with the bare system PATH and none of XDG_DATA_HOME,
+# GNUPGHOME or PASSWORD_STORE_DIR. warn, not fail: repairing it needs root, and
+# a headless host has no session entry at all.
+session_entry=/usr/share/wayland-sessions/mango.desktop
+if [[ -r "$session_entry" ]]; then
+	if grep -qE '^Exec=.*mango-session' "$session_entry"; then
+		ok "desktop session runs through mango-session"
+	else
+		warn "desktop session bypasses mango-session, so it starts with the bare system PATH; repair: sudo sed -i 's|^Exec=.*|Exec=$HOME/.local/scripts/mango-session|' $session_entry"
+	fi
+fi
+
+# `mango -p` parses the config and names every keyword it rejected, but exits 0
+# whatever it finds, so its OUTPUT is the only signal -- three input.conf lines
+# were being skipped for a year this way. It resolves the `source=~/...` lines
+# against $HOME, so this reads the deployed copies.
+mango_config="$HOME/.config/mango/config.conf"
+if ! command -v mango >/dev/null 2>&1; then
+	: # not this host's compositor; the Wayland warnings above already say so
+elif [[ "$sandboxed" -eq 1 ]]; then
+	skip "mango config parses"
+elif [[ ! -r "$mango_config" ]]; then
+	warn "mango installed but no config at ${mango_config/#$HOME/\~}"
+else
+	# Unanchored on purpose: mango writes colour escapes before the tag, so
+	# "^\[ERROR\]" matches nothing and the check silently cannot fail.
+	mango_errors=$(mango -c "$mango_config" -p 2>&1 | grep -c '\[ERROR\]' || true)
+	if [[ "$mango_errors" -gt 0 ]]; then
+		fail "mango rejected $mango_errors config line(s); see: mango -c ${mango_config/#$HOME/\~} -p"
+	else
+		ok "mango config parses"
 	fi
 fi
 
