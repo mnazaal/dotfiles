@@ -438,6 +438,34 @@ test("machinery in bash: allowed inside a sandbox that pins it", () => {
   expect(rails.evaluate({ tool: "bash", command: "cat ~/.ssh/config", cwd }, loadedSkills).decision).toBe("deny");
 });
 
+// The only thing standing between an agent and a `.env.local`. The two
+// `./.env.*` permission rules that looked like a second layer were discarded
+// on Linux -- a wildcard in a filename segment is not projected into the
+// sandbox -- so the segment guard is what actually refuses the read, for both
+// agents and for the typed tools as well as bash. It carried no coverage at
+// all, which made "the hook covers it" an assertion rather than a fact.
+const ENV_DENIED = [".env", ".env.local", ".env.production", ".env.staging"];
+// A near-miss set, because the guard matches a whole path SEGMENT and not a
+// prefix. Without these the test would pass just as well against a rule that
+// denied everything, and the first ordinary file it swallowed would get it
+// relaxed.
+const ENV_ALLOWED = ["env.local", ".environment", ".env-sample"];
+test("env files: denied for the typed tools, and only where they should be", () => {
+  for (const agent of AGENTS) {
+    const rails = createGuardrails(agent);
+    for (const name of ENV_DENIED) {
+      for (const operation of ["read", "write", "unknown"] as const) {
+        const r = rails.evaluate({ tool: "Read", paths: [`${cwd}/${name}`], cwd, operation }, loadedSkills);
+        expect(`${agent} ${operation} ${name}: ${r.decision}`).toBe(`${agent} ${operation} ${name}: deny`);
+      }
+    }
+    for (const name of ENV_ALLOWED) {
+      const r = rails.evaluate({ tool: "Read", paths: [`${cwd}/${name}`], cwd, operation: "read" }, loadedSkills);
+      expect(`${agent} read ${name}: ${r.decision}`).toBe(`${agent} read ${name}: allow`);
+    }
+  }
+});
+
 for (const { command, expected, note } of TABLE) {
   test(`${label(expected)}: ${command}${note ? ` (${note})` : ""}`, () => {
     for (const agent of AGENTS) {
