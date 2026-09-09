@@ -45,14 +45,6 @@ RO_LAST+=(
 	"$H/.local/share/cargo/bin"
 	"$H/.local/share/go/bin"
 	"$H/.local/share/pkgit/kitty/HEAD/kitty/launcher"
-	# The fourth of the same class, caught 2026-09-09 by the PATH walk the note
-	# above predicted would catch it. NOTE the shape differs: aliases/default is
-	# a SYMLINK into node-versions/<v>/installation, and it lives in a directory
-	# this pin does not cover, so an agent can still repoint the symlink even
-	# though the resolved bin dir is read-only. Pinning the bin path closes the
-	# write-an-executable route; closing the repoint route means pinning
-	# "$H/.local/share/fnm" itself, which also stops `fnm install` from inside.
-	"$H/.local/share/fnm/aliases/default/bin"
 )
 
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv
