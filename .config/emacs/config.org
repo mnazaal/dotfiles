@@ -830,14 +830,24 @@ Some tips and tricks of using TRAMP is detailed in [[https://willschenk.com/arti
 #+end_src
 
 ** zotra                                               :reference_management:
-# TODO: Set =zotra= variables properly.
 # TODO: Find a way to save PDF files automatically, then rename them like in Zotero.
+
+Points at the Zotero translation server that =pzi server= already runs on
+127.0.0.1:1969 (zotra's own default =zotra-server-path=), rather than starting
+one. It previously named =~/.local/src/zotra-server/= as a local server
+directory to =npm start=; that directory has never existed on this host, so
+every fetch failed. =zotra-local-server-directory= must stay nil for zotra to
+leave the server alone.
+
+Verified 2026-09-09: with the pzi service up, =/search= on that port returns
+metadata for a DOI. When pzi is down zotra says so — "Are you sure a server is
+running on ..." — rather than failing quietly.
 
 #+begin_src emacs-lisp
 (use-package zotra
   :custom
-  (zotra-backend 'zotra-server)
-  (zotra-local-server-directory "~/.local/src/zotra-server/"))
+  (zotra-backend 'translation-server)
+  (zotra-local-server-directory nil))
 #+end_src
 
 ** citar                                               :reference_management:
