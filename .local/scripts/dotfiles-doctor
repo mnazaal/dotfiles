@@ -302,6 +302,12 @@ elif ! command -v crontab >/dev/null 2>&1; then
 	warn "crontab not installed"
 elif [[ "$sandboxed" -eq 1 ]]; then
 	skip "live crontab matches the tracked copy"
+elif [[ "$HOME" != "$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)" ]]; then
+	# crontab is per-USER, not per-HOME, so under a temp HOME -- which is how the
+	# test suite runs this -- the live crontab belongs to a different deployment
+	# than $repo. The tracked file being ahead of it is then normal, and failing
+	# on it couples the repository's own suite to live machine state.
+	skip "live crontab matches the tracked copy" "HOME is not this user's login home"
 else
 	live_cron=$(crontab -l 2>/dev/null || true)
 	if [[ -z "$live_cron" ]]; then

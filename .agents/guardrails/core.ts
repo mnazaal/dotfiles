@@ -17,10 +17,6 @@ import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 
 const HOME = homedir();
-// Read once, beside HOME, and used both to resolve "$TMPDIR/..." targets and to
-// derive the scratch roots. Empty when unset, which disables both -- fail-safe:
-// nothing becomes exempt.
-const TMPDIR = process.env.TMPDIR ?? "";
 
 /**
  * Is this process inside the container sandbox? Machinery is unwritable at the
@@ -349,10 +345,15 @@ function resolveAny(input: string, cwd: string): string {
   // resolved to <cwd>/$TMPDIR/x and fell to the ask tier, prompting the user
   // for every scratch cleanup. Expanded only when the variable is actually
   // set -- an empty value must not turn "$TMPDIR/x" into "/x".
-  if (TMPDIR) {
-    if (input === "$TMPDIR" || input === "${TMPDIR}") return resolve(TMPDIR);
-    if (input.startsWith("$TMPDIR/")) return resolve(TMPDIR, input.slice(8));
-    if (input.startsWith("${TMPDIR}/")) return resolve(TMPDIR, input.slice(10));
+  // Read per call, not once at module load: the scratch roots resolve $TMPDIR
+  // when createGuardrails runs, and a module-level copy disagrees with them
+  // whenever the variable is set after import -- which silently disabled this
+  // whole branch for any process that imported the module first.
+  const tmpdir = process.env.TMPDIR ?? "";
+  if (tmpdir) {
+    if (input === "$TMPDIR" || input === "${TMPDIR}") return resolve(tmpdir);
+    if (input.startsWith("$TMPDIR/")) return resolve(tmpdir, input.slice(8));
+    if (input.startsWith("${TMPDIR}/")) return resolve(tmpdir, input.slice(10));
   }
   if (input.startsWith("/")) return resolve(input);
   return resolve(cwd, input);
