@@ -74,3 +74,4 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.local/scripts:$PATH"
+export PATH="$XDG_DATA_HOME/fnm/aliases/default/bin:$PATH"
