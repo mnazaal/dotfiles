@@ -1,0 +1,21 @@
+#!/bin/sh
+# Desktop session entry point, named by /usr/share/wayland-sessions/mango.desktop.
+#
+# GDM execs the session command directly, with no login shell, so mango would
+# otherwise start with the bare system PATH and none of XDG_DATA_HOME,
+# GNUPGHOME or PASSWORD_STORE_DIR. Everything the session spawns inherits that:
+# the Emacs desktop entry resolved bare `emacs` to /usr/bin/emacs instead of the
+# self-built one, and any `#!/usr/bin/env node` program it started exited 127.
+#
+# zsh reads .zshenv on every invocation, including this non-interactive one, so
+# it stays the single source of the session environment -- no second copy of
+# PATH to drift out of step. A syntax error in .zshenv costs the environment,
+# not the session: zsh still runs the -c command (verified 2026-09-09), so the
+# session degrades to the old bare-PATH behaviour rather than failing to start.
+#
+# The fallback names mango by absolute path on purpose: without .zshenv,
+# ~/.local/bin is not on PATH, which is the reason this script exists.
+if command -v zsh >/dev/null 2>&1; then
+	exec zsh -c 'exec mango "$@"' mango "$@"
+fi
+exec "$HOME/.local/bin/mango" "$@"
