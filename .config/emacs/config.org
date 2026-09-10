@@ -355,7 +355,60 @@ Current workflow:
   (org-todo-keywords
    '((sequence "TODO(t)" "WAITING(w)" "DELEGATED(o@/!)" "|" "DONE(d@/!)")
      (sequence "|" "INACTIVE(i)" "CANCELLED(c@/!)")))
+  ;; Refile destinations. projects.org holds the nine tagged projects and their
+  ;; subtrees, so a captured TODO can land where the work lives; notes.org takes
+  ;; level 1 only, because below that it is dated capture dumps. Deliberately NOT
+  ;; included: the calendar files, which cal-sync-cron regenerates (a heading
+  ;; refiled there is destroyed on the next sync), and the 923 roam notes, which
+  ;; have their own org-roam-refile.
+  (org-refile-targets
+   `((,(expand-file-name "data/projects.org" org-directory) :maxlevel . 3)
+     (,(expand-file-name "data/notes.org" org-directory) :level . 1)))
+  ;; Show the file name in the completion path, and hand the whole path to the
+  ;; completion framework at once -- stepwise completion fights vertico/consult.
+  (org-refile-use-outline-path 'file)
+  (org-outline-path-complete-in-steps nil)
+  (org-refile-allow-creating-parent-nodes 'confirm)
+  ;; Stored links use the entry's ID rather than its heading text, so they survive
+  ;; the heading being renamed, refiled or archived -- all three of which now
+  ;; happen routinely. org-roam already relies on the same mechanism.
+  (org-id-link-to-org-use-id t)
   :config
+  ;; Archive-on-DONE, the TODO under org-agenda below. org-archive-location is
+  ;; already ~/org/archive/%s_archive, so this only decides WHEN.
+  (defun nazaal/org-archive-when-done ()
+    "Archive the entry at point once it reaches a terminal TODO state.
+Terminal here means DONE or CANCELLED, the two right-hand states of
+`org-todo-keywords'.
+
+Repeating entries are skipped on purpose. `org-auto-repeat-maybe' resets a
+repeater to TODO as part of the same state change, so archiving on the DONE it
+passes through would file away a task that is still live -- and
+agenda/inbox-recurring.org is full of them."
+    (when (and (member org-state '("DONE" "CANCELLED"))
+               (not (org-get-repeat)))
+      (org-archive-subtree-default)))
+  (add-hook 'org-after-todo-state-change-hook #'nazaal/org-archive-when-done)
+  (defun nazaal/org-archive-ignoring-clipboard (fn &rest args)
+    "Run FN with the system clipboard kept out of the kill ring.
+
+`org-archive-subtree' cuts the entry, then `org-paste-subtree' validates the
+kill with `org-kill-is-subtree-p' -- which reads `current-kill', and
+`current-kill' consults `interprogram-paste-function'. The emacs block above
+sets that function to shell out to wl-paste whenever Emacs is in a TERMINAL
+under Wayland, and wl-paste has no notion of Emacs owning the selection, so it
+returns whatever the SYSTEM clipboard holds instead of the subtree just cut.
+Archiving then aborts with \"The kill is not a (set of) tree(s)\" AFTER the cut
+has already removed the entry from the buffer, leaving it only in the kill ring.
+
+Measured 2026-09-10 in a terminal-equivalent batch session: the clipboard held
+an unrelated sbatch command and every archive attempt failed this way, with and
+without the hook above. Binding the function to nil makes archiving depend on
+Emacs's own kill ring alone. This also repairs MANUAL archiving (C-c C-x C-a),
+which had the same exposure and is not something this config added."
+    (let ((interprogram-paste-function nil))
+      (apply fn args)))
+  (advice-add 'org-archive-subtree :around #'nazaal/org-archive-ignoring-clipboard)
   (setq org-export-async-debug nil)
   (plist-put org-format-latex-options :foreground 'default)
   (plist-put org-format-latex-options :background 'default)
