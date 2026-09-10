@@ -2,6 +2,11 @@
 # home-tmpfs, so language tools resolve. Compose with: sandbox -p dev -- npm test
 RO+=(
 	"$H/.local/bin"
+	# Load-bearing for a standalone `dev` sandbox only: under the tmpfs home this
+	# is what makes the fnm tree visible at all. It is NOT a write guard under
+	# `agent`, whose blanket read-write $H/.local/share is emitted later and
+	# wins; the pin that actually holds there is machinery-ro.profile's RO_LAST
+	# entry for the same path (shadowing measured 2026-09-09).
 	"$H/.local/share/fnm"
 	"$H/.local/share/bun"
 	"$H/.config/git"
