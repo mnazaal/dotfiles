@@ -317,6 +317,24 @@ const TABLE: Row[] = [
   { command: "rm -rf ~/dotfiles/.git", expected: "deny", note: "same, named absolutely" },
   { command: `rm -rf ${fixture}/repo/.git`, expected: "deny", note: "same, a sibling repo" },
   { command: `rm -rf ${fixture}/repo/.git/refs`, expected: "deny", note: "inside .git counts too" },
+  // The same destruction through find. `find .git -delete` removed every file
+  // under .git and was ALLOW for claude (find_policy off) and only ASK for pi,
+  // while the rm form above is deny: a rule an agent can route around by
+  // switching verbs is not a rule. Judged on the STARTING POINT -- the path
+  // find walks -- paired with a primary that deletes or executes. A find that
+  // only lists is a read, and `find . -delete` with a filter is the existing
+  // find_policy question, not this one.
+  { command: "find .git -delete", expected: "deny", note: "find -delete walking the git dir" },
+  { command: "find .git -type f -exec rm {} +", expected: "deny", note: "same through -exec" },
+  { command: "find ~/dotfiles/.git -name '*.lock' -delete", expected: "deny", note: "absolute, filtered: still removes from inside .git" },
+  { command: `find ${fixture}/repo/.git/refs -delete`, expected: "deny", note: "a sibling repo, inside .git" },
+  { command: `cd ${fixture}/repo && find .git -delete`, expected: "deny", note: "relative after cd" },
+  { command: "find .git -type f | xargs rm", expected: "deny", note: "plain rm fed by a find over .git" },
+  { command: "find .git -type f -print0 | sort -z | xargs -0 rm", expected: "deny", note: "same, with a filter between them" },
+  { command: "find .git -type f | wc -l; rm -f stale.log", expected: "allow", note: "control: a new pipeline forgets the find" },
+  { command: "find -L .git -delete", expected: "deny", note: "a find option before the starting point" },
+  { command: "find .git -name '*.lock'", expected: "allow", note: "control: a find that only lists is a read" },
+  { command: "find .github -delete", expected: { claude: "allow", default: "ask" }, note: "control: .github is not .git; the existing find_policy split" },
   // A glob names its parent's contents, so it is judged on the directory it
   // expands inside rather than on a literal token that never exists on disk.
   { command: `rm -rf ${fixture}/repo/*`, expected: "deny", note: "empties a repo while reading as an ordinary path" },

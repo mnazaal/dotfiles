@@ -418,7 +418,7 @@ function isTopLevelRmTarget(target: string, base: string, origin: string): boole
   // recovery that earns the allow tier goes with the thing it was meant to
   // recover. Nothing else backstops this: measured inside the sandbox, .git,
   // .git/refs and .git/objects are all writable (only .git/hooks is pinned).
-  if (resolved.endsWith("/.git") || resolved.includes("/.git/")) return true;
+  if (isInsideGitDir(resolved)) return true;
   // A directory holding .git is a repository root wherever it sits -- projects
   // live under ~/projects/<name>, and a sibling repo's checkpoint refs die with
   // its .git. Filesystem-backed, like isGitWorktree below.
@@ -427,6 +427,33 @@ function isTopLevelRmTarget(target: string, base: string, origin: string): boole
     if (resolved === anchor || anchor.startsWith(resolved + "/")) return true;
   }
   return false;
+}
+
+/** `.git` itself, or any path inside it -- the history and the checkpoint refs. */
+function isInsideGitDir(resolved: string): boolean {
+  return resolved.endsWith("/.git") || resolved.includes("/.git/");
+}
+
+/**
+ * The paths a `find` walks: the positional arguments between its leading
+ * options (`-H -L -P -D <opt> -O<n>`) and the first expression token. GNU find
+ * defaults to `.` when none is given.
+ */
+function findStartingPoints(args: string[]): string[] {
+  const starts: string[] = [];
+  let i = 0;
+  for (; i < args.length; i++) {
+    const a = args[i];
+    if (a === "-D") { i++; continue; }
+    if (a === "-H" || a === "-L" || a === "-P" || /^-O\d*$/.test(a)) continue;
+    break;
+  }
+  for (; i < args.length; i++) {
+    const a = args[i];
+    if (a.startsWith("-") || a === "(" || a === "!") break;
+    starts.push(a);
+  }
+  return starts.length ? starts : ["."];
 }
 
 /**
@@ -781,8 +808,13 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     // Does anything earlier in THIS pipeline download? Reset whenever a
     // separator other than a single `|` starts a new one.
     let pipelineFetches = false;
+    // Does anything earlier in THIS pipeline walk a .git with find? A
+    // `find .git -type f | sort | xargs rm` deletes the same files `rm -rf .git`
+    // would, and the rm sees only stdin. Same lifetime as pipelineFetches.
+    let pipelineWalksGitDir = false;
+    const TOPLEVEL = "recursive-force-rm-toplevel";
     for (const { text: seg, pipedFromPrev } of splitSegmentsTagged(cmd)) {
-      if (!pipedFromPrev) pipelineFetches = false;
+      if (!pipedFromPrev) { pipelineFetches = false; pipelineWalksGitDir = false; }
       const tamper = confinementTamperReason(tokenize(seg));
       if (tamper && record({ reason: tamper, category: "confinement" })) return worst;
       // Before commandAndArgs, which skips assignments -- and before the
@@ -823,6 +855,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (record({ reason: "host power control", category: "host-control" })) return worst;
         continue;
       }
+      if (command === "rm" && pipedFromPrev && pipelineWalksGitDir) {
+        if (record({ reason: "rm fed by a find over a .git (history and checkpoint refs)", category: TOPLEVEL })) return worst;
+        continue;
+      }
       if (command === "rm" && hasRmRecursiveForce(args)) {
         const targets = args.filter(a => !a.startsWith("-")).map(t => expandVars(t, vars));
         // After `cd -` the directory is unknowable. A false deny costs a
@@ -830,7 +866,6 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         const relative = targets.some(
           t => !t.startsWith("/") && !t.startsWith("~") && !t.startsWith("$"),
         );
-        const TOPLEVEL = "recursive-force-rm-toplevel";
         let d: Danger;
         // No target in the argv means the list arrives on stdin -- the
         // `find ... | xargs rm -rf` idiom. What it would delete is unknowable
@@ -861,6 +896,20 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (c && record({ reason: c, category: "git-clean-ignored" })) return worst;
       }
       if (command === "find") {
+        // Judged on the STARTING POINT, as rm is judged on its target: a find
+        // that walks a .git and deletes or executes destroys the history and
+        // the checkpoint refs exactly as `rm -rf .git` does, and the rm rule
+        // alone left that one verb-swap away. Same tier, no policy switch --
+        // find_policy decides whether `find . -delete` deserves a nudge, not
+        // whether recovery may be deleted. A find that only lists is a read.
+        const starts = findStartingPoints(args).map(t => expandVars(t, vars));
+        // Not gated on hereKnown: a relative `.git` is a git dir whatever the cwd.
+        const walksGitDir = starts.some(t => isInsideGitDir(resolveAny(t, here)));
+        if (walksGitDir) pipelineWalksGitDir = true;
+        if (walksGitDir && args.some(a => FIND_EXEC.has(a))) {
+          if (record({ reason: "find -delete/-exec over a .git (history and checkpoint refs)", category: TOPLEVEL })) return worst;
+          continue;
+        }
         if (findPolicy === "always") {
           if (record({ reason: "find — prefer grepika/read tools", category: "find" })) return worst;
         } else if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) {
