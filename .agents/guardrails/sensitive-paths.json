@@ -36,9 +36,8 @@
     ".aws",
     ".password-store"
   ],
-  "protected_write_globs": [
-    "**/*.tex"
-  ],
+  "_protected_write_globs_suspended": "SUSPENDED 2026-09-10 at the user's request: manuscript source is writable by agents. The prose rule in the research-manuscript-workflow skill (human-owned manuscript source) still stands - this lifts only the enforcement. Restore by reverting the commit that emptied this list.",
+  "protected_write_globs": [],
   "machinery_enabled": {
     "claude": true,
     "pi": true
