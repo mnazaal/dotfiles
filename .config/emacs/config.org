@@ -612,10 +612,36 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
 (use-package ox-latex
   :ensure nil
   :config
-  (dolist (pkg '(("" "fullpage")
-                 ("" "parskip")
+  ;; Globally added packages reach EVERY LaTeX class, because
+  ;; `org-latex-make-preamble' splices `org-latex-packages-alist' into all of
+  ;; them and the beamer class string carries no [NO-PACKAGES] marker. fullpage
+  ;; resets page margins for article geometry, so in a beamer document it
+  ;; silently shrank \\textwidth from 307.29pt to 219.66pt -- a 28.5% narrower
+  ;; text column on every slide, compiling without a warning. Measured
+  ;; 2026-09-10; four 2025 decks had already shipped that way. parskip and
+  ;; xcolor are harmless to geometry and stay global.
+  (dolist (pkg '(("" "parskip")
                  ("" "xcolor")))
     (add-to-list 'org-latex-packages-alist pkg))
+  ;; fullpage belongs to article only, and `org-latex-packages-alist' has no
+  ;; per-class filter (its fourth element selects COMPILERS, not classes), so
+  ;; the class entry is the only place to scope it. Prepending shadows Org's
+  ;; built-in "article" because the exporter looks the class up with `assoc',
+  ;; which takes the first match -- the same prepend-to-shadow idiom ox-beamer
+  ;; uses for its own entry. [PACKAGES] then the \\usepackage line keeps
+  ;; fullpage AFTER the package list, so it wins over the alist above.
+  (add-to-list
+   'org-latex-classes
+   '("article" "\\documentclass[11pt]{article}
+[DEFAULT-PACKAGES]
+[PACKAGES]
+\\usepackage{fullpage}
+[EXTRA]"
+     ("\\section{%s}" . "\\section*{%s}")
+     ("\\subsection{%s}" . "\\subsection*{%s}")
+     ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+     ("\\paragraph{%s}" . "\\paragraph*{%s}")
+     ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
   :custom
   (org-latex-pdf-process
    '("latexmk -pdf -interaction=nonstopmode -output-directory=%o %f"))
@@ -640,6 +666,30 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
 (use-package ox-beamer
   :ensure nil
   :after org)
+#+end_src
+
+** org-re-reveal                                                    :writing:
+HTML slides from Org, exported with =C-c C-e v v=. The maintained successor to
+=ox-reveal=, whose last commit was 2022-11 and which is neither archived nor
+marked deprecated, so it still reads as current on MELPA -- it is not.
+
+Only the root is set, deliberately. org-re-reveal DETECTS which reveal.js is
+installed by probing for =dist/plugin/highlight.js= (its
+=org-re-reveal-revealjs-6-file= constant) and picks the version-6 plugin paths
+on that basis. Setting =org-re-reveal-revealjs-version= here would DEFEAT that
+detection -- which is precisely the bug doomemacs shipped and then fixed by
+deleting a hardcoded "4" (their issue #44, closed 2026-07-22).
+
+Pointing at the local checkout rather than a CDN is what makes offline export
+work. Verified 2026-09-10 against =~/projects/reveal.js= at 6.0.1: the export
+emits =dist/plugin/{notes,search,zoom,markdown}.js=, all seven local assets
+resolve, and headless Chrome reports a fully initialized deck.
+
+#+begin_src emacs-lisp
+(use-package org-re-reveal
+  :after org
+  :custom
+  (org-re-reveal-root (concat "file://" (expand-file-name "~/projects/reveal.js"))))
 #+end_src
 
 ** ox-hugo                                                          :writing:
