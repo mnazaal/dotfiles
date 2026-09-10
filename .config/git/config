@@ -6,7 +6,7 @@
 [log]
     date = iso-local
 [alias]
-    sclone = clone --depth 1
+    cl = clone --depth 1
     gm = merge
     gbl = branch --list
     gbd = branch --delete
