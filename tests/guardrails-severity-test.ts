@@ -16,9 +16,9 @@
  * still report their command severity here rather than a skill-gate deny.
  */
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createGuardrails } from "../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
@@ -34,7 +34,7 @@ const cwd = "/tmp/project";
 // root itself assume the root is not that directory.
 const scratchRoot = process.env.TMPDIR ?? mkdtempSync(join(tmpdir(), "guardrails-scratch-"));
 process.env.TMPDIR = scratchRoot;
-process.env.AGENT_BRANCH_PREFIX ??= "claude";
+process.env.AGENT_BRANCH_PREFIX = "claude";
 
 // A sibling repository and a plain directory, both OUTSIDE cwd: the repo-root
 // rule is filesystem-backed (a directory holding .git is a root wherever it
@@ -46,6 +46,9 @@ const fixture = mkdtempSync(join(tmpdir(), "guardrails-severity-"));
 const scratch = scratchRoot.replace(/\/$/, "");
 mkdirSync(join(fixture, "repo", ".git"), { recursive: true });
 mkdirSync(join(fixture, "plain"), { recursive: true });
+const outsideScratch = mkdtempSync(join(resolve(scratch, ".."), "guardrails-outside-"));
+const scratchSymlinkToOutside = join(scratch, "link-to-outside");
+symlinkSync(outsideScratch, scratchSymlinkToOutside);
 
 // Severity comes from shared data — the adapters differ only in how they
 // RENDER a decision. Rows may declare a deliberate per-agent split; anything
@@ -377,10 +380,64 @@ const TABLE: Row[] = [
     expected: "ask",
     note: "cd tracking must not over-broaden: still inside the project",
   },
+  // --- world-writable modes -------------------------------------------------
+  // World-writable is safe to auto-allow only where the target is throwaway
+  // scratch state. Everywhere else it can persist a writeable trust point into
+  // a later non-sandboxed shell, editor, hook or cron job.
   {
     command: "chmod 777 script.sh",
-    expected: { claude: "allow", default: "ask" },
-    note: "system paths are ro and the container is single-user; a lint concern, not a boundary",
+    expected: "ask",
+    note: "normal project state is not a confined scratch target",
+  },
+  {
+    command: `chmod 777 ${scratch}/chmod-target`,
+    expected: "allow",
+    note: "strictly below the scratch root",
+  },
+  {
+    command: `chmod 777 ${scratch}`,
+    expected: "ask",
+    note: "the scratch root itself is never exempt",
+  },
+  {
+    command: `chmod -R 777 ${scratch}/chmod-tree`,
+    expected: "allow",
+    note: "recursive chmod is still confined when every target is scratch",
+  },
+  {
+    command: `chmod 777 ${scratch}/chmod-target .`,
+    expected: "ask",
+    note: "every target must be scratch, not just one",
+  },
+  {
+    command: `chmod 777 ${scratchSymlinkToOutside}`,
+    expected: "ask",
+    note: "a symlink spelled under scratch is judged by its resolved target",
+  },
+  {
+    command: `chmod o+w ${scratch}/symbolic-target`,
+    expected: "allow",
+    note: "symbolic world-write below scratch is confined too",
+  },
+  {
+    command: "chmod o+w script.sh",
+    expected: "ask",
+    note: "symbolic world-write outside scratch is still a prompt",
+  },
+  {
+    command: "chmod a+w script.sh",
+    expected: "ask",
+    note: "a+w includes the world write bit",
+  },
+  {
+    command: "chmod u+w script.sh",
+    expected: "allow",
+    note: "owner-only write is not world-writable",
+  },
+  {
+    command: "chown 777 script.sh",
+    expected: "allow",
+    note: "chown changes ownership, not permission bits",
   },
   {
     command: "find . -name '*.pyc' -exec rm {} ;",

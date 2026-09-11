@@ -12,7 +12,7 @@
  *
  * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
-import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync, realpathSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 
@@ -199,9 +199,18 @@ function firstNonFlag(args: string[]): string {
 }
 
 function isWorldWritableMode(arg: string): boolean {
-  if (!arg || arg.length > 4) return false;
-  if (![...arg].every(c => "01234567".includes(c))) return false;
-  return (parseInt(arg, 8) & 0o002) === 0o002;
+  if (!arg) return false;
+  if (arg.length <= 4 && [...arg].every(c => "01234567".includes(c))) {
+    return (parseInt(arg, 8) & 0o002) === 0o002;
+  }
+  for (const clause of arg.split(",")) {
+    const match = clause.match(/^([ugoa]*)([+=-])([rwxXstugo]*)$/);
+    if (!match) continue;
+    const [, who, op, perms] = match;
+    if (op === "-" || !perms.includes("w")) continue;
+    if (who.includes("o") || who.includes("a")) return true;
+  }
+  return false;
 }
 
 function dashCArg(args: string[]): string | undefined {
@@ -771,6 +780,40 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 
   type Danger = { reason: string; category: string };
 
+  function existingRealPath(path: string): string {
+    try {
+      return realpathSync.native(path);
+    } catch {
+      return path;
+    }
+  }
+
+  function chmodWorldWritableDanger(args: string[], here: string, vars: Map<string, string>): Danger | undefined {
+    let modeIndex = -1;
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (a === "--") { modeIndex = i + 1; break; }
+      if (a === "--reference" || a.startsWith("--reference=")) return undefined;
+      if (a === "-R" || a === "--recursive" || a === "-f" || a === "--silent" ||
+          a === "--quiet" || a === "-v" || a === "--verbose" || a === "-c" ||
+          a === "--changes" || a === "--preserve-root" || a === "--no-preserve-root") continue;
+      if (/^-[Rfcv]+$/.test(a)) continue;
+      if (a.startsWith("-")) continue;
+      modeIndex = i;
+      break;
+    }
+    if (modeIndex < 0 || modeIndex >= args.length) return undefined;
+    if (!isWorldWritableMode(args[modeIndex])) return undefined;
+
+    const targets = args.slice(modeIndex + 1)
+      .filter(a => a !== "--")
+      .map(t => existingRealPath(resolveAny(expandVars(t, vars), here)));
+    if (targets.length > 0 && targets.every(isScratchTarget)) {
+      return { reason: "world-writable permissions under a scratch root", category: "world-writable-scratch" };
+    }
+    return { reason: "world-writable permissions", category: "world-writable" };
+  }
+
   /**
    * The WORST danger in the command, not the first one found.
    *
@@ -879,9 +922,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (record(d)) return worst;
         continue;
       }
-      if ((command === "chmod" || command === "chown") && isWorldWritableMode(firstNonFlag(args))) {
-        if (record({ reason: "world-writable permissions", category: "world-writable" })) return worst;
-        continue;
+      if (command === "chmod") {
+        const d = chmodWorldWritableDanger(args, here, vars);
+        if (d && record(d)) return worst;
+        if (d) continue;
       }
       if (command === "git") {
         const r = gitBypassReason(args);

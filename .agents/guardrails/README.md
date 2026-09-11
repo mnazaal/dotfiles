@@ -116,11 +116,12 @@ Learned from other people's configurations as much as from this one.
   fail-safe. Never-legitimate categories (`escalation`, `confinement`,
   `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`,
   `git-clean-ignored` — ignored trees are outside the checkpoint's reach) deny
-  for everyone. Categories the sandbox already contains (`world-writable`,
-  `recursive-force-rm`) allow only where `agent-checkpoint` is wired — claude
-  today. It stays `ask` for pi, which has no per-turn snapshot yet, so allowing
-  it there would loosen an agent that cannot recover uncommitted work. Wiring a
-  checkpoint for an agent is what earns it this tier; nothing else does.
+  for everyone. Scratch-only categories such as `recursive-force-rm-scratch`
+  and `world-writable-scratch` allow for every agent, because their targets are
+  strictly below the configured scratch root and not trusted state. The ordinary
+  `recursive-force-rm` and `world-writable` categories stay `ask`: checkpointing
+  covers some work-tree state but not ignored trees, future PATH trust points,
+  or every way a permission change can persist beyond the sandbox.
 
 ## Retired harnesses
 

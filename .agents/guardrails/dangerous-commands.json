@@ -100,10 +100,8 @@
     "git-guard-bypass": "deny",
     "git-clean-ignored": "deny",
     "recursive-force-rm-toplevel": "deny",
-    "world-writable": {
-      "claude": "allow",
-      "pi": "ask"
-    },
+    "world-writable": "ask",
+    "world-writable-scratch": "allow",
     "recursive-force-rm": "ask",
     "host-control": "deny",
     "remote-code": "deny",
