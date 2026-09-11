@@ -21,6 +21,7 @@ export VISUAL=$EDITOR
 export COLORTERM=truecolor
 export GPG_TTY=$TTY
 
+export TMPDIR="${TMPDIR:-/tmp}"
 export XCURSOR_PATH="/usr/share/icons:/usr/share/themes:$XDG_DATA_HOME/icons:$XDG_DATA_HOME/themes"
 export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
 export CARGO_HOME="$XDG_DATA_HOME/cargo"
