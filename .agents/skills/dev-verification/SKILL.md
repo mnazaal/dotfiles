@@ -9,6 +9,12 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 
 - Follow AGENTS.md “Shell Output Capture”: long/background verification writes full output and exit status to files; add unbuffered output only when the command supports it and you need live log checks. Never rely on `cmd | tail`/`head` evidence.
 - A wrapper's exit status is not the command's. `{ cmd; echo $?; } > log`, a pipeline, and the harness's own completion notification all report the WRAPPER's success, so a failed build reads as green. Read the status line recorded inside the log, and treat a reported exit code for anything but the bare command as no evidence at all.
+- An instrument that reports the same value whether or not the event happened
+  cannot measure that event. Before running a probe, say what its output would
+  look like under each outcome; if the two are identical the probe is
+  unreadable, and any reading of it is invention. Redesign it so the channel
+  can tell the outcomes apart — ask for the branch that reports, such as a
+  refusal or a failure — or have whoever can observe the outcome report it.
 - Evidence before claims.
 - Verify the premise BEFORE building on it, not only the result before claiming
   it. A fact taken from an index, a summary, a memory line or someone's report
@@ -85,6 +91,9 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 - Treating an impossible measurement (removing work made it *slower*) as a result rather than as a readout of your noise floor.
 - Rounding a safety fact up a rung: writing up an argument that stopped at "the failure path looks unreachable" as though it had been executed.
 - Narrating a DIAGNOSIS with no grade at all: "the download failed because the cache backend duplicated the model" and "the download failed, and here is the command that shows why" read identically and differ entirely in worth. When the check is available, run it instead of narrating the cause; when it is not, say "hypothesis" and give the command that would settle it. This is the most frequent way the grading rule above gets skipped, because chat prose has no slot for the grade.
+- Writing the conclusion into a probe's own output (`echo "...no X occurred"`),
+  so the transcript asserts the finding whether or not it is true. A command
+  prints what it observed, never what you expect it to mean.
 
 ## Related Skills
 
