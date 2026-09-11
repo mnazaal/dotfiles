@@ -22,3 +22,4 @@
 # OneDrive: no pass/gnupg exports needed -- the abraunegg client keeps its own
 # refresh token under ~/.config/onedrive. Runs one --sync pass and exits.
 */15 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/onedrive.lock" -c "$HOME/.local/scripts/onedrive-cron" >> "$HOME/.local/state/onedrive-cron.log" 2>&1'
+41 5 * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/pdf-recompress.lock" -c "$HOME/.local/scripts/pdf-recompress && $HOME/.local/scripts/pdf-recompress prune 14" >> "$HOME/.local/state/pdf-recompress.log" 2>&1'

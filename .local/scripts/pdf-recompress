@@ -1,0 +1,193 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Lossless, incremental PDF recompression of a tree, for cron.
+#
+#   pdf-recompress            compress every PDF that is new or whose bytes changed
+#   pdf-recompress scan       list what that would touch, without writing
+#   pdf-recompress init       record the tree as already-settled, compressing nothing
+#   pdf-recompress prune [N]  delete backed-up originals older than N days (default 7)
+#
+# State is one file: MANIFEST holds "size<TAB>path" for every PDF known to be
+# settled. A file is pending when that pair is absent, so both a new path and a
+# changed file at a known path are picked up.
+#
+# Why not simply compress files newer than a timestamp: the OneDrive client
+# restores each file's remote modification time on download, so files that
+# arrive by sync carry mtimes years old and `find -newer` never sees them.
+#
+# qpdf is in ~/.local/bin, which cron's PATH lacks; without this the whole run
+# fails one file at a time and records each failure as final.
+case ":$PATH:" in
+*":$HOME/.local/bin:"*) ;;
+*) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+export PATH
+
+ROOT="${PDF_RECOMPRESS_ROOT:-$HOME/sync/Material}"
+STATE="${PDF_RECOMPRESS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/pdf-recompress}"
+JOBS="${PDF_RECOMPRESS_JOBS:-10}"
+MINGAIN="${PDF_RECOMPRESS_MINGAIN:-3}"
+ONEDRIVE_LOCK="${PDF_RECOMPRESS_ONEDRIVE_LOCK:-$HOME/.cache/onedrive.lock}"
+
+MANIFEST="$STATE/manifest.tsv"
+BACKUP="$STATE/originals"
+LOG="$STATE/actions.tsv"
+TMP="$STATE/tmp"
+
+# ---------------------------------------------------------------- one file --
+# Runs as a child of the xargs below. Always exits 0: a file we cannot improve
+# is not an error, and a non-zero worker would abort the whole run.
+if [ "${1:-}" = "--one" ]; then
+	src="$2"
+	rel="${src#"$ROOT"/}"
+	orig=$(stat -c%s "$src" 2>/dev/null) || exit 0
+	[ "$orig" -gt 0 ] || exit 0
+
+	emit() { printf '%s\t%s\t%s\t%s\n' "$1" "$orig" "${2:-0}" "$rel" >>"$LOG"; }
+
+	# Encrypted files would need a password, or would come back unencrypted.
+	if qpdf --is-encrypted "$src" 2>/dev/null; then
+		emit SKIP_ENCRYPTED
+		exit 0
+	fi
+
+	work="$TMP/$$.$RANDOM.pdf"
+	rc=0
+	timeout 900 qpdf --object-streams=generate --recompress-flate \
+		--compression-level=9 --stream-data=compress \
+		"$src" "$work" 2>/dev/null || rc=$?
+
+	# qpdf exit 3 is "completed with warnings" and its output is valid; the
+	# large PowerPoint-exported decks all warn about zero-offset objects.
+	# Treating 3 as failure silently discards the biggest files.
+	if [ "$rc" = "124" ]; then
+		rm -f "$work"
+		emit SKIP_TIMEOUT
+		exit 0
+	fi
+	if [ "$rc" != "0" ] && [ "$rc" != "3" ]; then
+		rm -f "$work"
+		emit SKIP_QPDF_FAILED
+		exit 0
+	fi
+	[ -s "$work" ] || {
+		rm -f "$work"
+		emit SKIP_EMPTY_OUTPUT
+		exit 0
+	}
+	new=$(stat -c%s "$work")
+
+	# Gain gate. Not only a churn optimisation: qpdf does occasionally produce
+	# a larger file, and this is what keeps the original in that case.
+	gain=$(((orig - new) * 100 / orig))
+	if [ "$gain" -lt "$MINGAIN" ]; then
+		rm -f "$work"
+		emit SKIP_LOW_GAIN "$new"
+		exit 0
+	fi
+
+	# Losslessness is checked, not assumed: structure, page count, exact text.
+	if ! qpdf --check "$work" >/dev/null 2>&1; then
+		rm -f "$work"
+		emit FAIL_CHECK "$new"
+		exit 0
+	fi
+	po=$(pdfinfo "$src" 2>/dev/null | awk '/^Pages:/{print $2}') || true
+	pn=$(pdfinfo "$work" 2>/dev/null | awk '/^Pages:/{print $2}') || true
+	if [ -z "$pn" ] || [ "$po" != "$pn" ]; then
+		rm -f "$work"
+		emit FAIL_PAGECOUNT "$new"
+		exit 0
+	fi
+	to=$(pdftotext "$src" - 2>/dev/null | md5sum | cut -d' ' -f1) || true
+	tn=$(pdftotext "$work" - 2>/dev/null | md5sum | cut -d' ' -f1) || true
+	if [ "$to" != "$tn" ]; then
+		rm -f "$work"
+		emit FAIL_TEXT_DIFF "$new"
+		exit 0
+	fi
+
+	# Back the original up before installing, so an interruption cannot leave
+	# a half-written file in the tree.
+	if ! mkdir -p "$BACKUP/$(dirname "$rel")" 2>/dev/null ||
+		! mv -n "$src" "$BACKUP/$rel" 2>/dev/null; then
+		rm -f "$work"
+		emit FAIL_BACKUP "$new"
+		exit 0
+	fi
+	chmod --reference="$BACKUP/$rel" "$work" 2>/dev/null || true
+	if ! mv -f "$work" "$src" 2>/dev/null; then
+		mv -f "$BACKUP/$rel" "$src" 2>/dev/null || true
+		rm -f "$work"
+		emit FAIL_INSTALL "$new"
+		exit 0
+	fi
+	emit REPLACED "$new"
+	exit 0
+fi
+
+# ------------------------------------------------------------------ driver --
+mkdir -p "$TMP" "$BACKUP"
+touch "$LOG"
+
+snapshot() { find "$ROOT" -type f -iname '*.pdf' -printf '%s\t%p\n'; }
+
+# Loaded with getline rather than the NR==FNR idiom: when the manifest is empty
+# NR==FNR stays true into the second input, and the whole tree is swallowed as
+# if it were already settled.
+pending() {
+	snapshot | awk -F'\t' -v mf="$MANIFEST" '
+		BEGIN { while ((getline l < mf) > 0) { split(l, a, "\t"); m[a[2]] = a[1] } }
+		{ if (!($2 in m) || m[$2] != $1) print $2 }'
+}
+
+case "${1:-run}" in
+scan)
+	pending
+	;;
+init)
+	snapshot >"$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
+	printf 'recorded %s file(s) as settled\n' "$(wc -l <"$MANIFEST")"
+	;;
+prune)
+	find "$BACKUP" -type f -mtime +"${2:-7}" -delete 2>/dev/null || true
+	find "$BACKUP" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+	;;
+run)
+	[ -f "$MANIFEST" ] || {
+		echo "pdf-recompress: no manifest at $MANIFEST; run 'pdf-recompress init' first" >&2
+		exit 1
+	}
+	# Hold the OneDrive lock so the 15-minute cron skips rather than syncing
+	# mid-rewrite. Bounded, so a stuck sync cannot stack runs forever.
+	exec 9>"$ONEDRIVE_LOCK"
+	flock -w 1800 9 || {
+		echo "pdf-recompress: OneDrive lock busy, skipping this run" >&2
+		exit 0
+	}
+
+	list="$TMP/pending.$$"
+	pending >"$list"
+	n=$(wc -l <"$list")
+	if [ "$n" -gt 0 ]; then
+		before=$(wc -l <"$LOG")
+		tr '\n' '\0' <"$list" |
+			xargs -0 -r -P "$JOBS" -n1 "$0" --one || true
+		# Snapshot only after the batch completes, so an interrupted run
+		# leaves unprocessed files pending rather than recording them done.
+		snapshot >"$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
+		tail -n "+$((before + 1))" "$LOG" |
+			awk -F'\t' '{c[$1]++; if ($1 == "REPLACED") s += $2 - $3}
+				END { for (k in c) printf "%s %d\n", k, c[k]
+					printf "reclaimed %.2f MiB\n", s / 1048576 }'
+	fi
+	rm -f "$list"
+	printf '%s processed %d file(s)\n' "$(date '+%F %T')" "$n"
+	;;
+*)
+	sed -n '5,10p' "$0"
+	exit 2
+	;;
+esac
