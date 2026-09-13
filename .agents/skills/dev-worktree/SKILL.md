@@ -11,12 +11,20 @@ Create a worktree under the scratch directory the environment already provides �
 `"$TMPDIR/wt-<topic>"` — and never inside the project tree or beside the
 repository it came from.
 
-Two reasons, both about what happens later. Scratch paths are exempt from the
-recursive-removal guard, so cleaning one up is a plain command rather than a
-permission prompt; a sibling directory under the projects tree is not exempt and
-every removal there interrupts. And a worktree beside its own repository is
-findable by tooling that expected one checkout: a bare `pytest` or `python` can
-resolve into it, which is the failure the Rules below are about.
+Two reasons, both about what happens later. A worktree beside its own repository
+is findable by tooling that expected a single checkout: a bare `pytest` or
+`python` can resolve into it, which is the failure the Rules below are about.
+And the projects tree is for work you keep — a worktree is scaffolding for one
+topic, and leaving it among real checkouts makes something temporary look
+permanent.
+
+The location is not a shortcut around removal, and do not reach for one.
+Cleanup below is the method wherever the worktree sits: `git worktree remove`,
+never `rm -rf`. A worktree directory holds a `.git` file, which makes it a
+repository root, so a recursive removal of one is DENIED outright rather than
+prompted — and the removal policy deliberately keeps agent worktrees outside its
+scratch exemption, because they hold uncommitted work that no checkpoint can
+recover.
 
 Scratch is cleared between sessions, so treat the directory as disposable and
 the branch as the artifact — commit before you stop. A cleared scratch area

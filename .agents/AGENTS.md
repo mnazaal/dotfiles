@@ -75,10 +75,14 @@ This file is global routing and behavior policy. Keep it small.
   and a preference dropped into a closing paragraph is a question they have to
   reverse-engineer — neither is a lighter touch, both are heavier ones. Put the
   supporting evidence below the ask, where they can choose whether to read it.
-- Write research/working notes as self-contained HTML with inline MathJax
-  (theme-aware, so equations render), not Markdown; keep them in the project's
-  `notes/` directory, named per `context-project-docs`. (Standing docs —
-  PLAN/LOG/README — and the reserved `notes/claims.md` stay Markdown.)
+- Write research/working notes as ONE self-contained HTML file — no build step,
+  no sibling stylesheet or script to keep beside it — with the stylesheet and
+  the MathJax configuration inline and theme-aware, so equations render and the
+  note reads in light and dark. MathJax itself loads from a CDN, so a note shows
+  raw TeX with no network; that is the accepted trade, and vendoring the library
+  into every note is not. Not Markdown; keep them in the project's `notes/`
+  directory, named per `context-project-docs`. (Standing docs — PLAN/LOG/README
+  — and the reserved `notes/claims.md` stay Markdown.)
 
 ## Shell Output Capture
 
