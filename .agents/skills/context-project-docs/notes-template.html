@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROJECT — NOTE TITLE</title>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]'], ['$$', '$$']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+:root { color-scheme: light dark;
+  --bg:#fbfaf7; --fg:#1d1d1b; --mute:#6b6a64; --line:#d9d6cd; --head:#f0ede4;
+  --ok:#1f7a3a; --warn:#a15c00; --bad:#b3261e; --code:#efece3; --link:#1a5fb4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#171716; --fg:#e6e3da; --mute:#9d9a90; --line:#3a3936; --head:#232320;
+  --ok:#5fcf7a; --warn:#e8a84a; --bad:#f28b82; --code:#242420; --link:#8ab4f8; } }
+:root[data-theme="dark"] {
+  --bg:#171716; --fg:#e6e3da; --mute:#9d9a90; --line:#3a3936; --head:#232320;
+  --ok:#5fcf7a; --warn:#e8a84a; --bad:#f28b82; --code:#242420; --link:#8ab4f8; }
+
+html,body { background:var(--bg); color:var(--fg); margin:0; }
+body { font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; max-width:60rem; margin:0 auto; padding:2rem 1.25rem 4rem; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; }
+h2 { font-size:1.2rem; margin:2rem 0 .5rem; border-bottom:1px solid var(--line); padding-bottom:.2rem; }
+h3 { font-size:1rem; margin:1.25rem 0 .4rem; }
+p { margin:.5rem 0; }
+.mute { color:var(--mute); }
+a { color:var(--link); }
+ul { padding-left:1.3rem; } li { margin:.2rem 0; }
+
+code,pre { font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+code { background:var(--code); padding:.05em .3em; border-radius:3px; }
+pre { background:var(--code); padding:.75rem 1rem; border-radius:6px; overflow-x:auto; }
+pre code { background:none; padding:0; }
+
+.tbl-wrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; margin:.6rem 0 1rem; font-size:14px; }
+th,td { border:1px solid var(--line); padding:.35rem .55rem; text-align:left; vertical-align:top; }
+th { background:var(--head); }
+
+.ok { color:var(--ok); font-weight:600; }
+.warn { color:var(--warn); font-weight:600; }
+.bad { color:var(--bad); font-weight:600; }
+.box { border:1px solid var(--line); border-left:4px solid var(--warn); padding:.6rem .9rem; margin:1rem 0; background:var(--head); }
+.box.ok-box { border-left-color:var(--ok); }
+.box.bad-box { border-left-color:var(--bad); }
+
+mjx-container { overflow-x:auto; overflow-y:hidden; }
+</style>
+</head>
+<body>
+
+<h1>NOTE TITLE</h1>
+<p class="mute">PREFIX note · PROJECT · state as of DATE. One sentence naming the
+question this note answers, so a reader knows in one line whether to keep going.</p>
+
+<h2>Heading</h2>
+
+<p>Body text. Inline math is \(p(y \mid x)\) and display math is:</p>
+
+\[ \mathcal{L}(\theta) = \mathbb{E}_{q_\theta}\!\left[ \log p(x, z) - \log q_\theta(z) \right] \]
+
+<div class="box">
+<b>Callout.</b> For the one thing a reader must not miss. Add
+<code>ok-box</code> for a settled result or <code>bad-box</code> for a defect.
+</div>
+
+<h2>Table</h2>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>Thing</th><th>Axis</th><th>Verdict</th></tr>
+<tr><td>Row</td><td>What it does on that axis</td><td class="ok">holds</td></tr>
+<tr><td>Row</td><td>What it does on that axis</td><td class="bad">fails</td></tr>
+</table>
+</div>
+
+<h2>Code</h2>
+
+<pre><code>command --flag
+</code></pre>
+
+<p class="mute">Pointers: <a href="claims.md">claims.md</a> · <a href="../PLAN.md">PLAN.md</a></p>
+
+</body>
+</html>

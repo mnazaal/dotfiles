@@ -37,6 +37,15 @@ method), the output is sharper than a field map:
 - For each nearest neighbor, name the single defining feature it is missing — not a vague
   "it differs".
 - State the defensible delta as the *combination* no single paper has, and lead with it.
+- Render the positioning as a table: one row per related work, one column per
+  axis the problem makes matter, our own method as the final row. The cell says
+  how that work stands on that axis, so the empty cells are the gaps and the
+  reader sees the combination rather than being told about it.
+- Fix the columns from what the problem demands, BEFORE filling in our own row.
+  Columns chosen after the fact produce a last row that sweeps every one of
+  them, which is the shape a reviewer discounts on sight — it reads as axes
+  picked so we win. An axis we do not clear stays as a column and becomes a
+  stated limitation; deleting it is what makes the table untrustworthy.
 - Assess scooping risk: which labs/authors are adjacent and iterating, and on which leg.
 - Record an explicit "what NOT to re-pursue" — answered searches and dead ends — so a later
   session does not re-run them. Name the sink: the project's literature notes when the work

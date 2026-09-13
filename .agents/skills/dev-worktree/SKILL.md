@@ -5,6 +5,24 @@ description: "Use when working inside a git worktree (one repo checked out at se
 
 # Skill: Dev Worktree
 
+## Location
+
+Create a worktree under the scratch directory the environment already provides —
+`"$TMPDIR/wt-<topic>"` — and never inside the project tree or beside the
+repository it came from.
+
+Two reasons, both about what happens later. Scratch paths are exempt from the
+recursive-removal guard, so cleaning one up is a plain command rather than a
+permission prompt; a sibling directory under the projects tree is not exempt and
+every removal there interrupts. And a worktree beside its own repository is
+findable by tooling that expected one checkout: a bare `pytest` or `python` can
+resolve into it, which is the failure the Rules below are about.
+
+Scratch is cleared between sessions, so treat the directory as disposable and
+the branch as the artifact — commit before you stop. A cleared scratch area
+leaves the worktree registered, which `git worktree prune` clears; Cleanup below
+has the order.
+
 ## Rules
 
 - A worktree's own `.venv` does not change shell PATH: bare `pytest`/`python` invocations can silently resolve to a sibling checkout's venv, importing a different package install.

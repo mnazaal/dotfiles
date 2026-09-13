@@ -20,10 +20,18 @@ This file is global routing and behavior policy. Keep it small.
 - Later references must be self-contained. Do not refer back to “the above
   P1/T2” without restating the object in words. A label from an external
   artifact (review item, batch, ticket) is not exempt: restate it in words on
-  first use in each run — “item 323 (the bind-host allegation)”.
+  first use in each run — “item 323 (the bind-host allegation)”. Name the object
+  rather than pointing at it: “the worktree location rule”, not “this” or “that”
+  standing alone. Spell an acronym out on first use in each run and prefer the
+  spelled-out name afterwards, including ones that feel standard — the reader
+  may be coming back to the thread cold.
 - Headings and bullets should carry semantic content. Use “Next: verify LaTeX
   build” rather than “P1”, “Step 2”, or “Task B” when the item may be referenced
   later.
+- Put a quantitative comparison in a table: rows are the things compared,
+  columns the axes, one number per cell. Prose carrying three or more figures,
+  and numbered lists whose items are measurements, both hide the comparison the
+  numbers were gathered to make. A single figure in a sentence stays a sentence.
 - Prefer the concrete word to the borrowed metaphor. Replace substrate, wedge,
   vector, locus, nexus, surface, bedrock, scaffolding, paradigm, north star,
   and flywheel with the plain thing meant. This is the opaque-label rule above,
@@ -59,10 +67,14 @@ This file is global routing and behavior policy. Keep it small.
 - After finishing a unit of work, close with one line at project level: what
   the project now has or knows that it didn't, and what comes next.
 - When you need something from the user — a decision, an approval, a fact only
-  they have, a command only they can run — give it its own place in the message
-  and say exactly what is needed. A preference dropped into a closing paragraph
-  is a question they have to reverse-engineer, which is not a lighter touch but
-  a heavier one.
+  they have, a command only they can run — say exactly what is needed, and say
+  it FIRST, in its own section at the top of the message, above the findings
+  that motivate it. They should learn that a decision is wanted from the opening
+  line, not discover it after reading an analysis. A correctly formatted
+  question placed at the end of a long report still reads as an afterthought,
+  and a preference dropped into a closing paragraph is a question they have to
+  reverse-engineer — neither is a lighter touch, both are heavier ones. Put the
+  supporting evidence below the ask, where they can choose whether to read it.
 - Write research/working notes as self-contained HTML with inline MathJax
   (theme-aware, so equations render), not Markdown; keep them in the project's
   `notes/` directory, named per `context-project-docs`. (Standing docs —
@@ -84,6 +96,13 @@ This file is global routing and behavior policy. Keep it small.
   guess. A wrong estimate that silently burns minutes/hours (heavy local compute,
   exponential enumeration) is the failure this prevents — kill and rescope the
   moment reality diverges from the estimate.
+- Size the job against the machine before running it locally, not after it
+  stalls: free memory, core count, and whether a GPU exists at all. A job the
+  workstation cannot hold belongs on the cluster (`dev-hpc`), and that decision
+  is cheapest before the first run rather than after an out-of-memory kill.
+  Measure the machine rather than assuming it — a development workstation may
+  have no GPU, and a CPU-only fallback that "works" can be slower by enough to
+  change what the experiment is.
 - Do not pipe backgrounded or long-running commands through `tail`, `head`,
   `grep`, or similar output truncators/watchers.
 - For long-running commands, write full stdout/stderr directly to a log file
