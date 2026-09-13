@@ -31,8 +31,17 @@ const cwd = "/tmp/project";
 // returns before examining anything; seven rows then read the opposite of what
 // they say, and `make check` is green for the agent and red for the user. The
 // pinned root must sit strictly BELOW the OS temp dir, because the rows for a
-// root itself assume the root is not that directory.
-const scratchRoot = process.env.TMPDIR ?? mkdtempSync(join(tmpdir(), "guardrails-scratch-"));
+// root itself assume the root is not that directory, and because the fixture
+// below creates a SIBLING of the root -- which needs the root's parent to be
+// writable.
+//
+// Never inherit $TMPDIR here, however tempting: both environments now supply a
+// value that breaks the sibling. A login shell exports TMPDIR=/tmp (the OS temp
+// dir itself, so the sibling lands in `/`), and the agent sandbox supplies
+// /tmp/<session> while granting write on that directory but not on /tmp. Always
+// minting the root below `tmpdir()` satisfies both, since Node resolves
+// `tmpdir()` through $TMPDIR when it is set.
+const scratchRoot = mkdtempSync(join(tmpdir(), "guardrails-scratch-"));
 process.env.TMPDIR = scratchRoot;
 process.env.AGENT_BRANCH_PREFIX = "claude";
 
