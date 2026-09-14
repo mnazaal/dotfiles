@@ -289,6 +289,19 @@ const TABLE: Row[] = [
   { command: "bash file.sh <<< 'sudo id'", expected: "allow", note: "a script file takes it as stdin; verified against bash" },
   { command: "grep sudo <<< 'sudo id'", expected: "allow", note: "grep reads the text, it does not run it" },
   { command: "cat <<< 'sudo id'", expected: "allow" },
+  // A wrapper in front of the shell is the one-token rewrite of the case above;
+  // resolving the receiving command without the wrapper set reported `env` and
+  // stopped. All verified to execute in real bash.
+  { command: "env bash <<< 'sudo id'", expected: "deny", note: "a wrapper does not change what receives the operand" },
+  { command: "timeout 5 bash <<< 'sudo id'", expected: "deny" },
+  { command: "bash 2>/dev/null <<< 'sudo id'", expected: "deny", note: "a redirection is not a script operand" },
+  { command: "bash -O extglob <<< 'sudo id'", expected: "deny", note: "-O takes a value; the value is not a script" },
+  { command: "bash -s arg <<< 'sudo id'", expected: "deny", note: "after -s the words are positional parameters" },
+  { command: "bash <<< 'sudo id' > /dev/null", expected: "deny", note: "the operand is one word, not the rest of the line" },
+  // Process substitution runs its body too: `cat <(echo X)` prints X.
+  { command: "cat <(sudo id)", expected: "deny", note: "a process-substitution body is a command" },
+  { command: "tee >(rm -rf /) < f", expected: "deny", note: "the output form runs one as well" },
+  { command: "diff <(sort a) <(sort b)", expected: "allow", note: "the everyday form stays usable" },
 
   // --- git commands that destroy recovery rather than work ------------------
   // Neither touches the checkpoint refs (measured: reachable roots survive

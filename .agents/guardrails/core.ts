@@ -143,7 +143,11 @@ function shellRunBodies(cmd: string): string[] {
     if (ch === "\\") { i++; continue; }
     if (ch === "'") { if (!inDQ) inSQ = true; continue; }
     if (ch === '"') { inDQ = !inDQ; continue; }
-    if (ch === "$" && cmd[i + 1] === "(" && cmd[i + 2] !== "(") {
+    // `<(…)` and `>(…)` run their body too -- verified against bash, where
+    // `cat <(echo X)` prints X. Same depth counting as `$(…)`.
+    const opens = (ch === "$" && cmd[i + 1] === "(" && cmd[i + 2] !== "(") ||
+      ((ch === "<" || ch === ">") && cmd[i + 1] === "(");
+    if (opens) {
       // Depth counting respects quotes too: blind to them, `$(echo ')')` ended
       // at the quoted paren and the orphaned quote made the rest of the line
       // read as literal, hiding a second substitution behind it.
@@ -184,12 +188,43 @@ function shellRunBodies(cmd: string): string[] {
  * X'` prints only what f.sh prints. Options are not operands, so `bash -s`,
  * `bash -i` and `bash --norc` still read the script from stdin.
  */
-function hereStringScript(seg: string): string | undefined {
+function hereStringScript(seg: string, wrappers: Set<string>): string | undefined {
   const at = seg.indexOf("<<<");
   if (at < 0) return undefined;
-  const parsed = commandAndArgs(seg.slice(0, at), new Set<string>());
-  if (!parsed || parsed.args.some(a => !a.startsWith("-"))) return undefined;
-  const operand = seg.slice(at + 3).trim();
+  // Resolve the receiving command WITH the wrapper set: `env bash <<< …` and
+  // `timeout 5 bash <<< …` run the operand exactly as `bash <<< …` does, and
+  // an empty wrapper set reported the command as `env`, which is not a shell
+  // runner -- a one-token rewrite of the case this rule exists to catch.
+  const parsed = commandAndArgs(seg.slice(0, at), wrappers);
+  if (!parsed) return undefined;
+  // Options bash takes a value for; without this, `bash -O extglob <<< …` read
+  // `extglob` as a script operand and stopped scanning.
+  const VALUE_OPTS = new Set(["-O", "+O", "--rcfile", "--init-file"]);
+  let hasScriptOperand = false;
+  for (let i = 0; i < parsed.args.length; i++) {
+    const a = parsed.args[i];
+    // `-s` means the script comes from stdin; anything after it is a positional
+    // parameter, not a file. Same for what follows `--`.
+    if (a === "-s" || a === "--") break;
+    if (isRedirection(a)) { if (isBareRedirectionOperator(a)) i++; continue; }
+    if (VALUE_OPTS.has(a)) { i++; continue; }
+    if (a.startsWith("-")) continue;
+    hasScriptOperand = true;
+    break;
+  }
+  if (hasScriptOperand) return undefined;
+  // A here-string operand is ONE word. Running to the end of the segment
+  // swallowed a trailing redirection, and the quote-strip then failed:
+  // `bash <<< 'sudo id' > /dev/null` stopped matching anything.
+  const rest = seg.slice(at + 3).replace(/^\s+/, "");
+  let end = 0, quote = "";
+  for (; end < rest.length; end++) {
+    const c = rest[end];
+    if (quote) { if (c === quote) quote = ""; continue; }
+    if (c === "'" || c === '"') { quote = c; continue; }
+    if (/\s/.test(c)) break;
+  }
+  const operand = rest.slice(0, end);
   const quoted = operand.length > 1 &&
     ((operand.startsWith("'") && operand.endsWith("'")) ||
      (operand.startsWith('"') && operand.endsWith('"')));
@@ -1100,7 +1135,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (inner) { const nested = dangerReason(inner, here); if (nested && record(nested)) return worst; }
         // Only when the shell has no script of its own; hereStringScript checks
         // for a file operand and this checks for -c.
-        const heredoc = inner ? undefined : hereStringScript(seg);
+        const heredoc = inner ? undefined : hereStringScript(seg, WRAPPERS);
         if (heredoc) { const nested = dangerReason(heredoc, here); if (nested && record(nested)) return worst; }
       }
     }
