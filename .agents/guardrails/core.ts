@@ -116,6 +116,87 @@ function splitSegmentsTagged(cmd: string): Segment[] {
   return out;
 }
 
+/**
+ * Bodies of command substitutions -- `$(…)` and backticks -- which the shell
+ * runs as command lines in their own right.
+ *
+ * They never stand in command position, so the tokenizer saw ordinary
+ * characters and `echo $(sudo id)` returned no verdict at all where the bare
+ * form denies. Callers scan each body as a command line, which covers nesting
+ * because a body containing another is scanned the same way.
+ *
+ * The text HOLDING the bodies is deliberately left untouched. An earlier
+ * attempt replaced each body with a placeholder token to make the parent's
+ * argument positions line up; that fixed two rules and broke five, because
+ * every predicate asking "is this flag among the arguments" then saw one opaque
+ * word. Scanning without rewriting has no such interaction.
+ *
+ * Single quotes suppress substitution, so a body inside them is literal text.
+ * Double quotes do not. `$((…))` is arithmetic, not a command.
+ */
+function shellRunBodies(cmd: string): string[] {
+  const out: string[] = [];
+  let inSQ = false, inDQ = false;
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i] ?? "";
+    if (inSQ) { if (ch === "'") inSQ = false; continue; }
+    if (ch === "\\") { i++; continue; }
+    if (ch === "'") { if (!inDQ) inSQ = true; continue; }
+    if (ch === '"') { inDQ = !inDQ; continue; }
+    if (ch === "$" && cmd[i + 1] === "(" && cmd[i + 2] !== "(") {
+      // Depth counting respects quotes too: blind to them, `$(echo ')')` ended
+      // at the quoted paren and the orphaned quote made the rest of the line
+      // read as literal, hiding a second substitution behind it.
+      let depth = 1, j = i + 2, bSQ = false, bDQ = false;
+      for (; j < cmd.length; j++) {
+        const c = cmd[j];
+        if (bSQ) { if (c === "'") bSQ = false; continue; }
+        if (c === "\\") { j++; continue; }
+        if (c === "'") { if (!bDQ) bSQ = true; continue; }
+        if (c === '"') { bDQ = !bDQ; continue; }
+        if (bDQ) continue;
+        if (c === "(") depth++;
+        else if (c === ")" && --depth === 0) break;
+      }
+      out.push(cmd.slice(i + 2, j));
+      i = j;
+      continue;
+    }
+    if (ch === "`") {
+      const close = cmd.indexOf("`", i + 1);
+      if (close < 0) break;
+      out.push(cmd.slice(i + 1, close));
+      i = close;
+      continue;
+    }
+  }
+  return out.filter(b => b.trim());
+}
+
+/**
+ * The operand of a here-string, with one level of quoting removed the way the
+ * shell removes it -- `bash <<< 'sudo id'` otherwise tokenizes to the single
+ * argument `sudo id` and matches no command.
+ *
+ * A here-string is a SCRIPT only when a shell receives it and has no script of
+ * its own: with `-c` the operand is that script's stdin, and with a file
+ * operand it is the file's stdin. Verified against bash -- `bash f.sh <<< 'echo
+ * X'` prints only what f.sh prints. Options are not operands, so `bash -s`,
+ * `bash -i` and `bash --norc` still read the script from stdin.
+ */
+function hereStringScript(seg: string): string | undefined {
+  const at = seg.indexOf("<<<");
+  if (at < 0) return undefined;
+  const parsed = commandAndArgs(seg.slice(0, at), new Set<string>());
+  if (!parsed || parsed.args.some(a => !a.startsWith("-"))) return undefined;
+  const operand = seg.slice(at + 3).trim();
+  const quoted = operand.length > 1 &&
+    ((operand.startsWith("'") && operand.endsWith("'")) ||
+     (operand.startsWith('"') && operand.endsWith('"')));
+  const script = quoted ? operand.slice(1, -1) : operand;
+  return script.trim() ? script : undefined;
+}
+
 function splitSegments(cmd: string): string[] {
   return splitSegmentsTagged(cmd).map(s => s.text);
 }
@@ -897,6 +978,14 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     const TOPLEVEL = "recursive-force-rm-toplevel";
     for (const { text: seg, pipedFromPrev } of splitSegmentsTagged(cmd)) {
       if (!pipedFromPrev) { pipelineFetches = false; pipelineWalksGitDir = false; }
+      // A substitution body is a command line the shell runs before this one,
+      // so judge it as one -- against `here`, since it runs after any earlier
+      // `cd`. Scanned before the parse below, because a segment that is nothing
+      // but an assignment (`V=$(…)`) parses to no command and would `continue`.
+      for (const body of shellRunBodies(seg)) {
+        const nested = dangerReason(body, here);
+        if (nested && record(nested)) return worst;
+      }
       const tamper = hookBypassEnvReason(tokenize(seg));
       if (tamper && record({ reason: tamper, category: "confinement" })) return worst;
       // Before commandAndArgs, which skips assignments -- and before the
@@ -1009,6 +1098,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       if (SHELL_RUNNERS.has(command)) {
         const inner = dashCArg(args);
         if (inner) { const nested = dangerReason(inner, here); if (nested && record(nested)) return worst; }
+        // Only when the shell has no script of its own; hereStringScript checks
+        // for a file operand and this checks for -c.
+        const heredoc = inner ? undefined : hereStringScript(seg);
+        if (heredoc) { const nested = dangerReason(heredoc, here); if (nested && record(nested)) return worst; }
       }
     }
     return worst;

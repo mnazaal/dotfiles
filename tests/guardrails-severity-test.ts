@@ -256,6 +256,40 @@ const TABLE: Row[] = [
   { command: "cat install.sh | sh", expected: "allow", note: "no download upstream: a local script the path rules judge" },
   { command: "curl -sO https://example.com/f.tar.gz", expected: "allow", note: "a fetch on its own is ordinary work" },
 
+  // --- text the shell runs that never stands in command position -------------
+  // The body of `$(…)` is a command line the shell runs before the one holding
+  // it, but the tokenizer saw ordinary characters, so `echo $(sudo id)` got no
+  // verdict at all where the bare form denies. The bodies are scanned as
+  // command lines of their own; the text holding them is left ALONE, which is
+  // the lesson from an earlier attempt that replaced each body with a
+  // placeholder and shifted every later argument one position left.
+  { command: "echo $(sudo id)", expected: "deny", note: "the body is a command the shell runs" },
+  { command: "echo `sudo id`", expected: "deny", note: "backticks are the older spelling" },
+  { command: "V=$(sudo id)", expected: "deny", note: "the assignment form runs the body too" },
+  { command: "echo $(echo $(sudo id))", expected: "deny", note: "nesting" },
+  { command: "echo $(echo ')')$(sudo id)", expected: "deny", note: "a quoted paren does not close the body" },
+  { command: "echo $(rm -rf /)", expected: "deny" },
+  { command: "for f in $(sudo id); do echo $f; done", expected: "deny", note: "a body in a word-expansion position still runs" },
+  // Bodies that are harmless must not gain a tier, or the rule is unusable.
+  { command: "echo '$(sudo id)'", expected: "allow", note: "single quotes suppress substitution" },
+  { command: 'echo "$(cat notes.txt)"', expected: "allow", note: "double quotes do not, but the body is benign" },
+  { command: "cd $(git rev-parse --show-toplevel)", expected: "allow", note: "the everyday form" },
+  { command: "echo $((2 + 2))", expected: "allow", note: "arithmetic expansion runs no command" },
+  { command: "make -j$(nproc) test", expected: "allow" },
+  { command: "git add $(git diff --name-only)", expected: "allow" },
+
+  // A here-string is a script ONLY when a shell receives it and has no script
+  // of its own. Each non-case below produced a false deny during development,
+  // so all four are pinned: with `-c` the operand is the script's stdin, with a
+  // file operand it is the file's stdin, and cat/grep merely read it.
+  { command: "bash <<< 'sudo id'", expected: "deny", note: "stdin IS the script here" },
+  { command: "sh <<< 'rm -rf /'", expected: "deny" },
+  { command: "bash -s <<< 'sudo id'", expected: "deny", note: "-s is an option, not a script operand" },
+  { command: "bash -c 'wc -l' <<< 'rm -rf /'", expected: "allow", note: "with -c the here-string is the script's stdin" },
+  { command: "bash file.sh <<< 'sudo id'", expected: "allow", note: "a script file takes it as stdin; verified against bash" },
+  { command: "grep sudo <<< 'sudo id'", expected: "allow", note: "grep reads the text, it does not run it" },
+  { command: "cat <<< 'sudo id'", expected: "allow" },
+
   // --- git commands that destroy recovery rather than work ------------------
   // Neither touches the checkpoint refs (measured: reachable roots survive
   // both). They take the margin: the dangling snapshot, and the reflog.
