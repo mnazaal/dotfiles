@@ -168,16 +168,19 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   bibliography, author-lookup, or field-survey content, load
   `research-protocol` and follow it.
 - `~/org` (the personal Org note store) is READ-ONLY for agents except
-  `~/org/agents/`, which is the agent-writable area and is bound read-write by
-  the sandbox profile. It holds literature that has no project home yet —
-  cross-project surveys and pre-project novelty gates — one file per topic,
-  named `lit-<topic>.org`. Once a topic becomes a project, its map moves to
-  that project's `notes/` (`context-project-docs`) and the agents copy is
-  deleted, not left to fork. Everywhere else under `~/org`, never write:
-  propose Org edits as snippets the user applies in Emacs. `plan-day` owns
-  which agenda files to read and why the agenda view hides most open items.
-  Project standing docs and project `notes/` are governed by
-  `context-project-docs`.
+  `~/org/agents/`, which is the agent-writable area, is bound read-write by the
+  sandbox profile, and is a git repository — commit what you write there. Its
+  subtrees, one slug-named entry per topic in each: `wiki/` is the
+  cross-project literature store (`research-lit-search`), `learning/` holds
+  learning workspaces (`learn-topic`). Once a topic becomes a project, its map
+  moves to that project's `notes/` (`context-project-docs`) and the agents copy
+  is deleted, not left to fork. Everywhere else under `~/org`, never write:
+  propose Org edits as snippets the user applies in Emacs. `~/org/agenda/` is
+  the planner (`plan-day`): `primary-gcal.org` and `aalto-outlook.org` are the
+  generated calendars, `inbox.org` the capture inbox, `inbox-recurring.org` the
+  habits, `backlog.org` an archived backlog from a previous affiliation,
+  `gcal.org` and `schedule.org` superseded. Project standing docs and project
+  `notes/` are governed by `context-project-docs`.
 - `~/org/roam` publishes to a **public** website. Every file under `roam/org/`
   is exported, and `:noexport:` excludes tagged *headlines*, not whole files.
   Proposing a roam note is therefore proposing publication: say so when you

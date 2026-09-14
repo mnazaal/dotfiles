@@ -18,7 +18,7 @@ description: "Use for literature search: related work, paper search, field surve
   was excluded. A sweep that lists only what it kept is unfalsifiable — the
   reader cannot tell a paper that was considered and rejected from one that was
   never found, and the next sweep re-litigates the same rejects from scratch.
-- Search the user's own corpus FIRST, before the external sweep — it is the cheapest recall step, not an optional extra: prior projects' literature notes and the personal note store, at the locations the global instructions and `context-project-docs` define. Prefer semantic retrieval if a semantic-search tool is configured; fall back to text search. Report which corpora you checked and what they already covered. Two distinct failures this prevents: re-deriving a subfield's anchor papers once per project, and dropping a paper that an earlier cross-project survey found but no project ever inherited.
+- Search the user's own corpus FIRST, before the external sweep — it is the cheapest recall step, not an optional extra: prior projects' literature notes, the cross-project store the global instructions name, and the personal Org note store. Prefer semantic retrieval if a semantic-search tool is configured; fall back to text search. Report which corpora you checked and what they already covered. Two distinct failures this prevents: re-deriving a subfield's anchor papers once per project, and dropping a paper that an earlier cross-project survey found but no project ever inherited.
 
 ## Workflow
 
@@ -49,8 +49,8 @@ method), the output is sharper than a field map:
 - Assess scooping risk: which labs/authors are adjacent and iterating, and on which leg.
 - Record an explicit "what NOT to re-pursue" — answered searches and dead ends — so a later
   session does not re-run them. Name the sink: the project's literature notes when the work
-  has a project, otherwise the cross-project store (locations per the global instructions and
-  `context-project-docs`). A dead end recorded only in chat is a dead end that gets re-run.
+  has a project, otherwise the cross-project store the global instructions name (`## Cross-project
+  store` below). A dead end recorded only in chat is a dead end that gets re-run.
 - Expect concept-occupied, machinery-open. Ask what each nearest neighbor failed to build, not whether the idea is taken — it usually is.
 - A null result licenses "no paper states this", never "nobody noticed this".
   Elementary facts go unwritten because they are elementary, so absence is evidence
@@ -58,6 +58,15 @@ method), the output is sharper than a field map:
   and its consequences; do not claim priority over a lemma.
 - End on a verdict: survives/pursue (with any narrowed framing) vs. scooped/pivot.
 - A kill verdict closes the gate, not the literature. One sufficient counterexample kills a claim, so a kill survives thin coverage — but it establishes nothing about what the field cannot do. If the project continues, re-open with the limitation question, whose stopping condition is breadth enough to separate an incidental limitation from a structural one.
+
+## Cross-project store
+
+When the work has no project home, the sink is the cross-project literature
+store the global instructions name; if none is named, ask for one rather than
+inventing a location. One slug-named entry per query. A re-run extends the
+existing entry instead of opening a second. Each paper carries its citation,
+venue, link, kept/rejected with the reason, and any notes; write totals after
+the last entry, not before.
 
 ## Related Skills
 

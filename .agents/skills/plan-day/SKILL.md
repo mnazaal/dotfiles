@@ -13,17 +13,19 @@ Use when the user wants a morning brief, daily startup, daily plan, or next-acti
 
 ## Sources
 
-Read `~/org/agenda/` directly. The Org agenda is a **date view**: it lists only
-what carries `SCHEDULED` or `DEADLINE`, so most open items never appear in it.
-Planning from the agenda alone reproduces that blind spot.
+The global instructions name the agenda directory and say which file plays
+which role; if they do not, ask rather than guessing from filenames. The Org
+agenda is a **date view**: it lists only what carries `SCHEDULED` or
+`DEADLINE`, so most open items never appear in it. Planning from the agenda
+alone reproduces that blind spot.
 
-| file | what it is | how to use it |
-|---|---|---|
-| `primary-gcal.org`, `aalto-outlook.org` | generated calendar exports, refreshed continuously | today's fixed commitments; the reliable half of the store |
-| `inbox.org` | captured TODOs, mostly undated | the candidate pool. Its header comment defines the `@tag` taxonomy (`@meeting`, `@research`, `@reading`, `@coursework`, `@admin`, `@errand`, `@leisure`) — group by those tags rather than inventing categories |
-| `inbox-recurring.org` | habits carrying Org repeaters, already tracked by Emacs' habit system | not candidate work. Name a habit only when its repeater has lapsed |
-| `backlog.org` | archive of items captured under a previous affiliation | skip for a daily brief; open it only when asked about dormant or historical items |
-| `gcal.org`, `schedule.org` | superseded by the two generated calendars | ignore |
+| role | how to use it |
+|---|---|
+| generated calendar exports, refreshed continuously | today's fixed commitments; the reliable half of the store |
+| capture inbox, mostly undated | the candidate pool. Group by the `@tag` taxonomy its own header comment defines rather than inventing categories |
+| recurring habits carrying Org repeaters, already tracked by Emacs' habit system | not candidate work. Name a habit only when its repeater has lapsed |
+| archived backlog | skip for a daily brief; open it only when asked about dormant or historical items |
+| superseded files | ignore |
 
 A capture file's own age is a reading: one untouched for months means nothing
 was captured, not that nothing is pending.
@@ -50,9 +52,9 @@ was captured, not that nothing is pending.
 
 1. Identify today's date, day phase, and available work window.
 2. Read today's fixed commitments from the generated calendars.
-3. Read `inbox.org` for candidates: each item's `@tag` and how long it has sat
-   undated.
-4. Check `inbox-recurring.org` only for repeaters that have lapsed.
+3. Read the capture inbox for candidates: each item's `@tag` and how long it
+   has sat undated.
+4. Check the habits file only for repeaters that have lapsed.
 5. Separate fixed commitments from candidate tasks; find conflicts and overload.
 6. Use `decide-priority` when ranking candidates requires explicit tradeoffs.
 7. Produce the brief, and close the loop: emit the proposed dates as an org
