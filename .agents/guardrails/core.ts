@@ -756,14 +756,28 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     return undefined;
   }
 
-  function confinementTamperReason(toks: string[]): string | undefined {
-    if (toks.includes("AGENT_BRANCH_PREFIX")) {
-      if (toks.includes("unset")) return "unsets AGENT_BRANCH_PREFIX (branch confinement)";
-      if (toks.includes("env") && toks.includes("-u")) return "strips AGENT_BRANCH_PREFIX (env -u, branch confinement)";
-    }
-    if (toks.includes("env") && toks.includes("-i")) return "clears env (env -i, branch confinement)";
+  /**
+   * Environment settings that stop the git hooks running AT ALL, which is the
+   * one case no kernel fact can defend: `GIT_CONFIG_GLOBAL=/tmp/x` points git
+   * at a config that can set core.hooksPath, and then no hook executes to check
+   * anything. Same family as `git -c core.hooksPath=` and `--no-verify`, which
+   * gitBypassReason handles.
+   *
+   * The AGENT_BRANCH_PREFIX rules that used to live here are DELETED, along
+   * with everything built to reach them. They existed because the branch guard
+   * read an environment variable and treated empty as "a human is running
+   * this", so `env -i git commit` switched it off -- and defending that meant
+   * enumerating `env`, `unset`, `export`, `declare`, and every command capable
+   * of carrying another command. The hooks now take their signal from machinery
+   * being read-only, which an agent cannot change, so clearing the environment
+   * refuses every branch write instead of lifting the restriction. The rules
+   * stopped protecting anything the moment that landed.
+   *
+   * tests/git-hooks-confinement-test.sh holds the contract that replaced them,
+   * and scores the previous hooks 8/10 on it.
+   */
+  function hookBypassEnvReason(toks: string[]): string | undefined {
     for (const t of toks) {
-      if (t.startsWith("AGENT_BRANCH_PREFIX=")) return "reassigns AGENT_BRANCH_PREFIX (branch confinement)";
       if (t.startsWith("GIT_CONFIG") && t.includes("=")) return "git config via environment (GIT_CONFIG_*)";
     }
     return undefined;
@@ -858,7 +872,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     const TOPLEVEL = "recursive-force-rm-toplevel";
     for (const { text: seg, pipedFromPrev } of splitSegmentsTagged(cmd)) {
       if (!pipedFromPrev) { pipelineFetches = false; pipelineWalksGitDir = false; }
-      const tamper = confinementTamperReason(tokenize(seg));
+      const tamper = hookBypassEnvReason(tokenize(seg));
       if (tamper && record({ reason: tamper, category: "confinement" })) return worst;
       // Before commandAndArgs, which skips assignments -- and before the
       // `continue` below, since a bare `W=…` segment parses to no command at all.

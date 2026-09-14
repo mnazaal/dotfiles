@@ -257,9 +257,18 @@ const TABLE: Row[] = [
   { command: "bash -c 'rm -rf /'", expected: "deny", note: "top-level target, through recursion" },
 
   // --- confinement tampering: the agent disabling its own guard ----------------
-  { command: "unset AGENT_BRANCH_PREFIX", expected: "deny" },
-  { command: "AGENT_BRANCH_PREFIX=other git commit -m x", expected: "deny" },
-  { command: "env -i bash -c 'git commit'", expected: "deny" },
+  // Tampering with the branch-prefix VARIABLE is no longer the scanner's
+  // problem, and these rows record that deliberately rather than by omission.
+  // The git hooks used to read the variable and treat empty as "a human", so
+  // clearing it disabled them; they now key on machinery being read-only, which
+  // an agent cannot change, and refuse every branch write when the variable is
+  // gone. Clearing it is therefore strictly worse for an agent than leaving it
+  // alone, and the scanner rules that chased `env`/`unset`/`export` -- and the
+  // carrier machinery built to reach them -- protected nothing.
+  // The contract now lives in tests/git-hooks-confinement-test.sh.
+  { command: "unset AGENT_BRANCH_PREFIX", expected: "allow", note: "the hook no longer depends on it" },
+  { command: "AGENT_BRANCH_PREFIX=other git commit -m x", expected: "allow", note: "reassigning buys nothing: the hook enforces on the kernel signal" },
+  { command: "env -i bash -c 'git commit'", expected: "allow", note: "a cleared environment now refuses all branch writes, at the hook" },
   { command: "GIT_CONFIG_COUNT=1 git commit -m x", expected: "deny" },
 
   // --- git guard bypass: unapprovable, run it yourself in a terminal -----------
