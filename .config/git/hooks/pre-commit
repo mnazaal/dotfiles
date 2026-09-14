@@ -8,7 +8,20 @@ ERROR_PREFIX="GIT PRE-COMMIT HOOK ERROR:"
 # `env` block, pi in its guardrails extension.
 # Empty => human.
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
-if [[ -n "$PREFIX" ]]; then
+
+# See reference-transaction for why this is a kernel fact and not just the
+# variable: an agent can unset AGENT_BRANCH_PREFIX, but it cannot make a
+# read-only bind writable. The marker must exist to count, so a machine without
+# it degrades to the variable alone.
+CONFINED_MARKER="$HOME/.claude/settings.json"
+CONFINED=0
+if [[ -n "$PREFIX" ]]; then CONFINED=1; fi
+if [[ -e "$CONFINED_MARKER" && ! -w "$CONFINED_MARKER" ]]; then CONFINED=1; fi
+if [[ "$CONFINED" == 1 && -z "$PREFIX" ]]; then
+	echo "$ERROR_PREFIX confined agent with no AGENT_BRANCH_PREFIX (environment cleared?); refusing" >&2
+	exit 1
+fi
+if [[ "$CONFINED" == 1 ]]; then
 	BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
 	if [[ -z "$BRANCH" ]]; then
 		# Detached HEAD is only allowed mid-rebase of a $PREFIX/* branch (e.g.

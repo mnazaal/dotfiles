@@ -90,6 +90,7 @@ test:
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/guardrails-skill-state-test.sh
 	@bash tests/pi-shim-test.sh
+	@bash tests/git-hooks-confinement-test.sh
 	@bash tests/sandbox-env-test.sh
 	@bash tests/sandbox-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh

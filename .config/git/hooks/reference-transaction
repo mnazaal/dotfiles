@@ -4,7 +4,32 @@ set -euo pipefail
 ERROR_PREFIX="GIT REFERENCE TRANSACTION HOOK ERROR:"
 
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
-[[ -n "$PREFIX" && "$1" == "prepared" ]] || exit 0
+
+# Whether an agent is running us must not rest on something an agent can unset.
+# `env -i git commit` cleared AGENT_BRANCH_PREFIX and this hook exited 0 --
+# which is why the scanner grew a family of rules about `env`, `unset` and
+# `export`, and why every carrier that can reach them had to be enumerated.
+#
+# Machinery is read-only inside the sandbox and writable outside. That is a
+# kernel fact: an agent can unset a variable, it cannot make a read-only bind
+# writable. Measured on both sides 2026-09-14.
+#
+# The marker must EXIST to count. A machine that has no such file is not
+# confined, so this stays portable and degrades to the variable alone rather
+# than refusing everyone's commits.
+CONFINED_MARKER="$HOME/.claude/settings.json"
+CONFINED=0
+if [[ -n "$PREFIX" ]]; then CONFINED=1; fi
+if [[ -e "$CONFINED_MARKER" && ! -w "$CONFINED_MARKER" ]]; then CONFINED=1; fi
+
+[[ "$CONFINED" == 1 && "$1" == "prepared" ]] || exit 0
+
+# Confined with no prefix means the environment was cleared. Refuse every
+# branch write rather than falling through to no restriction at all.
+if [[ -z "$PREFIX" ]]; then
+	echo "$ERROR_PREFIX confined agent with no AGENT_BRANCH_PREFIX (environment cleared?); refusing all branch writes" >&2
+	exit 1
+fi
 
 while read -r old new ref; do
 	[[ "$ref" == refs/heads/* ]] || continue

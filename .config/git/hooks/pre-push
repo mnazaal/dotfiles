@@ -4,7 +4,20 @@ set -euo pipefail
 ERROR_PREFIX="GIT PRE-PUSH HOOK ERROR:"
 
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
-[[ -n "$PREFIX" ]] || exit 0
+
+# See reference-transaction for why this is a kernel fact and not just the
+# variable: an agent can unset AGENT_BRANCH_PREFIX, but it cannot make a
+# read-only bind writable. The marker must exist to count, so a machine without
+# it degrades to the variable alone.
+CONFINED_MARKER="$HOME/.claude/settings.json"
+CONFINED=0
+if [[ -n "$PREFIX" ]]; then CONFINED=1; fi
+if [[ -e "$CONFINED_MARKER" && ! -w "$CONFINED_MARKER" ]]; then CONFINED=1; fi
+if [[ "$CONFINED" == 1 && -z "$PREFIX" ]]; then
+	echo "$ERROR_PREFIX confined agent with no AGENT_BRANCH_PREFIX (environment cleared?); refusing" >&2
+	exit 1
+fi
+[[ "$CONFINED" == 1 ]] || exit 0
 is_zero() { [[ "$1" =~ ^0+$ ]]; }
 
 # shellcheck disable=SC2034  # local_ref is positional in the pre-push stdin protocol
