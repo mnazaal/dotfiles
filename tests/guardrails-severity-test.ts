@@ -114,6 +114,23 @@ const TABLE: Row[] = [
   { command: "(sudo apt install ripgrep)", expected: "deny", note: "subshell" },
   { command: "{ sudo apt install ripgrep ; }", expected: "deny", note: "brace group" },
   { command: "exec sudo apt install ripgrep", expected: "deny" },
+  // The thirteenth shape, found 2026-09-14 and live since the rule existed: a
+  // SPACE. A redirection written as bare punctuation keeps its filename in the
+  // next token, so a walk that steps over the operator alone halts on the
+  // filename and reports it as the command word. `>/dev/null sudo id` denied
+  // while `> /dev/null sudo id` was permitted -- one space defeating the whole
+  // deny tier. One row per operator, because a partial repair would pass a
+  // single example.
+  { command: ">/dev/null sudo id", expected: "deny", note: "attached operator: the form that always worked" },
+  { command: "> /dev/null sudo id", expected: "deny", note: "detached operator: the filename is its own token" },
+  { command: "2> /dev/null sudo id", expected: "deny" },
+  { command: ">> /dev/null sudo id", expected: "deny" },
+  { command: "< /dev/null sudo id", expected: "deny" },
+  { command: "&> /dev/null sudo id", expected: "deny" },
+  { command: "2> /dev/null rm -rf /", expected: "deny", note: "the whole deny tier rode on this, not just escalation" },
+  { command: "> /dev/null nohup sudo id", expected: "deny", note: "and it composes with a wrapper" },
+  { command: "> /dev/null ls -la", expected: "allow", note: "the control: an ordinary command keeps its verdict" },
+  { command: "2>&1 sudo id", expected: "deny", note: "fd-dup is one token and must not eat the next" },
   { command: "if true; then sudo apt install ripgrep; fi", expected: "deny", note: "the segment opens with a keyword" },
   { command: ">/dev/null sudo apt install ripgrep", expected: "deny", note: "leading redirection" },
   { command: "2>&1 sudo apt install ripgrep", expected: "deny" },

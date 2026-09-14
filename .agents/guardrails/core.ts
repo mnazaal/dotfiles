@@ -318,6 +318,24 @@ function isRedirection(tok: string): boolean {
   return /^[0-9]*[<>&]?[<>]/.test(tok);
 }
 
+/**
+ * A redirection written as bare punctuation -- `>`, `2>`, `>>`, `<`, `&>` --
+ * whose filename is the NEXT token rather than attached to it.
+ *
+ * Stepping over the operator alone leaves the walk on the filename, which is
+ * then read as the command word. That made ONE SPACE defeat the entire deny
+ * tier: `>/dev/null sudo id` denied, `> /dev/null sudo id` was permitted, and
+ * the same held for `rm -rf /` and everything else. POSIX lets redirections
+ * and assignments appear in any order in the command prefix, so this has to be
+ * handled where the prefix is walked, not at the rules.
+ *
+ * `2>&1` is deliberately excluded: it is one token and consumes no filename,
+ * so stepping over two tokens there would swallow the command.
+ */
+function isBareRedirectionOperator(tok: string): boolean {
+  return /^[0-9]*[<>&]?[<>]+$/.test(tok);
+}
+
 function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; args: string[] } | undefined {
   const toks = tokenize(seg);
   let i = 0;
@@ -325,7 +343,14 @@ function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; 
   for (let moved = true; moved && i < toks.length;) {
     moved = false;
     while (i < toks.length && isAssignment(toks[i])) { i++; moved = true; }
-    while (i < toks.length && (SHELL_KEYWORDS.has(toks[i]) || isRedirection(toks[i]))) { i++; moved = true; }
+    while (i < toks.length && (SHELL_KEYWORDS.has(toks[i]) || isRedirection(toks[i]))) {
+      const bare = isBareRedirectionOperator(toks[i]);
+      i++;
+      // Step over the filename too, or the walk halts on it and reports it as
+      // the command.
+      if (bare && i < toks.length) i++;
+      moved = true;
+    }
     // A `--` left by a wrapper's own option parsing separates options from the
     // command; `timeout 5 -- sudo id` otherwise reports its command as `--`.
     while (i < toks.length && toks[i] === "--") { i++; moved = true; }
