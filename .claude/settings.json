@@ -1,6 +1,5 @@
 {
   "cleanupPeriodDays": 3650,
-  "outputStyle": "Concise",
   "env": {
     "AGENT_BRANCH_PREFIX": "claude",
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
@@ -161,6 +160,7 @@
     ]
   },
   "disableAgentView": true,
+  "outputStyle": "Concise",
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
