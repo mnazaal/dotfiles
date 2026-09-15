@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "opencode-go",
-  "defaultModel": "deepseek-v4-pro",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.6-sol",
   "defaultThinkingLevel": "high",
   "tuiMode": "fullscreen",
   "hideThinkingBlock": false,
@@ -11,7 +11,8 @@
     "npm:pi-web-access",
     "npm:pi-simplify",
     "npm:pi-subagents",
-    "npm:@zackify/pi-claude-permissions"
+    "npm:@zackify/pi-claude-permissions",
+    "npm:@ogulcancelik/pi-minimal-footer"
   ],
   "lastChangelogVersion": "0.85.1",
   "enableInstallTelemetry": false,
