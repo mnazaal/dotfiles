@@ -11,6 +11,7 @@ description: "Use for literature search: related work, paper search, field surve
 - Search from multiple angles: keywords, methods, venues, authors, citations, references.
 - Author expansion is secondary to citation/reference edges (an author edge is a weaker topical signal — people pivot subfields and co-author across topics). Use it to map who is active, not as the primary recall lever.
 - Citation and reference edges are the recall lever, not an option. A sweep that made zero citation/reference-edge calls has not been run, however many keyword queries it issued.
+- The configured search tool is one provider; the edge calls do not have to go through it. `references/` beside this skill holds the query shapes for keyless HTTP sources: `openalex.md` and `opencitations.md` (citation and reference edges), `crossref.md` (DOI metadata), `unpaywall.md` (an open copy for a DOI), `arxiv.md` (Atom API, not JSON), `semantic-scholar.md` (raw HTTP when the configured tool's rate limit bites). Open the one the step needs; each carries the date its figures were verified.
 - Do not over-rank unverified or weakly relevant papers.
 - Record what a paper ESTABLISHES, not what it is about. "A survey of X" is not a record; "orders X by data scope in §2, Definitions 2.4–2.9" is. A paper filed by topic cannot later tell you it already contains your contribution.
 - Preserve query strings, source metadata, and uncertainty.
