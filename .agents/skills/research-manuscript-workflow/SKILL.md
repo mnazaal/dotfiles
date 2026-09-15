@@ -31,7 +31,8 @@ Agents must not:
 - silently change mathematical claims, notation, theorem statements, or citations
 
 If the user explicitly asks to edit `.tex`, remind them of the guardrail and
-offer a patch-like proposal in prose or a non-`.tex` planning file instead.
+offer a patch-like proposal instead, drafted in the section's brief (Section
+Briefs) or another non-`.tex` planning file.
 Only a project-specific policy set by the user may override this, and it must
 name the permitted `.tex` paths and review/verification process.
 
@@ -355,8 +356,26 @@ verification policy before producing paper-specific content.
 Given human-owned `.tex`, use agents as reviewers and research assistants, not
 as direct manuscript editors.
 
-If asked for direct `.tex` edits, provide a human-applyable proposal instead,
-drafted in the section's brief (Section Briefs) rather than in `.tex`.
+The line is origination, not word count. The agent transforms, organizes and
+interrogates material the author supplied; the author decides what the claim
+is, which observations are central, and how general the finding is. An agent
+asked what the paper's story should be will answer, and that answer fixes which
+results become the finding and which become noise.
+
+When turning supplied notes into an outline, every claim, number, citation and
+interpretation traces to a line the author wrote. Where the structure needs
+something the notes do not contain, mark it `[GAP]` and leave it for the author.
+
+## LLM-Use Disclosure
+
+Venues increasingly require a section naming where LLM assistance entered
+ideation, writing or methodology. The requirement differs by venue and changes
+between years, so read the current call rather than last year's rule.
+Undisclosed substantial use is a desk-reject risk where it is required.
+
+The collaboration pattern above makes this one sentence to write: the author
+made the claims and wrote the prose, and the agent organized, reviewed and
+copy-edited.
 
 ## Prose and Narrative Review
 
@@ -364,6 +383,12 @@ What a draft review checks, beyond sentence-level style — `AGENTS.md` already
 owns register, concision and the AI-tell list, and this does not restate them.
 Each rule below carries the shape its violation takes, because the failure is
 what a reviewer can actually look for.
+
+Reverse-outline the draft first: one line per paragraph giving its claim, the
+evidence it supplies, and what it inherits from the paragraph before. The rules
+below are checks on that outline — paragraph closure, bridging, grounding order
+and promise-against-delivery are all visible in it and mostly invisible while
+reading forward.
 
 - **Claim first, then mechanism.** A section states what it achieves and why
   before any formula or procedure. *Violation:* a section opening on an

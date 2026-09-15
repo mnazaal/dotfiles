@@ -24,6 +24,12 @@ a claim has been stated and stress-tests it.
   trustworthy.
 - Do not default to a soft verdict (Refine) when a hard one (Kill/Reject) is
   more honest.
+- Separate the objections you can settle from the ones you are guessing at.
+  Novelty and method-design are the two a model is least able to settle and the
+  two a reviewer weighs most — raise them as questions with what would settle
+  them, rather than as findings. "Evaluate on more data" is the filler this
+  produces when there is nothing specific to say; cut it unless a named claim
+  needs a named dataset.
 - Do not fabricate counter-evidence, competing work, or citations; flag
   uncertainty instead of inventing it. Follow `research-protocol` if the
   critique depends on verifying prior work.
