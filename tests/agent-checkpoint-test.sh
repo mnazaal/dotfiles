@@ -329,4 +329,56 @@ snap=$(refs_of "$r")
 git -C "$r" show "$snap:other.txt" | grep -q 'MUST SURVIVE' ||
 	fail "the real edit was lost from a snapshot taken beside an unreadable path"
 
+# --- 21. a tree dirty ONLY with harness masks is a clean tree -----------------
+# Inside the boundary the harness's own masks show up as device nodes at the
+# project root -- untracked ones as `??`, tracked ones (settings.json) as a
+# type change -- so `git status` is never empty there. `git add` refuses them,
+# the tree still equals HEAD's, and behavior 19 read that as "indexing captured
+# nothing" -- turning every Bash call in a clean repo into a hard block. A
+# refusal that names ONLY unindexable nodes is not a capture failure: there was
+# nothing to capture. A FIFO at a tracked path reproduces the refusal without
+# privileges (an untracked FIFO would not: git status does not list it).
+r=$(new_repo maskonly)
+rm "$r/tracked.txt"
+mkfifo "$r/tracked.txt"
+rc=0
+out=$( (cd "$r" && "$script" 2>&1)) || rc=$?
+[ "$rc" -eq 0 ] || fail "a tree dirty only with masks must exit 0, got: $out"
+[ -z "$out" ] || fail "a tree dirty only with masks must stay silent, got: $out"
+[ -z "$(refs_of "$r")" ] || fail "a tree dirty only with masks should not create a ref"
+
+# --- 22. host-side mask residue must not be captured as empty files ----------
+# A killed session leaves its mask mount points on the HOST as zero-byte,
+# mode-444 regular files at the paths it masked. The per-turn hooks run on the
+# host, so the next checkpoint sees ordinary empty files where `git add` does
+# not refuse anything: a tracked path (settings.json, .zshenv) is indexed as an
+# EMPTY blob over its committed content, and every untracked mask lands in the
+# tree as a phantom empty file. Observed as 22 empty blobs in one checkpoint.
+# The signature is 0 bytes AND not user-writable; a genuine empty file the agent
+# created is user-writable and must still be captured.
+r=$(new_repo residue)
+printf 'REAL EDIT\n' >>"$r/other.txt"
+git -C "$r" add other.txt
+git -C "$r" commit -q -m other
+printf 'MUST SURVIVE\n' >>"$r/other.txt"
+: >"$r/tracked.txt" && chmod 444 "$r/tracked.txt"
+: >"$r/.mcp.json" && chmod 444 "$r/.mcp.json"
+mkdir -p "$r/.claude"
+: >"$r/.claude/settings.json" && chmod 444 "$r/.claude/settings.json"
+: >"$r/genuinely-empty.txt"
+run_in "$r" || fail "host mask residue aborted the snapshot"
+snap=$(refs_of "$r")
+[ -n "$snap" ] || fail "no checkpoint ref written beside host mask residue"
+git -C "$r" show "$snap:other.txt" | grep -q 'MUST SURVIVE' ||
+	fail "the real edit was lost from a snapshot taken beside mask residue"
+[ "$(git -C "$r" show "$snap:tracked.txt")" = "original" ] ||
+	fail "a tracked path under mask residue was captured as empty instead of keeping HEAD content"
+tree_paths=$(git -C "$r" ls-tree -r --name-only "$snap")
+printf '%s\n' "$tree_paths" | grep -qx '.mcp.json' &&
+	fail "an untracked mask residue file was captured as a phantom empty file"
+printf '%s\n' "$tree_paths" | grep -qx '.claude/settings.json' &&
+	fail "an untracked mask residue file under .claude/ was captured as a phantom empty file"
+printf '%s\n' "$tree_paths" | grep -qx 'genuinely-empty.txt' ||
+	fail "a genuine (user-writable) empty file was dropped along with the residue"
+
 printf 'agent-checkpoint: all behaviors pass\n'

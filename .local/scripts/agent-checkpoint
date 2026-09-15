@@ -67,6 +67,8 @@ fi
 
 idx=$(mktemp -u 2>/dev/null) || fatal "could not create a temporary index"
 addfail="$idx.addfail"
+adderr="$idx.adderr"
+top=$(git rev-parse --show-toplevel 2>/dev/null) || fatal "could not find the repository root"
 tree=$(
 	export GIT_INDEX_FILE="$idx"
 	if [ ${#parent[@]} -gt 0 ]; then
@@ -82,25 +84,65 @@ tree=$(
 	# file in the index, so those keep their HEAD content rather than vanishing.
 	#
 	# The status still matters, so it is recorded beside the index rather than
-	# mixed into this capture, which carries the tree sha alone.
-	git add -A --ignore-errors 2>/dev/null || : >"$addfail"
+	# mixed into this capture, which carries the tree sha alone. The stderr is
+	# kept too: what `git add` refused decides below whether an unchanged tree is
+	# a clean tree or a failed capture.
+	git add -A --ignore-errors 2>"$adderr" || : >"$addfail"
+	# The same masks reach the HOST as ordinary files. A bind mount needs a
+	# mount point, so the harness creates one, and a killed session leaves them
+	# behind: zero-byte, mode 444, at every path it masked (root dotfiles and
+	# .claude/*). The per-turn hooks run on the host, so the next checkpoint sees
+	# regular empty files that `git add` does NOT refuse — a tracked path is
+	# indexed as an empty blob over its committed content, and every untracked
+	# mask becomes a phantom empty file (observed: 22 empty blobs in one
+	# snapshot). Put the committed content back for tracked ones and drop the
+	# rest. The signature is 0 bytes AND not user-writable; an empty file the
+	# agent created is user-writable and is captured like any other. Depth 2
+	# covers where masks land (<root>/<name> and <root>/.claude/<name>) without
+	# walking a large tree on every turn.
+	find "$top" -maxdepth 2 -type f -size 0 ! -perm -u+w -not -path "$top/.git/*" -print0 2>/dev/null |
+		while IFS= read -r -d '' p; do
+			rel=${p#"$top"/}
+			if git -C "$top" cat-file -e "HEAD:$rel" 2>/dev/null; then
+				git -C "$top" reset -q -- "$rel" 2>/dev/null
+			else
+				git -C "$top" rm -q --cached --ignore-unmatch -- "$rel" 2>/dev/null
+			fi
+		done
 	git write-tree 2>/dev/null || exit 1
 )
 rm -f "$idx" 2>/dev/null || true
 add_failed=0
 [ -e "$addfail" ] && add_failed=1
 rm -f "$addfail" 2>/dev/null || true
+# Did `git add` refuse ONLY unindexable nodes (the harness masks)? That is the
+# one refusal that never loses work: a device node holds nothing to capture.
+# Anything else on stderr — an unreadable file, a broken index — is a path whose
+# content is missing from the snapshot.
+masks_only=0
+if [ "$add_failed" -eq 1 ] && [ -s "$adderr" ] &&
+	! grep -qv 'can only add regular files, symbolic links or git-directories' "$adderr"; then
+	masks_only=1
+fi
+rm -f "$adderr" 2>/dev/null || true
 [ -n "$tree" ] || fatal "could not write a tree (unreadable or unwritable repo?)"
 
-# `git add --ignore-errors` reports failure when ANY path was skipped, which is
-# the case it exists to tolerate -- one masked or unreadable file must not cost
-# the snapshot. What must NOT pass is indexing failing so completely that the
-# tree still equals HEAD's: that snapshot is byte-identical to the last commit
-# and would claim to hold work it does not contain. Only that combination is
-# fatal, so the discriminator is the tree, not the exit status.
-if [ "$add_failed" -eq 1 ] && [ ${#parent[@]} -gt 0 ] &&
+# A tree equal to HEAD's holds nothing new. Two very different reasons get here,
+# and the exit status has to tell them apart because the per-Bash hook gates on
+# it. If `git add` failed on a real path -- an unreadable file, say -- the tree
+# is byte-identical to the last commit while the turn's work sits uncaptured:
+# that is the fatal case, and the discriminator is the tree, not the exit
+# status. If it refused only masks, or refused nothing, the working tree IS
+# clean apart from the harness's own nodes: `git status` lists those, so the
+# clean-tree exit above never fires inside the boundary, and this is where a
+# clean tree in a sandboxed repo has to be recognised as one. Before this,
+# every Bash call in a clean repo was refused as "could not index".
+if [ ${#parent[@]} -gt 0 ] &&
 	[ "$tree" = "$(git rev-parse -q --verify 'HEAD^{tree}' 2>/dev/null)" ]; then
-	fatal "could not index the working tree (the snapshot would hold nothing new)"
+	if [ "$add_failed" -eq 1 ] && [ "$masks_only" -eq 0 ]; then
+		fatal "could not index the working tree (the snapshot would hold nothing new)"
+	fi
+	exit 0
 fi
 
 # Nothing changed since this agent's last checkpoint: the newest ref already
