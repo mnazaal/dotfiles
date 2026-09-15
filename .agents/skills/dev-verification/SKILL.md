@@ -35,6 +35,17 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 - To certify a numerical result is *correct* (not merely stable), check it against an independently-derived reference that shares no code path with the implementation (textbook formula in numpy/scipy, autodiff vs. analytic, a second library, brute-force enumeration) — and write that reference before reading the code's own tests, so their assertions don't anchor it. A test that asserts the code's own output proves stability, not correctness. A port may claim only “matches the reference implementation” from recorded replay/parity evidence; independent numerical correctness needs a separate oracle.
 - A passing correctness check certifies only the input regime it exercised. When the cheap gate runs at a benign scale (tiny values, short sequences, small deltas) but deployment runs orders of magnitude larger, add a check in the deployment-magnitude regime — sign/scale/overflow bugs hide where the gate never looks. The same holds when the check itself is conditional: an input that makes a guard skip the body leaves the body certified by nothing while the test still reports green. Pick the input that makes the guard ADMIT.
 - A hand-written probe input is systematically cleaner than the real corpus. For a rule that branches on real-world data (extracted text, scraped identifiers, provider responses), draw the probe from that corpus and measure the error rate *before* designing the rule — a synthetic case shows the mechanism runs, only the corpus shows how often it is wrong, and that rate is what decides whether to ship. When the data is unreachable from the agent's environment, hand the user a read-only measurement script and wait for the number rather than implementing against a guess.
+- Before saving a write-up, walk its quantitative content: every number, table,
+  figure reference, improvement claim and dataset size maps to a URL, a note, an
+  artifact path or a script, or it comes out. A claim with no source is not
+  softened, it is removed, and the write-up ends with a "Removed unsupported
+  claims" section only when something was actually cut. This is the gate that
+  stops a plausible number from becoming a cited one.
+- Apply corrections at the scale of the damage. One to three localized fixes are
+  edits; a section rewrite, a table rewrite, or more than three substantive
+  fixes to one file means read the file and write the corrected whole. Many
+  small edits to one file drift out of step with each other, and the failure
+  shows only when the next reader finds two versions of one sentence.
 - A repair is done when a review has looked at the repair, not when the code changes. The pass that writes a fix may only mark the finding repaired and pending review; clearing it needs a read by a pass that did not write it (a fresh subagent, or a later session reading it cold). A fix can introduce a worse defect than the one it removed, and the agent holding the fix in context is the worst-placed reader to notice — the same asymmetry that makes `session-handoff`'s cold-read check a separate step.
 - Re-review the code, not the finding list. Verifying only the items a reviewer raised certifies those lines and nothing else; a repair's new defect is by construction absent from the list that prompted it.
 - Verify a review claim before accepting it, and push back with evidence when feedback is stale, unsafe, or contradicts current requirements. Agreement is not a response.

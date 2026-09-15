@@ -276,6 +276,11 @@ Three parts:
 - **Standing wording constraints.** What is someone else's result and must be
   cited rather than claimed, internal shorthand that must not reach the page,
   and the narrower claim that survived review where a broader one did not.
+- **Grounding order.** The concepts the section introduces, in the order they
+  are first needed, with the ones assumed as prerequisites marked. The author
+  writes in that order; a paragraph that needs a concept the list places later
+  is the defect the Prose and Narrative Review's grounding rule catches after
+  the fact, and this catches before.
 
 The brief is planning, not publishable source: it stays outside a synced
 `manuscript/` (Core Rule), and the author pastes prose from it rather than the
@@ -372,6 +377,13 @@ what a reviewer can actually look for.
   and not sufficient — paragraph-to-paragraph is the more common break.
   *Violation:* two adjacent paragraphs on related subtopics joined only by
   thematic proximity.
+- **Every term is grounded before it is leaned on.** A concept a paragraph
+  relies on is either a stated prerequisite (the reader walked in knowing it)
+  or was introduced in an earlier paragraph. The lever is how much to demand
+  up front versus define inside: demand too much and the paper shuts readers
+  out, define too much and the opening drowns in definitions. *Violation:* a
+  term used in the introduction that is only defined in a later section; a
+  method section that assumes a notation the paper never fixed.
 - **Promises match delivery.** If a section says it covers X, Y and Z, the
   subsections cover exactly X, Y and Z, in that order, under those names.
   *Violation:* an intro promising three topics and delivering two; terminology

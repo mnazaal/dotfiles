@@ -22,6 +22,36 @@ No fixes without root-cause investigation or a stated blocker.
 9. Hand off minimal fix plan to `dev-*` with regression-test seam.
 10. Once the fix lands: re-run the original repro loop (must go green), grep and remove tagged debug instrumentation, and state the confirmed root cause in the commit/PR message.
 
+## Building the Loop
+
+Step 4 assumes a loop can be built. When none exists yet, build one before
+hypothesising; the ways to do it, in the order to try them:
+
+1. A failing test that pins the symptom.
+2. A command-line invocation with a fixture input and a diff against the
+   expected output.
+3. Replay of one captured input — a request, a batch, a message — through the
+   failing unit in isolation.
+4. A throwaway harness that calls the suspect function directly with the
+   recorded arguments.
+5. A property or fuzz loop over many generated inputs, for "sometimes wrong".
+6. A differential loop: old build against new, or suspect commit, seed, or
+   config against its neighbour, on the same input.
+7. A bisection harness over commits, and over data or config versions when
+   the code did not change.
+8. A hand-run script for what only the human can drive, printing `KEY=VALUE`
+   lines at the end so the result comes back parseable.
+
+Then tighten it along three axes: faster, sharper signal, more deterministic.
+A thirty-second flaky loop is barely better than none; a two-second
+deterministic one changes what is possible. The loop is done when one named
+command, already run once, goes red on the symptom, is deterministic, is fast,
+and can be run by the agent without the human.
+
+The ML-specific loops — overfit one batch, synthetic recovery, replay one
+batch through the step function — are `debug-ml-research`'s probe ladder;
+this list is the general construction, and the levers apply to both.
+
 ## Reassessment Rules
 
 - If first fix fails, stop and reassess the hypothesis before trying another fix.

@@ -35,6 +35,18 @@ description: "Use for minimal software solutions: YAGNI, simplest correct code, 
   required when the knob must stay and misuse is silently corrupting.)
 - Optimize for reversibility and low maintenance.
 - Stop when requirements are satisfied.
+- Two words for judging a design: **leverage** is how much behaviour one
+  change moves (a deep module has it; a pass-through layer does not), and
+  **locality** is whether the code that changes together lives together. A
+  change that touches five files for one behaviour has low locality; that is
+  the symptom to name, not "messy".
+- **The deletion test.** For an abstraction, a config knob, a helper: delete it
+  and see what breaks. If nothing does, or only its own tests do, it was
+  speculative. Run the test rather than asking the question.
+- **One adapter is a hypothetical seam, two is a real one.** A single
+  implementation behind an interface is a guess about a second that has not
+  arrived; write the interface when the second implementation exists, not
+  before.
 
 ## What decays
 

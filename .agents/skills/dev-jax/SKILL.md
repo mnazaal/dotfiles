@@ -21,6 +21,22 @@ description: "Use for JAX code, reading PyTorch reference code, and slow or OOMi
 - Write the real invocation before the signature: the concrete shapes and dtypes you will pass, then derive params, state, and key threading from it. Sketch a second, structurally different pytree or axis convention before committing to the first — a different shape, not a renamed field.
 - Trace each vmapped or scanned access through the proposed pytree. If the answer is "we reshape at the call site", the structure is wrong. Redesign rather than patch when one workaround recurs: repeated reshape or squeeze at callers, guards multiplying around one branch, or callers having to remember an axis convention the types do not carry.
 
+## Stale Priors
+
+JAX and its libraries move faster than any model's training data, and the
+failure is a plausible call that no longer exists or silently means something
+else. The installed version is authoritative over recalled patterns: check
+`jax.__version__` and the API before writing, and add a row here when a drift
+is hit, with the version it was verified against.
+
+| Area | Stale prior | Current (verified jax 0.11.1, 2026-09-15) |
+|---|---|---|
+| pytrees | `jax.tree_map(f, tree)` | `jax.tree.map(f, tree)` (`jax.tree_map` raises `AttributeError`) |
+| PRNG | `jax.random.PRNGKey(0)` (uint32 array) | `jax.random.key(0)` (typed key); `PRNGKey` still works but is legacy |
+| numerics | `jnp.trapz` | `jnp.trapezoid` (`trapz` removed) |
+| optimizers | `from jax.experimental import optimizers` | removed; use `optax` |
+| sharding | `jax.experimental.maps` / `pjit` | `maps` removed; `jax.jit` with `in_shardings`/`out_shardings` and `jax.sharding.NamedSharding` (`pjit` still imports) |
+
 ## Workflow
 
 1. Define params, state, data, and key interface.

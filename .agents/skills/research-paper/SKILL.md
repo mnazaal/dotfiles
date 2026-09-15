@@ -24,7 +24,25 @@ description: "Use for one research paper: read, discuss, analyze, ingest PDF/URL
 
 ## Ingesting External Sources
 
-For non-PDF external sources (URLs, arXiv links, pasted text, transcripts): classify source type, extract/normalize text and metadata, preserve provenance (source path/URL, access date) before analysis.
+For non-PDF external sources (URLs, arXiv links, pasted text, transcripts): preserve provenance (source path/URL, access date) before analysis.
+
+A long document is read from disk in bounded windows, never pulled whole into
+the context. A fetch tool's return value enters the context directly, so
+download instead (`curl -sL -o <file> <url>`) and read from the file.
+
+- Guards before anything else: under 50 bytes is an empty or error response,
+  stop; over 1 KB with fewer than 100 readable characters is binary, stop.
+- Tier by size. Under about 8k characters, read directly. Up to about 60k,
+  read in windows. Above that, split into chunks and read them in parallel
+  (`agent-orchestration`), one chunk per reader.
+- Append notes to disk after each window and before opening the next, so an
+  interrupted read keeps what was already done.
+- Size the overlap between chunks so a claim that straddles a boundary appears
+  whole in at least one of them; mark one that still arrives severed as
+  `BOUNDARY PARTIAL` and resolve it when the chunk notes are merged.
+- A chunk that could not be read is reported, not skipped silently: the merged
+  note ends with a coverage-gaps line naming the missing chunk indices, so the
+  reader knows which sections the summary does not cover.
 
 ## Boundary
 

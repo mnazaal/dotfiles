@@ -93,7 +93,10 @@ cost of getting them wrong is the whole sweep.
   `n ≈ 16σ²/Δ²` per arm, from pilot per-seed variance σ and the minimum
   difference Δ worth acting on. If you cannot state Δ, you cannot size the sweep
   — and a non-significant result from an unsized design is inconclusive, not
-  evidence of no effect.
+  evidence of no effect. Power is a design quantity: "observed power" computed
+  after the fact from the observed effect is a monotone function of the p-value
+  and adds nothing to it. Do not produce it, even when asked, without saying so;
+  the answerable question is the power for the pre-stated Δ.
 - **Pair on seed.** Run both arms on the SAME seeds and compare per-seed
   differences; that removes seed variance from the comparison and usually needs
   far fewer runs than unpaired arms. Pair wherever the arms share a data or init

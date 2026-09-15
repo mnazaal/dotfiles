@@ -60,6 +60,23 @@ method), the output is sharper than a field map:
 - End on a verdict: survives/pursue (with any narrowed framing) vs. scooped/pivot.
 - A kill verdict closes the gate, not the literature. One sufficient counterexample kills a claim, so a kill survives thin coverage — but it establishes nothing about what the field cannot do. If the project continues, re-open with the limitation question, whose stopping condition is breadth enough to separate an incidental limitation from a structural one.
 
+## Author or lab corpus
+
+When the query names a lab, a principal investigator, or an author rather than
+a topic, the shape is different from a topic sweep and the topic workflow
+above mis-serves it.
+
+- Resolve identity first, and do it in the lead context rather than
+  delegating: same-name authors, moved affiliations, and a lab's rotating
+  first authors are exactly what a delegated search silently merges.
+- Build the publication list before any synthesis is delegated: titles, years,
+  venues, DOIs. Synthesis over an unresolved list inherits every identity
+  error and cannot be checked afterwards.
+- Map three to five research trajectories through the list, ranked by
+  contrastive originality — what this group did that adjacent groups did not —
+  rather than by citation count or prestige. The trajectories, not the list,
+  are the deliverable.
+
 ## Cross-project store
 
 When the work has no project home, the sink is the cross-project literature

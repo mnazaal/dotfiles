@@ -20,10 +20,16 @@ than the coordination cost.
   route bulk payloads (full training logs, `sacct` dumps, long PDFs, whole-file
   reads) to a subagent and take back a summary.
 
-Stay local for a single known file, a small edit, a narrow symbol lookup, or any
-task where the delegation prompt would be longer than doing the work. A
-deterministic script also beats fan-out: if one pass over the inputs does the
-job, write and run it instead of spawning delegates to hand-apply it.
+Stay local for a single known file, a small edit, a narrow symbol lookup, a
+simple explainer, or any task where the delegation prompt would be longer than
+doing the work. A deterministic script also beats fan-out: if one pass over the
+inputs does the job, write and run it instead of spawning delegates to
+hand-apply it.
+
+The agent count follows the task's shape, and has a ceiling: two for a two-way
+comparison, three or four for a survey, four to six when the question spans
+domains. More than that is not more coverage; it is the same sources re-read
+with citations that disagree, and an integration step the parent cannot do.
 
 ## Prompt Contract
 
@@ -36,7 +42,10 @@ Every delegated task states:
    action. State it as a contract on the final message — the last message IS
    the result, so name its exact shape (fields; a small JSON shape when the
    result is consumed mechanically) and treat a final message that does not
-   match as an incomplete task, not a result to salvage.
+   match as an incomplete task, not a result to salvage. When the findings are
+   bulk, they go to a file and the final message is the path plus a one-line
+   summary: the parent reads the file, and the summary is what survives a
+   later compaction.
 5. Verification expected, if any.
 6. Naming constraint: use descriptive task names; no opaque shorthand such as
    `P0/P1`, `T1/T2`, or `H1/H2` unless defined by the parent prompt. Subagent
@@ -51,6 +60,10 @@ Every delegated task states:
    returns partial findings and stops rather than running on.
 10. No resume-chaining. Directives decay across resumes, so re-issue a fresh
     agent with consolidated scope instead of resuming one whose brief changed.
+11. For search-shaped work: triage a result list by title before fetching any
+    item, and track each assigned question as done, blocked, or needs
+    follow-up, so a question that found nothing is reported rather than
+    silently dropped.
 
 ## Coordination Rules
 
@@ -87,6 +100,28 @@ Every delegated task states:
   the smallest direct check.
 - When the object under review is an experiment design, its intent is in scope:
   whether it tests the claim is the reviewable question.
+
+## Phase Boundaries
+
+At the end of a thread — a literature sweep done and implementation next, a
+run launched and now awaited, a result read and a write-up due — five moves
+are available. Take them in this order; the first that fits wins.
+
+1. **Continue.** The only move that costs nothing and loses nothing. Ruled out
+   only when the next thread does not need what is in the window, or the window
+   is nearly full.
+2. **Clear** and start fresh. Right when the next thread is independent, or
+   when the thread's state lives outside the window: a launched cluster job
+   holds its own state in the job and its artifacts, which makes a clear cheap.
+3. **Handoff** (`session-handoff`). When the next thread is a later session,
+   or another agent.
+4. **Subagent.** When the next thread is bulk reading or independent search
+   whose payload should never enter this window (When to Delegate).
+5. **Compact.** Last, not first. Every move except continue converts the
+   session as it happened into a summary of it; compaction is the move where
+   the summary is written by no one in particular, and the standard failure is
+   a session confidently wrong about a decision the summary flattened. The
+   reasoning behind an experimental design is exactly what flattens.
 
 ## Anti-Patterns
 

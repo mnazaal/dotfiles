@@ -37,6 +37,11 @@ do not follow from general plotting sense.
   bar, and whether it is SD, SEM, or a bootstrap CI. They differ by large
   factors and are indistinguishable by eye, so an unlabelled bar is unreadable
   evidence.
+- **A figure shows a measurement or it is not a figure.** A caption reading
+  "illustrative", "simulated", "representative" or "example" is not a caveat,
+  it is the absence of the experiment. Remove the figure and record the
+  missing experiment where the claim it was meant to support lives; a placeholder
+  that looks like a result is read as one.
 - Generated figures and tables are build artifacts: regenerate, never hand-edit.
   The generator stays outside a synced manuscript directory, and the committed
   artifact must be byte-deterministic — `research-manuscript-workflow` owns both

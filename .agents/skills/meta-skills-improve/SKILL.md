@@ -149,13 +149,38 @@ improvement. Run it before promoting a change you cannot judge by reading.
 - Use content the variant has not seen before; a familiar task measures recall,
   not the edit.
 
+## Two Budgets
+
+Every skill is paid for twice, from different accounts, and an edit that is
+cheap on one can be expensive on the other.
+
+- **Context load** is what the agent pays on every turn: the descriptions of
+  all skills ride in every request, whether or not a skill fires, and the
+  always-loaded instruction layer rides with them. A description is the
+  expensive part of a skill; a body costs only the turns it is open.
+- **Cognitive load** is what the human pays: what they must remember to type,
+  which name to use, which file to open. Model-invoked skills trade context
+  load for cognitive load; that trade is deliberate here.
+
+Prune descriptions against context load and bodies against the no-op test.
+Where a body grows, disclose progressively: an in-file step for what every
+path needs, an in-file reference for what most paths need, and a sibling file
+behind a pointer for what only one branch reaches — branching is the test for
+which rung a piece of content belongs on.
+
+A completion criterion has two independent properties. **Clarity**: can the
+agent tell done from not-done? A vague bound ("cover the main cases") invites
+early completion. **Demand**: how much does meeting it require? "Every
+modified model accounted for" forces legwork that "produce a change list"
+does not. Check both when a skill's step names an end state.
+
 ## Workflow
 
 1. Capture the reusable lesson from the session.
 2. Separate general workflow from one-off project context.
 3. Inspect relevant skills in `~/.agents/skills`.
 4. Choose the narrowest existing skill that fits, or justify a new skill.
-5. Check invocation, distinct triggers, completion criteria, duplication, no-op advice, routing conflicts, related-skill overlap, and sediment in the target skill's existing content.
+5. Check invocation, distinct triggers, completion criteria (Two Budgets below), duplication, no-op advice, routing conflicts, related-skill overlap, and sediment in the target skill's existing content.
 6. Draft minimal markdown changes in the existing skill style.
 7. Present affected files, proposed patch, risks, and recommendation.
 8. Apply only with explicit user approval.

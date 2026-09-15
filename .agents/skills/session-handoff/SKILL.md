@@ -11,7 +11,9 @@ End a work session so a cold next session (or another agent) resumes with zero
 re-derivation. Trigger: an explicit request — "continue next session", "write up
 a handoff", "write everything down". A long session is not itself a trigger, and
 neither is noticing that state lives only in chat/scratchpad; if that worries
-you, say so and offer, rather than writing.
+you, say so and offer, rather than writing. Whether a handoff is even the right
+move at the end of a thread — against continuing, clearing, a subagent, or
+compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
 
 ## Workflow
 
