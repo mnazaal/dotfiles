@@ -24,7 +24,10 @@ do not follow from general plotting sense.
   they came from different papers.
 - **Match the document's type.** Set font family and size to the body text once,
   in a shared style module every figure script imports. Per-script rcParams is
-  how a manuscript acquires six fonts.
+  how a manuscript acquires six fonts. The starting module is
+  `publication.mplstyle` beside this skill: copy it into the figure package
+  and set its `font.family`, `font.size` and `figure.figsize` lines to the
+  document before the first figure.
 - **Plot the quantity the claim is about.** For a two-arm comparison over seeds,
   show the paired per-seed difference and its interval — not two overlapping
   mean±std bands. Overlapping bars are not the test in either direction
