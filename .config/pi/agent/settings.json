@@ -11,6 +11,7 @@
     "npm:pi-web-access",
     "npm:pi-simplify",
     "npm:pi-subagents",
+    "npm:pi-claude-code-ui",
     "npm:@zackify/pi-claude-permissions",
     "npm:@ogulcancelik/pi-minimal-footer"
   ],
