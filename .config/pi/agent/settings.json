@@ -13,6 +13,7 @@
     "npm:pi-subagents",
     "npm:pi-claude-code-ui",
     "npm:@zackify/pi-claude-permissions",
+    "npm:@pi-archimedes/diff",
     "npm:@ogulcancelik/pi-minimal-footer"
   ],
   "lastChangelogVersion": "0.85.1",
