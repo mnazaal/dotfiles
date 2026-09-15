@@ -1,4 +1,4 @@
-.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages pi-packages
+.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages
 
 help:
 	@printf '%s\n' \
@@ -51,7 +51,7 @@ session-entry:
 	sudo sed -i 's|^Exec=.*|Exec=$(HOME)/.local/scripts/mango-session|' /usr/share/wayland-sessions/mango.desktop
 	@grep -n '^Exec=' /usr/share/wayland-sessions/mango.desktop
 
-check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-pi-packages
+check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/git/hooks tests .claude/install-mcp.sh -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
@@ -195,6 +195,39 @@ export SKILL_FRONTMATTER_PY
 
 check-skill-frontmatter:
 	@python3 -c "$$SKILL_FRONTMATTER_PY"
+
+# The Agent Skills spec's own validator, on top of the frontmatter check: name
+# must equal the directory, no leading or doubled hyphens, description at most
+# 1024 characters, compatibility at most 500. Both checks stay. This one needs
+# uv and a cached package; the frontmatter check runs on bare python3 and also
+# flags a description that parses as a non-string (a bare `yes`, a number),
+# which is the shape of the failure that once dropped 29 of 39 skills from
+# routing. One process for all skills: the CLI takes one directory per call, and
+# forty `uv run` spawns cost about 16 s where the library call costs under one.
+# Names, because they disagree: the PyPI distribution is `skills-ref`, the
+# module is `skills_ref`, and the console script is `agentskills` -- the
+# upstream README's `skills-ref validate` does not exist.
+define SKILL_SPEC_PY
+import glob, pathlib, sys
+import skills_ref
+status = 0
+dirs = sorted(glob.glob(".agents/skills/*/"))
+if not dirs:
+    print("skill-spec: no skill directories found -- wrong directory?", file=sys.stderr)
+    sys.exit(1)
+for d in dirs:
+    for err in skills_ref.validate(pathlib.Path(d)):
+        print("skill-spec: %s: %s" % (d.rstrip("/"), err.splitlines()[0]), file=sys.stderr)
+        status = 1
+sys.exit(status)
+endef
+export SKILL_SPEC_PY
+
+check-skill-spec:
+	@if ! command -v uv >/dev/null 2>&1; then \
+		echo "warn: uv not installed; skipping skill-spec check"; exit 0; \
+	fi; \
+	uv run --quiet --no-project --with skills-ref -- python -c "$$SKILL_SPEC_PY"
 
 # A `packages` entry in pi's settings.json DECLARES a package; it does not
 # install one. pi auto-installs only for PROJECT settings (.pi/settings.json)
