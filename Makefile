@@ -1,4 +1,4 @@
-.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages
+.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages audit-skills
 
 help:
 	@printf '%s\n' \
@@ -7,7 +7,8 @@ help:
 		'test   - run isolated repository behavior tests' \
 		'session-entry - point the GDM session at mango-session (needs root, once per machine)' \
 		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)' \
-		'pi-packages - install pi packages that settings.json declares but are missing'
+		'pi-packages - install pi packages that settings.json declares but are missing' \
+		'audit-skills - skill firing audit over the session transcripts (minutes; not part of check)'
 
 # Deploying also brings the live crontab into step. stow only creates symlinks,
 # and cron reads its own copy rather than the tracked file, so `make link` would
@@ -228,6 +229,15 @@ check-skill-spec:
 		echo "warn: uv not installed; skipping skill-spec check"; exit 0; \
 	fi; \
 	uv run --quiet --no-project --with skills-ref -- python -c "$$SKILL_SPEC_PY"
+
+# The firing audit is the one skill-quality tool in the repo and nothing ran
+# it: it was a bare script path to remember. Deliberately NOT a dependency of
+# `check`: it walks every session transcript (minutes, and growing with the
+# transcript store) and reads the DEPLOYED skills tree, so it measures the
+# machine, not this checkout. Arguments pass through the script's own
+# defaults; see its header for overriding the transcript or skills directory.
+audit-skills:
+	./.agents/skills/meta-skills-improve/audit.sh
 
 # A `packages` entry in pi's settings.json DECLARES a package; it does not
 # install one. pi auto-installs only for PROJECT settings (.pi/settings.json)
