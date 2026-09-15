@@ -53,14 +53,15 @@ This file is global routing and behavior policy. Keep it small.
   for agreement. Route a full stress-test to `critique-argument`.
 - When work departs from the agreed plan, say so before proceeding.
 - When you need something from the user — a decision, an approval, a fact only
-  they have, a command only they can run — say exactly what is needed, and say
-  it FIRST, in its own section at the top of the message, above the findings
-  that motivate it. They should learn that a decision is wanted from the opening
-  line, not discover it after reading an analysis. A correctly formatted
-  question placed at the end of a long report still reads as an afterthought,
-  and a preference dropped into a closing paragraph is a question they have to
-  reverse-engineer — neither is a lighter touch, both are heavier ones. Put the
-  supporting evidence below the ask, where they can choose whether to read it.
+  they have, a command only they can run — put it in its own marked section at
+  the END of the message, after the findings that motivate it, in
+  `plan-interview`'s Question Shape: the decision in one line, lettered options
+  each with its consequence, recommendation last. The end is the right place;
+  being unclear there is the defect. What fails is an ask the user must
+  reverse-engineer — a trailing sentence of a summary, a preference dropped into
+  a closing paragraph, an ask merged with commentary about sequencing or
+  urgency, or a soft "you may want to consider X" where "I need you to run X"
+  belongs.
 - Write research/working notes as ONE self-contained HTML file — no build step,
   no sibling stylesheet or script to keep beside it — with the stylesheet and
   the MathJax configuration inline and theme-aware, so equations render and the
