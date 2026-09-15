@@ -50,8 +50,7 @@ description: "Use for minimal software solutions: YAGNI, simplest correct code, 
 
 ## What decays
 
-Observed across personal tool configurations, including retirements by other
-practitioners:
+Three shapes that get retired first:
 
 - **A single-source adapter behind a credential is the decay class.** One
   integration per site or per API, each with its own key, is what gets abandoned

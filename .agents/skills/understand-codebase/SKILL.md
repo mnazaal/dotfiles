@@ -48,8 +48,8 @@ by a predecessor, or by an upstream author — and never landed anywhere legible
 4. **Churn** — `git log` on the largest modules. Where the design is still
    moving is where any existing understanding is most likely stale.
 
-Report ~15 lines: what the library is for, its public surface, the one path that
-matters, and which areas are still moving.
+Report briefly, before any claim-scoped depth: what the library is for, its
+public surface, the one path that matters, and which areas are still moving.
 
 ## Diagnostic Questions
 

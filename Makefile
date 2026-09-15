@@ -6,7 +6,7 @@ help:
 		'clean  - silently remove links this repository deployed (DEEP=1 also sweeps $$HOME for links left by renames)' \
 		'test   - run isolated repository behavior tests' \
 		'session-entry - point the GDM session at mango-session (needs root, once per machine)' \
-		'check  - run tests, agent-role drift checks, doctor, ShellCheck, and shfmt (Org agenda optional)' \
+		'check  - run tests, the drift checks (agent roles, guardrail sync, machinery binds, skill frontmatter and spec, pi packages), doctor, ShellCheck, and shfmt (Org agenda optional)' \
 		'pi-packages - install pi packages that settings.json declares but are missing' \
 		'audit-skills - skill firing audit over the session transcripts (minutes; not part of check)'
 

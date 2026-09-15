@@ -11,13 +11,11 @@ Turn a learning goal into a durable, revisitable workspace instead of a one-shot
 
 ## Workspace
 
-Treat the current directory as the workspace for this topic. Create files lazily, on first use.
+The workspace is the topic's own directory: inside the project when the topic
+has one, otherwise one directory per topic under the learning store the global
+instructions name. Create files lazily, on first use.
 
-The durable home for a topic with no project of its own is the learning store
-the global instructions name, one directory per topic. Start the session there
-rather than opening a workspace somewhere else and moving it later.
-
-**First check the directory is not an existing project.** If it contains a `PLAN.md`, `pyproject.toml`, `.git`, or a populated `src/`, stop and ask for a dedicated learning directory. A repository *above* the workspace is expected and fine — the store may itself be versioned — so this asks whether the topic directory is a project, not whether any ancestor is. `CONTEXT.md` and `LOG.md` are owned names there — the project glossary (`plan-interview`) and the prepend-only run log (`context-project-docs`) — and writing lessons into them corrupts both.
+**Before writing, confirm the topic directory itself is not a project.** If it directly contains a `PLAN.md`, `pyproject.toml`, `.git`, or a populated `src/`, stop and ask for a dedicated learning directory (an ancestor repository does not count). `CONTEXT.md` and `LOG.md` are owned names there — the project glossary (`plan-interview`) and the prepend-only run log (`context-project-docs`) — and writing lessons into them corrupts both.
 
 - `MISSION.md` — why the user wants to learn this. Grounds every lesson.
 - `CONTEXT.md` — one growing learning reference/cheat-sheet, sectioned by term or concept. This is scoped to the learning workspace; repo-root project terminology remains owned by `plan-interview`.
@@ -47,7 +45,7 @@ rather than opening a workspace somewhere else and moving it later.
 
 ## Output Shape
 
-- Lesson file path (opened for the user).
+- Lesson file path.
 - `CONTEXT.md` sections touched.
 - `LOG.md` entry, if any.
 - Suggested next lesson.

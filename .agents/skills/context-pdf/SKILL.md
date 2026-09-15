@@ -26,14 +26,6 @@ description: "Use for PDF files: read, extract text/tables/images, merge, split,
   extracted content, avoid exposing values in logs and route credential handling
   through `dev-security`.
 
-## Workflow
-
-1. Classify operation: read/extract/transform/create/protect/OCR.
-2. For a read, triage first: page count and per-page text/image/notation density.
-3. Inspect permissions and output target.
-4. Validate output artifact or extracted text.
-5. Report output path, page scope, and caveats.
-
 ## Related Skills
 
 - `research-paper` for reading academic PDFs.

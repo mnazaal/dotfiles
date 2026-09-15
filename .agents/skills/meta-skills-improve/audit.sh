@@ -13,8 +13,9 @@
 #   ./audit.sh ~/.config/foo/logs   # another harness's transcripts
 #
 # Assumes one session per transcript file, and that each skill load appears in
-# the text as "skill":"<name>". Adjust MARKER if the harness records it
-# differently — that is the only harness-specific assumption here.
+# the text as "skill":"<name>". Three things are harness-specific: MARKER, the
+# transcript directory (argument 1), and the skills directory (argument 2);
+# the defaults below suit one harness, so pass all three for another.
 #
 # Sections 1-5 are grep/awk over the raw text and need nothing installed.
 # Sections 6-8 read per-record JSON, so they need python3; without it they say

@@ -76,8 +76,8 @@ with its own execution order it is indistinguishable from live work.
 
 Gate the revision at both ends, and detect by STATUS MARKER, not by heading —
 the worst accretion is headingless. Scan the whole file, including the region
-above the first heading (a plan can carry a third of its content there with no
-headings at all).
+above the first heading (the region above the first heading can hold a large
+share of a plan's content).
 
 Count only **unmarked** forward-looking sets. A block carrying `DONE`,
 `RESOLVED`, `PARKED`, `SUPERSEDED`, or its own recorded outcome is history, not
@@ -97,13 +97,11 @@ Judge a block by its status, not its title: a heading containing "framing" or
 
 This gate is a READ, not a grep. Completion is recorded inconsistently — at the
 step, in prose, in a status line, or only in `LOG.md` — so no pattern separates
-a finished phase from a rival plan reliably; every mechanical proxy tried so far
-over-fires in both directions. Open each candidate block and decide. If you find
-yourself counting matches, you are measuring the wrong thing.
+a finished phase from a rival plan. Open each candidate block and decide.
 
 If the file fails on entry, STOP and report the competing threads; do not guess
-which is live. Nineteen `NEXT` markers with one marked superseded have no
-determinable target, and rewriting the wrong one silently deletes live work.
+which is live. Several unmarked forward-looking sets have no determinable
+target, and rewriting the wrong one silently deletes live work.
 Compaction is a separate pass, confirmed by the user. On exit, exactly one
 unmarked live set survives.
 

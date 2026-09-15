@@ -98,7 +98,7 @@ Read what this skill writes BEFORE acting:
    uncommitted/unmerged work, and any experiments still running (cluster jobs,
    background tasks). If the handoff carries exit-criteria commands, run them —
    verification is then a paste, not a judgment call.
-5. Reconstruct for the user, not just yourself: open with ≤3 lines of frame —
+5. Reconstruct for the user, not just yourself: open with a short frame —
    what problem the project solves, the current thread, and where the next
    action sits in it — before the entry-point details. Resuming agent state
    without restating the frame starts the session with the user already lost.

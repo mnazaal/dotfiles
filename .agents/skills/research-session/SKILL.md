@@ -18,7 +18,7 @@ Use when choosing or framing research work, not for writing the durable plan. If
 4. Suggest 2-3 next actions with concrete routes.
 5. Route based on user choice or strongest evidence.
 
-Keep briefing under 20 lines. Skip missing state silently; do not invent continuity. Do not write notes unless user or host policy allows it.
+Keep the briefing to the template below — it is orientation, not a report. Skip missing state silently; do not invent continuity. Do not write notes unless user or host policy allows it.
 Do not assign persistent codes to threads or suggestions. If numbering a list,
 refer back by descriptive name, not by number alone.
 

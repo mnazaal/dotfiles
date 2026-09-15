@@ -21,9 +21,9 @@ that would settle the question.
   split the key, never masked, never mutilated the graph, never added the
   Jacobian — because none of that has a line to look at. When the change is a
   NEW file the whole file is the diff, and omissions are maximally invisible.
-- Report at most three findings. Each names its severity and the single check
-  that would settle it. A finding you cannot pair with a settling check is a
-  hunch — drop it.
+- Report only findings that clear the bar, most consequential first. Each
+  names its severity and the single check that would settle it. A finding you
+  cannot pair with a settling check is a hunch — drop it.
 - Every finding is advisory. Nothing here blocks a commit.
 - Scale depth to blast radius, not to diff size: a two-line change to a loss, a
   mask, or a metric outranks a hundred lines of plotting.
@@ -82,8 +82,9 @@ code is correct without it.
 
 The exclusion list is what keeps the output short enough to stay read.
 
-- Anything the configured linter or type checker already reports. Run
-  `ruff check` and `ty check` and cite them; do not imitate them.
+- Anything the configured linter or type checker already reports. Run the
+  project's configured pair (`ruff check` / `ty check` in greenfield repos, per
+  `dev-python`) and cite them; do not imitate them.
 - Style, naming, formatting, import order, docstring wording.
 - Defense-in-depth on code that is already guarded.
 - Unchanged code surrounding the diff.
@@ -99,7 +100,7 @@ The exclusion list is what keeps the output short enough to stay read.
 Settles it: <the single command, probe, or file to read>
 ```
 
-Three findings maximum. If nothing meets the bar, say the diff looks sound and
+If nothing meets the bar, say the diff looks sound and
 name what you checked — an all-nits review is evidence the change is fine, not
 a reason to promote a nit.
 

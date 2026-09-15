@@ -6,8 +6,6 @@ This file is global routing and behavior policy. Keep it small.
 
 - Be concise and direct.
 - Skip pleasantries, filler, and unnecessary hedging.
-- Use normal grammar when it improves clarity.
-- Preserve exact technical meaning.
 - Keep code, commands, file paths, API names, symbols, and quoted errors exact.
 - Expand when brevity would create safety risk, ambiguity, or unclear step
   ordering.
@@ -32,14 +30,10 @@ This file is global routing and behavior policy. Keep it small.
   columns the axes, one number per cell. Prose carrying three or more figures,
   and numbered lists whose items are measurements, both hide the comparison the
   numbers were gathered to make. A single figure in a sentence stays a sentence.
-- Prefer the concrete word to the borrowed metaphor. Replace substrate, wedge,
-  vector, locus, nexus, surface, bedrock, scaffolding, paradigm, north star,
-  and flywheel with the plain thing meant. This is the opaque-label rule above,
-  applied to vocabulary instead of labels.
-- Drop the AI register: delve, crucial, pivotal, intricate, interplay,
-  showcase, underscore, tapestry, testament, garner, enhance. Likewise
-  utilize/leverage to "use", facilitate to "help", "serves as"/"stands as"
-  to "is".
+- Prefer the concrete word to the borrowed metaphor. This is the opaque-label
+  rule above, applied to vocabulary instead of labels.
+- Use the plain word: "use" not "utilize" or "leverage", "help" not
+  "facilitate", "is" not "serves as".
 - Name the mechanism or the number, not the feeling. A sentence that could
   appear unchanged in another project's write-up says nothing about this one.
 - Name the actor: "the compiler validates queries", not "queries are
@@ -61,8 +55,8 @@ This file is global routing and behavior policy. Keep it small.
   stream, place it in one sentence: project goal → current thread → this step.
   When execution crosses into a new subsystem or departs from the agreed plan,
   say so before proceeding. After delegated/subagent work, state what it
-  changed about the project picture, not just its findings. If you have run
-  more than ~10 tool calls since the user last spoke, spend one line
+  changed about the project picture, not just its findings. When a stretch of
+  tool calls has passed since the user last spoke, spend one line
   re-anchoring: what the project now has, and where this step sits.
 - After finishing a unit of work, close with one line at project level: what
   the project now has or knows that it didn't, and what comes next.

@@ -41,11 +41,11 @@ section headings, commented `\input` hooks; no prose/claims). The agent never
 writes `.tex`, even generated ones; the human's execution does. (Some harnesses
 enforce this at the permission layer.)
 
-Where a harness does enforce it, expect the guard to match the literal extension
-anywhere in a shell command — a read-only `grep`, a `cp`, or a commit message
-naming one is refused too. Work with it rather than around it: `git commit -F
-<file>` instead of `-m`, globs or pathspecs in `git add`, and string
-concatenation in any script that must name the extension.
+A harness may enforce this with a command guard that matches the literal
+extension anywhere in a shell command, so a read-only `grep`, a `cp`, or a
+commit message naming one can be refused. Treat that refusal as the guard, not
+a bug, and pass the name another way (`git commit -F <file>`, a pathspec,
+string concatenation) rather than disabling it.
 
 ## Core Rule: a synced/portable manuscript directory IS the artifact
 
@@ -99,7 +99,7 @@ parent-repo paths crossed.
 
 Plan for a locked-down remote:
 
-- Default branch is usually `main`, not `master`.
+- The bridge's default branch depends on project age: older Overleaf projects use `master`, newer ones `main`. Read it once with `git ls-remote --symref <host> HEAD` and use that name wherever `<branch>` appears below.
 - `--force` and pushing new branches are typically FORBIDDEN.
 - History must be linear and built on the bridge's own initial commit.
 
@@ -113,7 +113,7 @@ The fix is a one-time `subtree add` re-seed:
    `git rm` leaves untracked and ignored files (e.g. `build/`) behind, so the
    directory survives on disk and `subtree add` refuses with "prefix already
    exists".
-2. `git subtree add --prefix=<dir> <remote> main`.
+2. `git subtree add --prefix=<dir> <remote> <branch>`.
 3. Restore your content, commit, then push.
 
 Any seed or re-seed branch is one-time throwaway scaffolding — delete it once
@@ -152,7 +152,7 @@ actual remote tree and confirm ZERO parent-repo paths (`src/`, tests,
 lockfiles):
 
 ```bash
-git ls-tree <host>/main
+git ls-tree <host>/<branch>   # an EMPTY listing means the wrong branch name, not a clean tree
 ```
 
 Passing `--prefix=<dir>` on every push and pull is the boundary. The sole leak
@@ -396,9 +396,9 @@ what a reviewer can actually look for.
   spend a sentence on what is not the case. Rephrase to state the point.
   This one is greppable, so run it as a final pass rather than reading for it:
   `grep -rnE 'is not .*but|not to .*but to|not only .*but also' manuscript/`
-  Filter to `tex:` afterwards rather than passing `--include='*.tex'` — a
-  `*.tex` glob reads as a manuscript write to the command guard and is refused,
-  even for a read-only grep.
+  Filter the output to `tex:` afterwards. Where a manuscript write guard is
+  enforced, `--include='*.tex'` is refused even for a read-only grep; the
+  post-filter avoids naming the extension in the command.
   *Violation:* "the question is not X but Y" → "the question is Y".
 
 The paper's single load-bearing insight is upstream of all of this: `notes/claims.md`

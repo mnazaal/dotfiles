@@ -119,7 +119,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 ## Anti-Patterns
 
 - YAML sprawl or stringly-typed configs resolved at runtime.
-- A hand-written `sbatch`/bash launcher or per-experiment `scripts/*.sh` instead of a registered hydra experiment run via `python -m …run … hydra/launcher=… --multirun` (`dev-hpc`).
+- A hand-written `sbatch`/bash launcher or per-experiment `scripts/*.sh` for an *experiment or sweep* instead of a registered hydra run via `python -m …run … hydra/launcher=… --multirun` (`dev-hpc`; a recurring single job such as a test gate is the exception).
 - `import mlflow`/`import wandb` scattered through experiment code.
 - Progress bars in captured logs.
 - A smoke test that mocks the tracker or bypasses the real entry point.

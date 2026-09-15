@@ -18,13 +18,10 @@ And the projects tree is for work you keep — a worktree is scaffolding for one
 topic, and leaving it among real checkouts makes something temporary look
 permanent.
 
-The location is not a shortcut around removal, and do not reach for one.
-Cleanup below is the method wherever the worktree sits: `git worktree remove`,
-never `rm -rf`. A worktree directory holds a `.git` file, which makes it a
-repository root, so a recursive removal of one is DENIED outright rather than
-prompted — and the removal policy deliberately keeps agent worktrees outside its
-scratch exemption, because they hold uncommitted work that no checkpoint can
-recover.
+The location is not a shortcut around removal. Cleanup below is the method
+wherever the worktree sits: `git worktree remove`, never `rm -rf` — a worktree
+holds uncommitted work that no checkpoint can recover, and its `.git` file
+makes it a repository root, which removal guards treat as protected.
 
 Scratch is cleared between sessions, so treat the directory as disposable and
 the branch as the artifact — commit before you stop. A cleared scratch area
@@ -34,7 +31,7 @@ has the order.
 ## Rules
 
 - A worktree's own `.venv` does not change shell PATH: bare `pytest`/`python` invocations can silently resolve to a sibling checkout's venv, importing a different package install.
-- Before trusting a bare tool invocation, check `which <tool>` or invoke the worktree-local path explicitly (`.venv/bin/pytest`, `.venv/bin/python`).
+- Before trusting a bare tool invocation, check that `which <tool>` resolves inside this worktree; if it does not, activate this worktree's environment (or use the project-configured runner) so the bare command resolves here, rather than invoking another checkout's path.
 - Treat a `ModuleNotFoundError`, or an `ImportError: cannot import name X from Y` for a symbol you just added/changed, as a PATH/venv-resolution symptom first, not necessarily a real missing-dependency or circular-import bug.
 - An isolated worktree `.venv` resolves dependencies independently: a wave of same-subsystem failures often means unpinned-dependency drift (a newer release broke an API, e.g. `AttributeError: ... has no attribute X`), and a `ModuleNotFoundError` there can be a genuinely missing optional dep — check installed versions against the project's pins, and re-run with your changes stashed, before suspecting your code.
 

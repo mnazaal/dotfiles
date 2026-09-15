@@ -45,10 +45,10 @@ For scientific algorithms (structure learning, constrained optimization, MCMC ke
 1. Scout the reference: identify each mathematical primitive (reshape, constraint function, objective), the optimization loop, and the output structure.
 2. Confirm target dtype. Scientific algorithms typically need x64; set `jax.config.update("jax_enable_x64", True)` before any array creation.
 3. Port and parity-test bottom-up — primitives first, then objective, then gradients, then full convergence:
-   - **Primitives**: port each pure mathematical function (reshapes, constraint, regularization terms); verify against reference on fixed random inputs with `assert_allclose(rtol=1e-10)`.
-   - **Objective**: reconstruct the full scalar loss in JAX; verify value matches reference at multiple `(x, hyperparams)` points.
-   - **Gradients**: compute `jax.grad(objective)` and verify against finite differences (`eps=1e-5`, central differences) with `rtol=1e-3, atol=1e-5`. This is the primary check that autograd is wired correctly.
-   - **Full convergence**: run both implementations from identical initialization with the same hyperparameters; compare final solutions with loose tolerance (`rtol=1e-2, atol=5e-3`) — optimization paths may diverge slightly due to floating-point order.
+   - **Primitives**: port each pure mathematical function (reshapes, constraint, regularization terms); verify against the reference on fixed random inputs at near-machine precision for the working dtype.
+   - **Objective**: reconstruct the full scalar loss in JAX; verify value matches reference at multiple `(x, hyperparams)` points, same tolerance.
+   - **Gradients**: compute `jax.grad(objective)` and verify against central finite differences, with a tolerance loose enough for the finite-difference truncation error. This is the primary check that autograd is wired correctly.
+   - **Full convergence**: run both implementations from identical initialization with the same hyperparameters; compare final solutions at the loosest tolerance of the four — optimization paths diverge in floating-point order.
 4. Test determinism: run twice from the same initialization; assert bit-exact outputs (`rtol=0`).
 5. Test constraint satisfaction: verify the domain-specific correctness criterion (e.g. h(W) ≤ tol for DAG constraint) independently of the reference comparison.
 6. Test input validation: error handling should match the reference exactly, except for documented deliberate hardenings such as replacing silent warning/clamp behavior with an eager error; test such deviations explicitly.
@@ -70,7 +70,7 @@ For scientific algorithms (structure learning, constrained optimization, MCMC ke
 
 ## Related Skills
 
-- `dev-jax` (Porting & Reference Reading) for PyTorch reference-side idioms; `dev-jax` also owns target-side idioms (jax.nn/Equinox/Optax choices).
+- `dev-jax` (Reference Reading) for PyTorch reference-side idioms; `dev-jax` also owns target-side idioms (jax.nn/Equinox/Optax choices) and the stale-priors table.
 - `dev-scout` to map the source module first.
 - `dev-tdd` for the red-green parity-test loop; `dev-verification` before completion claims.
 - `debug-root-cause` for parity failures of unknown cause; `debug-ml-research` for silent ML wrongness.

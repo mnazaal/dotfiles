@@ -15,7 +15,7 @@ pzi is a local BibTeX library manager. Papers are added from DOIs, URLs, or PDFs
 - Use the CLI for one-off tasks. HTTP API (`pzi server`, port 8765) is for the browser extension; only use it if the server is already running.
 - Confirm command support from the installed help when using non-default options such as `--config PATH` or `--target NAME`.
 - Before mutating a library (`add`, `inbox`, `import`, `update`, `tag`, `delete`, `pdf`, `library clean --fix`/`merge`/`reindex`), confirm the target library/config and summarize the intended mutation; proceed only with user authorization.
-- Nonzero exit is not necessarily failure: 1 means ran fine with something to report (no matches, duplicates, integrity issues), 3 entry not found, 4 batch partly failed, 5 could not run. Read the output, not just the status.
+- Nonzero exit is not necessarily failure: 1 means ran fine with something to report (no matches, duplicates, integrity issues), 2 bad invocation (unknown command or flag), 3 entry not found, 4 batch partly failed, 5 could not run (config, lock, permission, unreachable service). Read the output, not just the status.
 - Boundary: use pzi for bibliographic metadata, citekeys, tags, and BibTeX export. Use `tool-cementic` for full-text semantic retrieval; combine them only when both are requested.
 
 ## Workflow

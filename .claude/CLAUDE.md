@@ -19,8 +19,9 @@ The shared rules above are written tool-agnostically (for the pi agent). Map the
 - **Subagents** — delegate via the `Task` tool. The agents in `~/.claude/agents/`
   are the equivalent of pi's subagents.
 - **Python tests** — run `pytest` / `pytest <path>` only. Never `python -m
-  pytest`, `.venv/bin/python -m pytest`, or `uv run pytest`. Use `uv` for
-  environment/dependency management only.
+  pytest`, `.venv/bin/python -m pytest`, or `uv run pytest`: only the bare
+  `pytest` prefix matches the permission allow rule, anything else prompts.
+  Use `uv` for environment/dependency management only.
 
 ## Memory store
 

@@ -46,32 +46,6 @@ is hit, with the version it was verified against.
 5. JIT stable heavy paths.
 6. Keep side effects in thin outer layers.
 
-## Idioms
-
-```python
-# PRNG — split at every call site; never reuse a key
-key, subkey = jax.random.split(key)
-x = jax.random.normal(subkey, shape)
-
-# vmap — vectorise over leading axis; broadcast constants with None
-batched = jax.vmap(fn, in_axes=(0, None))(xs, constant)
-
-# scan — sequential with carry (prefer over Python loops inside jit)
-def step(carry, x):
-    return new_carry, output
-final_carry, outputs = jax.lax.scan(step, init, xs)
-
-# jitted train step — JIT the entire grad+update, not just grad
-@jax.jit
-def train_step(params, opt_state, batch):
-    loss, grads = jax.value_and_grad(loss_fn)(params, batch)
-    updates, opt_state = optimizer.update(grads, opt_state)
-    return optax.apply_updates(params, updates), opt_state, loss
-
-# in-place update — .at[].set(), never direct assignment
-arr = arr.at[i].set(val)
-```
-
 ## Anti-Patterns
 
 - Passing the same key variable into two sequential `jax.random.*`/sampler calls within one function — split one subkey per independent random decision up front (`k1, k2, ..., kN = jax.random.split(key, N)`), even when the decisions are small and sequential, not just across function boundaries.

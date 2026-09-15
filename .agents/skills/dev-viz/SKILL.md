@@ -71,8 +71,9 @@ it. Each rule with the shape its violation takes:
   saying what it means.
 - **Subfigure rows align at the top.** Use `[t]` on subfigures in multi-row
   grids and pin `\includegraphics[height=…]` when a row mixes aspect ratios.
-  *Violation:* the template's default `[b]`, which staggers a row as soon as
-  one subfigure carries a caption and its neighbours do not.
+  *Violation:* subfigures left at `[b]` or at the centred default, which
+  staggers a row as soon as one subfigure carries a caption and its
+  neighbours do not.
 
 ## Generated Tables
 

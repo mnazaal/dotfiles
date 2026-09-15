@@ -66,10 +66,12 @@ could help. Three channels exist and they are not interchangeable:
   can beat a gate, because it delivers instead of denying-and-forcing-a-retry.
 - **Prose** relies on the agent noticing that a rule applies.
 
-The limit worth knowing: every gate keys on something the agent DOES, so a
-behaviour whose trigger is the ABSENCE of an action — asking before acting,
-verifying before starting, orienting before working, delegating instead of
-reading — emits no event and therefore cannot be GATED at all.
+The limit worth knowing: every gate keys on something the agent emits, so a
+behaviour whose trigger is the absence of an action — asking before acting,
+verifying before starting, orienting before working — has no event of its own.
+Before calling it ungateable, look for an adjacent emitted event (the command
+that creates the state, the write that follows the decision); only when none
+exists is prose the ceiling.
 
 Separate that from the description question, which the Firing Audit answers
 below and which this does not overrule. A description can still be wrong for an
@@ -93,9 +95,10 @@ changed anything.
 **Run `audit.sh` in this skill's own directory** — do not retype its queries from
 memory or summarise them. It reports counts per skill, never-fired, fired-but-no-
 directory, gate compliance, and where in the session each skill fires. It takes
-the harness's session-transcript directory as its first argument (default suits
-the current one) and assumes each load appears as `"skill":"<name>"`; that marker
-is the only harness-specific assumption and is a variable at the top of the file.
+the harness's session-transcript directory as its first argument and the
+deployed skills directory as its second; pass both when auditing a harness
+other than the one its defaults name, and check that the load marker at the
+top of the file matches how that harness records a skill load.
 
 What the sections are for:
 

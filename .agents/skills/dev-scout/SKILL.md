@@ -22,7 +22,7 @@ description: "Use for read-only codebase/repo exploration: scout repo, map archi
 4. Identify interfaces, adapters, generated/derived directories, and fragile assumptions.
 5. Report entry points, main modules/interfaces, external services/adapters, generated or derived files, sticky assumptions/risks, gaps, and suggested next skill.
 
-For large external artifacts (repos, logs, transcripts, terminal output) ingested before scouting: classify source type, extract/normalize text and metadata, preserve timestamps and file refs, then return source, kind, normalized content, and caveats before proceeding with the workflow above.
+When scouting an ingested artifact rather than a checkout (a log, transcript, or terminal dump), keep timestamps and file references intact in what you report, and say what the artifact could not show.
 
 ## Output Shape
 
