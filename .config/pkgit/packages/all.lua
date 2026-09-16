@@ -169,10 +169,6 @@ local repos = {
     }),
   },
   notmuch = { url = "https://github.com/notmuch/notmuch.git", targets = lib.autotools() },
-  ["pass-otp"] = {
-    url = "https://github.com/tadfisher/pass-otp",
-    targets = lib.make_prefix({ vars = { BASHCOMPDIR = prefix .. "/share/bash-completion/completions" } }),
-  },
   pdfpc = { url = "https://github.com/pdfpc/pdfpc.git", targets = cc },
   pixman = { url = "https://gitlab.freedesktop.org/pixman/pixman.git", targets = meson },
   pwvucontrol = {
@@ -238,7 +234,6 @@ chmod +x "$BIN/sioyek"
       install = function() return 0 end,
     }),
   },
-  slurp = { url = "https://github.com/emersion/slurp", targets = meson },
   stow = { url = "https://git.savannah.gnu.org/git/stow.git", targets = lib.autotools({ autoreconf = true }) },
   swaybg = { url = "https://github.com/swaywm/swaybg.git", targets = meson },
   swayidle = { url = "https://github.com/swaywm/swayidle.git", targets = lib.meson({ clean_root_build = true, flags = { "-Dbash-completions=false" } }) },

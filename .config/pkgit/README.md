@@ -28,11 +28,11 @@ clones ref HEAD — so every pin in this config is a `checkout`.
 
 | Group | Packages |
 |-------|----------|
-| Meson | `babl`, `grim`, `libinput`, `pixman`, `rofi`, `slurp`, `swaybg`, `wireplumber` |
+| Meson | `babl`, `grim`, `libinput`, `pixman`, `rofi`, `swaybg`, `wireplumber` |
 | Meson + flags/env | `gegl`, `gimp`, `pwvucontrol`, `waybar` |
 | Meson, Wayland stack (root-build cleanup, pinned checkouts, prefix pkgconfig) | `libdisplay-info`, `libdrm`, `mango`, `scenefx`, `swayidle`, `swaylock`, `wayland`, `wayland-protocols`, `wlroots`, `xkbcommon` |
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
-| Make + PREFIX | `dunst`, `keyd`, `pass-otp` |
+| Make + PREFIX | `dunst`, `keyd` |
 | Autotools | `emacs`, `isync-isync`, `msmtp`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
 | Custom | `fzf`, `kitty`, `neovim`, `sioyek` |
 
