@@ -47,6 +47,17 @@ if [[ "$CONFINED" == 1 ]]; then
 	fi
 fi
 
+# A merge that stopped on conflicts is finished by a plain `git commit`, which
+# never reaches pre-merge-commit -- so the linear-history rule is enforced here
+# too. MERGE_HEAD is merge-specific: a conflicted rebase, stash pop or
+# cherry-pick does not set it (verified), so this cannot fire on those.
+if [[ -e "$(git rev-parse --git-path MERGE_HEAD)" && "${ALLOW_MERGE_COMMIT:-0}" != 1 ]]; then
+	echo "$ERROR_PREFIX refusing to commit a merge (history is kept linear)." >&2
+	echo "Abandon it with 'git merge --abort', then rebase and 'git merge --ff-only'." >&2
+	echo "If the merge commit is genuinely wanted: ALLOW_MERGE_COMMIT=1 git commit ..." >&2
+	exit 1
+fi
+
 # Leftover merge-conflict markers (zdiff3 uses ||||||| for the base).
 conflicts="$(
 	git diff --cached --no-color --diff-filter=d -U0 |

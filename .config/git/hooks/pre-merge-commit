@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+
+ERROR_PREFIX="GIT PRE-MERGE-COMMIT HOOK ERROR:"
+
+# History here is linear: every branch lands by fast-forward. `merge.ff = only`
+# already refuses a divergent `git merge`/`git pull`, but config loses to an
+# explicit `--no-ff` on the command line, which is how a merge commit actually
+# gets made. Reaching this hook at all means one is about to be written.
+if [[ "${ALLOW_MERGE_COMMIT:-0}" == 1 ]]; then exit 0; fi
+
+cat >&2 <<MSG
+$ERROR_PREFIX refusing to write a merge commit (history is kept linear).
+The merge is left in progress: 'git merge --abort' to back out.
+Rebase the branch onto its base, then fast-forward:
+  git checkout <branch> && git rebase <base>
+  git checkout <base>   && git merge --ff-only <branch>
+If the merge commit is genuinely wanted: ALLOW_MERGE_COMMIT=1 git merge ...
+MSG
+exit 1
