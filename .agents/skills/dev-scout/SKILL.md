@@ -37,5 +37,7 @@ When scouting an ingested artifact rather than a checkout (a log, transcript, or
 
 - `debug-*` for suspicious broken paths.
 - `dev-*` for implementation after scouting.
+- `dev-borrow-design` when the repo is being read for patterns to adopt elsewhere
+  rather than to work on.
 - `understand-codebase` when the findings are for the user to internalize rather than
   for an agent to act on; it calls this skill for the mapping.

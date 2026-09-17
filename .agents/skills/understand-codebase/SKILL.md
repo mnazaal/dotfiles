@@ -91,6 +91,7 @@ Route each; do not fix silently.
 - Reimplementing the traced behavior elsewhere rather than understanding it →
   `dev-jax-port`.
 - Understanding a research record rather than code → `understand-project`.
+- Mining this code for patterns to adopt into a different project → `dev-borrow-design`.
 
 ## Anti-Patterns
 
