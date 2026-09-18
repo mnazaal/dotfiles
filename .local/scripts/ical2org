@@ -58,13 +58,24 @@ PASS_FILE="${PASS_FILE:-$HOME/.local/share/pass/${CALENDAR_NAME}-ics.gpg}"
 ORGFILE="${ORGFILE:-$HOME/org/agenda/${CALENDAR_NAME}.org}"
 HSTS_FILE="$HOME/.local/share/wget-hsts"
 
+# The ICS URL is a bearer credential: its path carries a token that lets anyone
+# holding it read the whole calendar without authenticating. That is why the URL
+# is kept encrypted and passed to wget through --input-file rather than argv --
+# but `wget -nv` prints the URL it tried on every failure, so six Outlook 503s
+# wrote it in cleartext into a mode-644 log that logrotate then keeps for weeks.
+# Keep the scheme and host, which are not secret and say which service broke,
+# and drop the path. The diagnostic part of the message ("ERROR 503") survives.
+redact_urls() {
+	sed -E 's#([a-z][a-z0-9+.-]*://[^/[:space:]]+)/[^[:space:]]*#\1/[path redacted]#g'
+}
+
 # Report which calendar failed, at which stage, and when. gpg failures carry
 # no timestamp and no calendar name of their own, so an unattributed
 # "decryption failed" in a shared log was previously unreadable.
 fail() { # message [captured output]
 	printf '%s ical2org[%s]: %s\n' "$(date '+%F %T')" "$CALENDAR_NAME" "$1" >&2
 	if [ -n "${2:-}" ]; then
-		printf '%s\n' "$2" >&2
+		printf '%s\n' "$2" | redact_urls >&2
 	fi
 	notify_failure "$1"
 	exit 1
