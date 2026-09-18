@@ -65,8 +65,15 @@ HSTS_FILE="$HOME/.local/share/wget-hsts"
 # wrote it in cleartext into a mode-644 log that logrotate then keeps for weeks.
 # Keep the scheme and host, which are not secret and say which service broke,
 # and drop the path. The diagnostic part of the message ("ERROR 503") survives.
+# Three shapes escaped the first version of this filter, each leaking the whole
+# token: an uppercase scheme (it matched only lowercase), a query-string token
+# with no path (`https://host?cid=<token>` -- the shape Google's "secret
+# address" links use, and primary-gcal IS a Google calendar), and
+# `https://user:<secret>@host/...`, where the path was dropped but the
+# credential in the userinfo field was kept. Match the scheme case-insensitively,
+# drop userinfo entirely, and cut at the first `/` OR `?`.
 redact_urls() {
-	sed -E 's#([a-z][a-z0-9+.-]*://[^/[:space:]]+)/[^[:space:]]*#\1/[path redacted]#g'
+	sed -E 's#([a-zA-Z][a-zA-Z0-9+.-]*://)([^/?[:space:]]*@)?([^/?[:space:]]+)([/?][^[:space:]]*)?#\1\3/[path redacted]#g'
 }
 
 # Report which calendar failed, at which stage, and when. gpg failures carry
