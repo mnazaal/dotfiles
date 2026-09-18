@@ -120,8 +120,7 @@ none of them.
 - `critique-argument` to stress-test an architectural proposal before it reaches
   the user.
 - `agent-orchestration` for the fan-out and for verifying delegated findings.
-- `meta-skills-improve` when Y is the user's own agent skills or agent config —
-  it owns placement, firing, and the no-op test for that target.
+- `meta-skills-improve` when what gets adopted lands in the user's own skills.
 - `dev-jax-port` when adoption stops being design transfer and becomes a
   line-by-line port with parity requirements.
 - `decide-priority` to sequence an accepted list against other work.

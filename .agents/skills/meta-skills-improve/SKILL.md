@@ -219,7 +219,3 @@ Create a new skill only if:
 - `dev-verification` before claiming skill updates are correct.
 - `debug-root-cause` when repeated agent failure needs diagnosis.
 - `decide-priority` when choosing which skill improvements matter.
-- `dev-borrow-design` when a reference project is being mined for ideas; it owns
-  provenance, ranking and the reject record whatever the target is. This skill
-  applies only once the target is `~/.agents/skills` — a survey of someone else's
-  skill repo may well be aimed at a library instead.
