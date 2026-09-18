@@ -208,6 +208,12 @@ check-skill-frontmatter:
 # Names, because they disagree: the PyPI distribution is `skills-ref`, the
 # module is `skills_ref`, and the console script is `agentskills` -- the
 # upstream README's `skills-ref validate` does not exist.
+# The version is PINNED and a missing `uv` is FATAL. Unpinned, every run
+# resolved whatever release was current, over the network, so the same tree
+# could pass today and fail tomorrow for reasons that are not the edit; and the
+# old `exit 0` skip made `make check` report green having validated nothing,
+# which is the failure mode this whole file exists to prevent. Bump the pin
+# deliberately after reading the release's changed rules.
 define SKILL_SPEC_PY
 import glob, pathlib, sys
 import skills_ref
@@ -226,9 +232,9 @@ export SKILL_SPEC_PY
 
 check-skill-spec:
 	@if ! command -v uv >/dev/null 2>&1; then \
-		echo "warn: uv not installed; skipping skill-spec check"; exit 0; \
+		echo "skill-spec: uv not installed; the spec check cannot run" >&2; exit 1; \
 	fi; \
-	uv run --quiet --no-project --with skills-ref -- python -c "$$SKILL_SPEC_PY"
+	uv run --quiet --no-project --with 'skills-ref==0.1.1' -- python -c "$$SKILL_SPEC_PY"
 
 # The firing audit is the one skill-quality tool in the repo and nothing ran
 # it: it was a bare script path to remember. Deliberately NOT a dependency of
