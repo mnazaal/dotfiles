@@ -16,6 +16,33 @@
     gds = diff --staged
     glo = log --oneline --decorate
 
+    # Land an agent branch: step off it, fast-forward the base, retire it.
+    # Agents commit on <prefix>/* because the reference-transaction hook refuses
+    # them any other branch, and they cannot merge into the base or delete a
+    # branch at all -- so landing is always the user's, and it is a fixed
+    # three-command sequence whose ORDER is the whole difficulty. Handed over as
+    # three commands it breaks whenever the agent left the checkout standing on
+    # the branch: `merge --ff-only <b>` from <b> is a silent no-op reporting
+    # "Already up to date", and `branch -d <b>` then refuses with "used by
+    # worktree at <repo>" -- which names the primary checkout, so it reads as a
+    # stray-worktree problem that does not exist. Ordering it once here is worth
+    # more than any number of correct handover messages.
+    land = "!f() { \
+        b=${1:-}; \
+        [ -n \"$b\" ] || { echo 'usage: git land <branch> [base]' >&2; exit 2; }; \
+        base=${2:-}; \
+        if [ -z \"$base\" ]; then \
+            base=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null); \
+            base=${base#origin/}; \
+        fi; \
+        base=${base:-main}; \
+        git rev-parse --verify --quiet \"refs/heads/$b\" >/dev/null || { echo \"git land: no such branch: $b\" >&2; exit 1; }; \
+        git merge-base --is-ancestor \"$base\" \"$b\" || { echo \"git land: $b has diverged from $base; rebase it first\" >&2; exit 1; }; \
+        git checkout \"$base\" || exit 1; \
+        git merge --ff-only \"$b\" || exit 1; \
+        git branch --delete \"$b\"; \
+      }; f"
+
     graph = log --graph --oneline --decorate --all --abbrev-commit --date=relative \
   --color --pretty=format:'%C(yellow)%h%C(reset)%C(cyan) (%ar)%C(reset) %s %C(green)%d%C(reset) %C(bold)<%an>%C(reset)'
 
