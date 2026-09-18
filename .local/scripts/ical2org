@@ -120,10 +120,17 @@ if [ ! -f "$PASS_FILE" ]; then
 	fail "encrypted URL file not found: $PASS_FILE"
 fi
 
-mkdir -p "$(dirname "$ORGFILE")"
+# These three ran as bare commands under `set -e`, which aborts the script with
+# the tool's own status BEFORE fail() can attribute it. The log then got a raw
+# `mktemp: failed to create file via template ...` with no timestamp, no
+# calendar name and no notification -- exactly the unreadable shape fail()
+# exists to prevent. Reachable via a full or read-only /tmp, tmpfs inode
+# exhaustion, or an unwritable ~/org/agenda.
+mkdir -p "$(dirname "$ORGFILE")" ||
+	fail "cannot create agenda directory: $(dirname "$ORGFILE")"
 
-ICSFILE=$(mktemp)
-URLFILE=$(mktemp)
+ICSFILE=$(mktemp) || fail "mktemp failed for the downloaded calendar (TMPDIR=${TMPDIR:-/tmp})"
+URLFILE=$(mktemp) || fail "mktemp failed for the decrypted URL (TMPDIR=${TMPDIR:-/tmp})"
 trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
 
 # Decrypt the URL and download the calendar without exposing the URL in argv.
