@@ -27,8 +27,18 @@ sync_calendar() {
 	PASS_FILE="$pass_file" ORGFILE="$org_file" "$SYNC_SCRIPT" "$calendar_name"
 }
 
+# One calendar's failure must not skip the ones listed after it. Under `set -e`
+# the first non-zero sync_calendar aborted the whole script, so a run of aalto
+# failures (113 between 2026-09-10 and 2026-09-18, first gpg cache expiry then
+# an Outlook 503) also stopped primary-gcal from syncing, for a reason that had
+# nothing to do with it. Every calendar is attempted now; the exit status says
+# whether any failed, and ical2org has already logged which one and why.
+failed=0
+
 # Each mapping is: sync_calendar <calendar label> <pass entry basename> <generated org basename>.
 # Keep the generated org basenames aligned with `.config/emacs/config.org`
 # under `org-agenda-files`.
-sync_calendar "aalto-calendar" "aalto-outlook-ics" "aalto-outlook"
-sync_calendar "primary-calendar" "primary-gcal-ics" "primary-gcal"
+sync_calendar "aalto-calendar" "aalto-outlook-ics" "aalto-outlook" || failed=1
+sync_calendar "primary-calendar" "primary-gcal-ics" "primary-gcal" || failed=1
+
+exit "$failed"
