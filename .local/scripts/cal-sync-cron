@@ -2,13 +2,31 @@
 
 set -euo pipefail
 
-# Runs ical2org per calendar mapping; calendars with no encrypted ICS URL
-# file are skipped. PASSWORD_STORE_DIR is exported by the cron entry.
+# Runs ical2org per calendar mapping. PASSWORD_STORE_DIR is exported by the
+# cron entry.
 SYNC_SCRIPT="$HOME/.local/scripts/ical2org"
 PASSWORD_STORE_DIR="${PASSWORD_STORE_DIR:-$HOME/.local/share/pass}"
 
+# This script's OWN failures used to reach nobody: notify_failure lives in
+# ical2org, so a broken stow symlink, a lost exec bit or a renamed pass entry
+# meant total sync death with one stderr line into a log nothing reads. Same
+# shape as ical2org's notifier, deliberately duplicated rather than factored
+# into a third file: eight lines is cheaper than another script to deploy.
+report() { # message
+	printf '%s cal-sync-cron: %s\n' "$(date '+%F %T')" "$1" >&2
+	if [ -t 1 ]; then
+		return 0
+	fi
+	command -v notify-send >/dev/null 2>&1 || return 0
+	bus="/run/user/$(id -u)/bus"
+	[ -S "$bus" ] || return 0
+	DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+		notify-send --app-name=cal-sync-cron --urgency=critical \
+		"Calendar sync broken" "$1" || true
+}
+
 if [ ! -x "$SYNC_SCRIPT" ]; then
-	echo "Error: sync script not executable: $SYNC_SCRIPT" >&2
+	report "sync script not executable: $SYNC_SCRIPT"
 	exit 1
 fi
 
@@ -19,9 +37,13 @@ sync_calendar() {
 	local pass_file="$PASSWORD_STORE_DIR/${secret_name}.gpg"
 	local org_file="$HOME/org/agenda/${output_name}.org"
 
+	# A missing secret is a FAILURE, not a skip. `return 0` here meant a
+	# renamed pass entry, a moved store or a wrong PASSWORD_STORE_DIR stopped
+	# that calendar permanently while the script still exited 0 and notified
+	# nobody -- the calendar simply stopped updating and nothing said so.
 	if [ ! -f "$pass_file" ]; then
-		echo "Skipping calendar '$calendar_name': missing $pass_file" >&2
-		return 0
+		report "calendar '$calendar_name' has no secret at $pass_file"
+		return 1
 	fi
 
 	PASS_FILE="$pass_file" ORGFILE="$org_file" "$SYNC_SCRIPT" "$calendar_name"
