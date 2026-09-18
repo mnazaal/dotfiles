@@ -61,6 +61,17 @@
 # (stop the remote shell itself from signaling the job on exit) are belt-and-
 # suspenders on top of setsid, not the primary mechanism.
 #
+# Why there is no CPU-time ceiling on <command>: a `ulimit -t` on the remote
+# payload looks like a cheap guard against someone handing this script real
+# computation instead of a submit-and-poll driver (the driver burns ~no CPU on
+# the login node, a computation blows through any ceiling immediately). It is
+# not. Slurm captures the submitting process's resource limits and propagates
+# them to the job it creates (PropagateResourceLimits, ALL by default), so the
+# ceiling would ride through `sbatch` onto the compute node and kill the real
+# job -- and rlimits are per-process, so an N-thread job burns an hour's budget
+# in 3600/N seconds of wall clock. Do not add one back: keeping heavy work off
+# the login node is discipline, not something this wrapper can enforce.
+#
 # CLI / env config (CLI wins if both given):
 #   --host <alias> / HPC_HOST   ssh alias/host to run on. Use a *pinned* login
 #                node from your ~/.ssh/config, not a round-robin hostname: a
@@ -161,6 +172,9 @@ repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 reponame=$(basename "$repo_root")
 branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
+# The exact commit this launch means. Passed to the remote so it can prove it
+# ended up on OUR code rather than on whatever its own origin happened to hold.
+want_sha=$(git -C "$repo_root" rev-parse HEAD)
 
 if [[ "$allow_dirty" == false ]] && [[ -n $(git -C "$repo_root" status --porcelain --untracked-files=no) ]]; then
 	echo "hpc: working tree has uncommitted changes to tracked files -- commit them first, or pass --dirty to push only what's already committed (the remote will still refuse to run anything not pushed)." >&2
@@ -199,10 +213,10 @@ echo "hpc: syncing $reponame@$branch into $disp_dir on $host, launching '$name' 
 # therefore get re-split on whitespace remotely -- silently truncating
 # anything in $cmd after its first word. Fix: pre-quote each piece with %q
 # ourselves and hand ssh a single already-remote-shell-safe string.
-remote_argv=$(printf '%q %q %q %q %q %q' "$dir" "$branch" "$runs_dir" "$name" "$cmd" "$timeout_dur")
+remote_argv=$(printf '%q %q %q %q %q %q %q' "$dir" "$branch" "$runs_dir" "$name" "$cmd" "$timeout_dur" "$want_sha")
 ssh "$host" "bash -s -- $remote_argv" <<'REMOTE'
 set -euo pipefail
-dir=$1; branch=$2; runs_dir=$3; name=$4; cmd=$5; timeout_dur=$6
+dir=$1; branch=$2; runs_dir=$3; name=$4; cmd=$5; timeout_dur=$6; want_sha=$7
 case "$dir" in
   /*) target="$dir" ;;
   *) target="$HOME/$dir" ;;
@@ -228,13 +242,66 @@ cd "$target" 2>/dev/null || {
 
 git fetch origin
 
+# This working copy fetches from ITS OWN origin, which the header assumes is the
+# same repo the laptop pushed to but nothing has ever checked. When it is not,
+# the checkout below fails in a way that reads like a bad branch name.
+if ! git rev-parse --verify --quiet "origin/$branch^{commit}" >/dev/null; then
+  echo "hpc: origin/$branch does not exist at $target on $(hostname) even after fetching -- this working copy's 'origin' is not the remote the laptop pushed to. Check 'git -C $target remote -v'." >&2
+  exit 1
+fi
+
 if [[ -n $(git status --porcelain --untracked-files=no) ]]; then
   echo "hpc: working copy at $target has uncommitted changes to tracked files -- refusing to reset. Inspect manually." >&2
   exit 1
 fi
 
 git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
+
+# The dirty check above cannot see committed-but-unpushed work: committing here
+# leaves the tree clean, so the reset below would drop those commits with no
+# warning and reflog-only recovery. Both checks from here on must run AFTER the
+# checkout, so HEAD is the branch about to be reset.
+if [[ -n $(git rev-list "origin/$branch..HEAD") ]]; then
+  echo "hpc: the working copy at $target has commits that are not in origin/$branch:" >&2
+  git log --oneline "origin/$branch..HEAD" >&2
+  echo "hpc: refusing to reset -- push or drop them there, then retry." >&2
+  exit 1
+fi
+
+# A running job reads this working copy for its whole life (days, for a blocking
+# --multirun driver that keeps submitting tasks), so resetting it mid-flight
+# makes every task starting afterwards load different code: one results tag, two
+# versions, no record anywhere. Only a reset that MOVES the commit can do that,
+# so relaunching the SAME commit with a different seed/config still goes through
+# -- that no-op case is the common one and must not be blocked.
+# Two limits, deliberate: this sees only runs launched by this script and still
+# tracked by a live pidfile (a hand-submitted job is invisible), and pointing
+# --runs-dir at one absolute path shared across projects would make it refuse on
+# unrelated runs.
+cur_sha=$(git rev-parse HEAD)
+if [[ "$cur_sha" != "$want_sha" ]]; then
+  for p in "$runs"/*.pid; do
+    [[ -e "$p" ]] || continue
+    if kill -0 "$(cat "$p")" 2>/dev/null; then
+      echo "hpc: run '$(basename "$p" .pid)' is still running here (pid $(cat "$p")), and this launch would move $target from $cur_sha to $want_sha underneath it." >&2
+      echo "hpc: wait for it to finish, or launch into a separate working copy with --dir." >&2
+      exit 1
+    fi
+  done
+fi
+
 git reset --hard "origin/$branch"
+
+# Nothing above guarantees origin/$branch is the commit the laptop just pushed:
+# a stale mirror, a different repo, or someone pushing over the branch in the
+# seconds between the push and the fetch would all leave this copy on other
+# code -- and then the job runs, the logs look normal, and the results silently
+# belong to a commit nobody chose.
+got_sha=$(git rev-parse HEAD)
+if [[ "$got_sha" != "$want_sha" ]]; then
+  echo "hpc: $target is at $got_sha but the laptop pushed $want_sha -- this working copy's 'origin' is a stale mirror or a different repo. Not launching." >&2
+  exit 1
+fi
 
 rm -f "$exitfile"
 # Source .env into THIS shell rather than composing it into the launched command string.
