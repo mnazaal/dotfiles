@@ -139,11 +139,26 @@ trap 'rm -f "$ICSFILE" "$URLFILE"' EXIT
 # this every 10 minutes, so anything printed unconditionally accumulates: the
 # log reached 36 MB of successful-download chatter, and the gpg failures that
 # actually broke the sync were buried in it. A healthy run now prints nothing.
-out=$(gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty \
+# --batch, because --no-tty alone still ATTEMPTS pinentry: with a cold cache
+# that produced "Inappropriate ioctl for device" 107 times, an error about a
+# terminal for what is really "nobody has unlocked the passphrase since the
+# agent restarted". --batch makes gpg fail immediately and say so.
+out=$(gpg --homedir "$GPG_HOMEDIR" --quiet --for-your-eyes-only --no-tty --batch \
 	--decrypt "$PASS_FILE" 2>&1 >"$URLFILE") ||
-	fail "gpg could not decrypt $PASS_FILE" "$out"
+	fail "gpg could not decrypt $PASS_FILE (cache cold? unlock once interactively)" "$out"
 
-out=$(wget -nv --hsts-file="$HSTS_FILE" --input-file="$URLFILE" -O "$ICSFILE" 2>&1) ||
+# An empty URL file makes wget exit 0 ("No URLs found in ...") with a 0-byte
+# body, so a gpg or pass fault surfaced one stage later as "conversion to org
+# failed" and sent the reader to ical2orgpy. Check here instead.
+[ -s "$URLFILE" ] ||
+	fail "decrypted URL is empty -- check the pass entry for this calendar"
+
+# Bound the download. With wget's defaults (--tries=20, --read-timeout=900) a
+# black-holed connection held the flock for hours, and every 10-minute tick in
+# that window skipped silently: no log line, no notification, indistinguishable
+# from a healthy run. 3 tries x 30s stays well inside the 10-minute period.
+out=$(wget -nv --tries=3 --timeout=30 --hsts-file="$HSTS_FILE" \
+	--input-file="$URLFILE" -O "$ICSFILE" 2>&1) ||
 	fail "download failed" "$out"
 
 out=$("$ICS2ORG" "$ICSFILE" "$ORGFILE" 2>&1) ||
