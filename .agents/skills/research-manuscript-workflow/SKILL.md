@@ -248,6 +248,14 @@ re-deriving — it is the first question a reviewer asks, and prose hides it:
 - `observed` — a single run, or an unpaired comparison. Directional, not established.
 - `asserted` — argued, cited, or believed; no artifact in this repo backs it.
 
+What kind of claim it is stays a separate axis from how well it is supported,
+and `## Exact wording` is where it shows: descriptive, associational,
+predictive, causal, or mechanistic. The two get conflated because only one of
+them is labelled — the same `measured` line supports "B is higher than A" and
+"A causes B" to entirely different degrees, and a reviewer reads the wording,
+not the label. Where the wording claims more than the design can deliver, the
+fix is the wording.
+
 The label describes the artifact behind the line, not confidence in the claim.
 A `measured` line whose interval crosses zero is still `measured`. Downgrading
 on a rerun is a normal event and belongs in `LOG.md`; silently keeping the old

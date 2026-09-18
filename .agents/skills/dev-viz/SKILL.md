@@ -55,6 +55,10 @@ it. Each rule with the shape its violation takes:
 - **Every float is referenced and discussed.** *Violation:* a figure present
   in the document and never `\ref`'d; a table cited once with nothing said
   about what it shows.
+- **The float earns its place, tested both ways.** Cover the figure and read
+  the claim it supports — does the claim still hold? Then cover the claim and
+  look at the figure — is the takeaway obvious? The first failure means the
+  float is decoration; the second means it needs annotation, not more caption.
 - **The reference says what to look for.** Name the pattern, the comparison,
   or the direction the reader should take away. *Violation:* a bare "as shown
   in Figure 3", which asserts the figure exists and leaves extracting its
@@ -112,3 +116,4 @@ one may name; these are rules for what the producer emits.
 
 - `research-run` for interpreting plots/metrics, and for why the paired difference is the quantity to plot.
 - `research-manuscript-workflow` for the figure and table pipeline: generator placement, committed artifacts, byte-determinism.
+- `research-talk` when the exhibit is for a slide or a poster rather than a page: different sizing, different viewing distance, different order.

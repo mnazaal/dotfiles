@@ -43,7 +43,7 @@ measurement.
 ## Pre-Registration
 
 Before Launching settles the design; this settles what the design is a test
-of, in a form that outlives the moment it was decided. Five commitments, none
+of, in a form that outlives the moment it was decided. Six commitments, none
 of which can be made honestly once the numbers exist:
 
 - **The prediction.** What you expect, in direction and rough size. The Output
@@ -63,6 +63,13 @@ of which can be made honestly once the numbers exist:
   a floor — cannot discriminate the hypothesis, and that is invisible until the
   numbers exist. Same for a null control: state its criterion in the units the
   mechanism moves, not whichever summary is at hand.
+- **The rival explanations.** Which non-mechanism accounts could produce the
+  predicted result, and what in the design rules each one out. Work the classes
+  rather than improvising: confounding or a common cause, selection and
+  attrition, conditioning on a collider, reverse causation, a measurement or
+  preprocessing artifact, stochastic variation, and the same effect at a
+  different scale. A prediction that every rival also satisfies is not a test of
+  the mechanism, and that is cheapest to notice before the run.
 - **The search bounds.** The hyperparameter ranges to be swept, as part of the
   hypothesis rather than a detail. An unbounded search is where the forking
   paths are.

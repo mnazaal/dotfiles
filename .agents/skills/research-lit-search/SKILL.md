@@ -42,6 +42,10 @@ method), the output is sharper than a field map:
   axis the problem makes matter, our own method as the final row. The cell says
   how that work stands on that axis, so the empty cells are the gaps and the
   reader sees the combination rather than being told about it.
+- A null result carries its boundary. "Nobody has done this" is only weighable
+  beside what was searched: the cutoff date, the sources covered, the languages,
+  and what was reachable without a subscription. Unbounded, the gate's negative
+  cannot be re-judged later and quietly expires as the literature moves.
 - Fix the columns from what the problem demands, BEFORE filling in our own row.
   Columns chosen after the fact produce a last row that sweeps every one of
   them, which is the shape a reviewer discounts on sight — it reads as axes
