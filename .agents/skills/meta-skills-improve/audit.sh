@@ -120,6 +120,10 @@ check_gate 'arxiv fetch' '"name":"WebFetch","input":\{"url":"[^"]*arxiv\.org' re
 check_gate 'handoff written' 'session-handoff:begin' session-handoff
 check_gate 'structured question' '"name":"AskUserQuestion"' plan-interview
 check_gate 'subagent spawn' '"name":"(Task|Agent)","input"' agent-orchestration
+# Anchored to a command the agent RAN, so this understates the real gap: the more
+# common cluster failure is PASTING a launch for the user, which no tool call records
+# and this cannot see. Read 45% (2026-09-18) as a ceiling on compliance, not a floor.
+check_gate 'hpc/sbatch/srun run' '"command":"[^"]*\b(hpc|sbatch|srun) ' dev-hpc
 # Approximates the gate: `capabilitiesOf` fires when a whitespace-delimited
 # token's BASENAME equals a runner, so the anchor needs the same boundaries or
 # it counts `cat pytest.log` and `rm -rf .pytest_cache` as test runs. Measured
