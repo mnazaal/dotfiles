@@ -82,6 +82,7 @@
     "replace"
   ],
   "git_global_value_opts": [
+    "-c",
     "-C",
     "--git-dir",
     "--work-tree",

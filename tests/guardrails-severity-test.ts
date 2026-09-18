@@ -139,6 +139,7 @@ const TABLE: Row[] = [
   { command: "bash -cx 'sudo apt install ripgrep'", expected: "deny", note: "reading the flag tail as the script hid this" },
   { command: "timeout 5 -- sudo apt install ripgrep", expected: "deny", note: "the -- a wrapper leaves behind is not the command" },
   { command: "git -C /tmp gc --prune=now", expected: "deny", note: "git's own -C must not hide the subcommand" },
+  { command: "git -c core.pager=cat gc --prune=now", expected: "deny", note: "-c takes its value as a separate token, so it must not hide the subcommand either" },
 
   // --- moving a branch the agent may not own ---------------------------------
   // The reference-transaction hook holds this policy, but it was NOT consulted
