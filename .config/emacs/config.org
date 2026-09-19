@@ -1405,12 +1405,27 @@ is globally ignored in =.config/git/ignore=.
 ** treesit-auto                                                      :coding:
 Note that the tree-sitter ABI version used by emacs should match that of the system.
 
+=treesit-auto-install= was =nil=, which meant no grammar was ever fetched and
+none had to be installed by hand either — so there were none at all. Measured
+2026-09-19: =treesit-language-available-p= answered =nil= for every one of
+python, bash, c, json, yaml, markdown, toml and elisp, no
+=user-emacs-directory/tree-sitter= existed, and no =libtree-sitter-*.so= was
+installed system-wide. Everything downstream was therefore dead config: the
+source alist above, the =python-ts-mode= / =bash-ts-mode= entries in
+[[*eglot][eglot]] and [[*apheleia][apheleia]], and [[*treesit-fold][treesit-fold]].
+
+='prompt= asks once per language on first visiting such a file and remembers the
+answer by leaving the grammar on disk. =M-x treesit-auto-install-all= does the
+whole set in one go. The alist above is *not* bypassed by this:
+=treesit-auto--build-treesit-source-alist= appends its own recipes *after*
+=treesit-language-source-alist=, so the pinned versions there still win.
+
 #+begin_src emacs-lisp
 (use-package treesit-auto
   :init
   (add-to-list 'auto-mode-alist '("\\.jsonc\\'" . js-json-mode))
   :custom
-  (treesit-auto-install nil)
+  (treesit-auto-install 'prompt)
   :hook (after-init . global-treesit-auto-mode))
 #+end_src
 
