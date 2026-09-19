@@ -93,10 +93,11 @@ Sensible defaults.
   (when (and (not window-system) (stringp (getenv "WAYLAND_DISPLAY")))
     (setq interprogram-paste-function
           (lambda () (string-trim (shell-command-to-string "wl-paste")))))
-  (setq browse-url-browser-function
-        (lambda (url &optional _new-window)
-          (start-process "xdg-open" nil "setsid" "-f" "xdg-open" url)
-          t))
+  ;; `browse-url-xdg-open' is `(call-process "xdg-open" nil 0 nil url)'
+  ;; (browse-url.el:1149) -- destination 0 means don't wait, so it does not block
+  ;; Emacs, which is the only thing the hand-rolled `setsid -f' version was
+  ;; buying.
+  (setq browse-url-browser-function #'browse-url-xdg-open)
   (setq plstore-cache-passphrase-for-symmetric-encryption t)
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
   ;; pzi manages bibliography.bib; zotero.bib is the retired Zotero export.
