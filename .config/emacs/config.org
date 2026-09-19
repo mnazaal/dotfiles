@@ -1675,7 +1675,6 @@ The =magit= keybindings override some other Emacs keybindings for =goto= style a
   (magit-post-refresh . diff-hl-magit-post-refresh)
   :custom
   (git-commit-major-mode 'org-mode)
-  (magit-diff-refine-hunk 'word)
   (magit-show-long-lines-warning nil)
   (magit-clone-default-directory "~/projects/")
   (magit-display-buffer-function 'magit-display-buffer-fullframe-status-v1)
@@ -1684,7 +1683,10 @@ The =magit= keybindings override some other Emacs keybindings for =goto= style a
 #+end_src
 
 ** magit-delta                                       :visual:version_control:
-Keeping this since output is cleaner than after setting =magit-diff-refine-hunk=.
+Renders magit's diffs through delta. Kept in preference to
+=magit-diff-refine-hunk=, whose output is noisier -- and that option is now unset
+rather than merely overruled, since delta does its own word-level refinement and
+running both only made magit compute a refinement that delta then discards.
 #+begin_src emacs-lisp
 (use-package magit-delta
   :hook (magit-mode . magit-delta-mode))
