@@ -401,7 +401,7 @@ the entry is still in the kill ring, so it is recoverable with =C-y=.
   :config
   ;; Archive-on-DONE, the TODO under org-agenda below. org-archive-location is
   ;; already ~/org/archive/%s_archive, so this only decides WHEN.
-  (defun nazaal/org-archive-when-done ()
+  (defun my/org-archive-when-done ()
     "Archive the entry at point once it reaches a terminal TODO state.
 Terminal here means DONE or CANCELLED, the two right-hand states of
 `org-todo-keywords'.
@@ -413,7 +413,7 @@ agenda/inbox-recurring.org is full of them."
     (when (and (member org-state '("DONE" "CANCELLED"))
                (not (org-get-repeat)))
       (org-archive-subtree-default)))
-  (add-hook 'org-after-todo-state-change-hook #'nazaal/org-archive-when-done)
+  (add-hook 'org-after-todo-state-change-hook #'my/org-archive-when-done)
   (setq org-export-async-debug nil)
   (plist-put org-format-latex-options :foreground 'default)
   (plist-put org-format-latex-options :background 'default)
