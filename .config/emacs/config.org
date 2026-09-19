@@ -1466,6 +1466,28 @@ is globally ignored in =.config/git/ignore=.
 #+end_src
 
 ** tree-sitter                                                       :coding:
+*Grammars must be pinned to a tag whose parser targets ABI 14 or lower.* The
+system =libtree-sitter= is 0.20.8 (July 2023, a root-owned distro package at
+=/lib/x86_64-linux-gnu/=), and Emacs links against it, so
+=treesit-library-abi-version= reports a ceiling of 14. Every grammar repo moved
+to ABI 15 when tree-sitter 0.25 landed, and
+=treesit-install-language-grammar= compiles the *checked-in* =src/parser.c=, so
+whatever =LANGUAGE_VERSION= that file declares is what you get. Installing from
+an unpinned master gives ABI 15 and Emacs refuses it:
+
+: the installed language grammar for python cannot be located or has problems
+: (language-grammar-version-mismatch): ... ABI version is 15, but supported
+: versions are 13-14
+
+Check a candidate tag before pinning it -- the version number says nothing:
+=curl -sS https://raw.githubusercontent.com/<owner>/<repo>/<tag>/src/parser.c | grep -m1 LANGUAGE_VERSION=.
+Measured 2026-09-19: python =v0.23.6= is 14, =v0.25.0= is 15; and the two pins
+already here, c =v0.24.2= and bash =v0.25.1=, are BOTH 15 and would fail the
+same way. Only json and yaml happen to be compatible at master.
+
+The real fix is a newer =libtree-sitter= with Emacs rebuilt against it, which
+would retire this whole paragraph. Until then, pin.
+
 #+begin_src emacs-lisp
 (setq treesit-language-source-alist
       '((c . ("https://github.com/tree-sitter/tree-sitter-c.git" "v0.24.2"))
@@ -1478,7 +1500,7 @@ is globally ignored in =.config/git/ignore=.
         (json "https://github.com/tree-sitter/tree-sitter-json")
         (make "https://github.com/alemuller/tree-sitter-make")
         (markdown "https://github.com/ikatyang/tree-sitter-markdown")
-        (python "https://github.com/tree-sitter/tree-sitter-python")
+        (python . ("https://github.com/tree-sitter/tree-sitter-python.git" "v0.23.6"))
         (toml "https://github.com/tree-sitter/tree-sitter-toml")
         (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
         (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
