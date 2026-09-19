@@ -99,6 +99,13 @@ Sensible defaults.
   ;; buying.
   (setq browse-url-browser-function #'browse-url-xdg-open)
   (setq plstore-cache-passphrase-for-symmetric-encryption t)
+  ;; Set here, not only in org's `:custom'. A customize value for a defcustom
+  ;; whose package is not loaded is DEFERRED until that defcustom evaluates, and
+  ;; org is deferred -- so every block below that builds a path from
+  ;; `org-directory' at startup (bookmark, tempel, citar, org-agenda, org-fc,
+  ;; org-roam) saw it void. `defcustom' does not overwrite an existing value, so
+  ;; org's own entry still agrees with this one.
+  (setq org-directory (expand-file-name "~/org"))
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
   (setq bib-file (expand-file-name "bibliography.bib" bib-directory))
   (setq select-enable-clipboard t)
@@ -368,7 +375,11 @@ the entry is still in the kill ring, so it is recoverable with =C-y=.
         ;; deferred the key stayed unbound until org-roam had been used once.
         ;; `org-roam-node-insert' is in org-roam's `:commands', so pressing this
         ;; autoloads it.
-        ("C-c n i" . org-roam-node-insert))
+        ("C-c n i" . org-roam-node-insert)
+        ;; Here for the same reason as C-c n i: a `:bind (:map org-mode-map ...)'
+        ;; in the citar block fires when CITAR loads, and with org deferred
+        ;; `org-mode-map' is void at that moment. `org-cite-insert' autoloads.
+        ("C-c b" . org-cite-insert))
   :hook
   (org-mode . (lambda () (setq-local evil-shift-width 2)))
   :custom
@@ -1020,15 +1031,17 @@ Important note, the fontifying org-cite links takes a lot of time, so manually r
   (citar-notes-paths (list (expand-file-name "data" org-directory)))
   (citar-symbol-separator "  ")
   (citar-org-activation-functions '(ignore))
-  (citar-bibliography org-cite-global-bibliography)
+  ;; `(list bib-file)', not `org-cite-global-bibliography': use-package stores
+  ;; the EXPRESSION, and citar's defcustom evaluates it while declaring
+  ;; `citar-bibliography'. With org deferred that variable is void at that
+  ;; moment and citar fails to load outright.
+  (citar-bibliography (list bib-file))
   (org-cite-csl-styles-dir (expand-file-name "csl" bib-directory))
   (org-cite-export-processors '((latex biblatex) ;; for LaTeX exports
                                 (html csl)       ;; for other exports like HTML, ODT
                                 (odt csl)))
   :bind
   ("C-c r" . citar-open) ;; r for references
-  (:map org-mode-map
-        ("C-c b" . org-cite-insert))
   :config
   (add-to-list 'citar-file-open-functions
                '("pdf" . (lambda (file-path)
