@@ -1060,22 +1060,41 @@ Keybindings are based on suggestions from the =consult= documentation.
 
 ** consult-org-roam                                        :notes:navigation:
 Having =consult= as an interface to =org-roam= is nice mainly because of the live preview feature.
-[2025-07-22 Tue] For some reason, the first call to =consult-org-roam= after starting Emacs requires =C-g= to show results, then works fine afterwards.
+
+=consult-org-roam-mode= used never to switch on, and the [2025-07-22 Tue] note
+that the first call after starting Emacs needed =C-g= before showing results was
+that bug showing itself. =:after (consult org-roam)= wraps the whole block in a
+=with-eval-after-load=, and [[*org-roam][org-roam]] is itself deferred behind =:commands= — so
+the =(after-init . consult-org-roam-mode)= hook was registered long after
+=after-init= had run, and the mode only ever came up as a side effect of
+something else loading. Measured 2026-09-19 on a full config load:
+=consult-org-roam-mode= was =nil=.
+
+The mode is what advises =org-roam-node-read= and =org-roam-ref-read= with
+consult's previewing equivalents, so switching it on is also what makes
+=C-c n f= (=org-roam-node-find=, bound under [[*org-roam][org-roam]]) preview. It used to bind
+=C-c n f= a second time, to =consult-org-roam-file-find=, which meant the key
+answered =org-roam-node-find= at startup and silently became the file-find
+variant once org-roam loaded. One binding is enough now that node-find previews;
+file-find stays on =C-c n F= for searching files rather than nodes.
+
+=with-eval-after-load= in =:init= replaces =:after= so that the bindings and
+autoloads are installed at startup while nothing is loaded until it is used.
 
 #+begin_src emacs-lisp
 (use-package consult-org-roam
-  :after (consult org-roam)
   :commands (consult-org-roam-file-find
              consult-org-roam-search
              consult-org-roam-backlinks)
   :custom
   (consult-org-roam-grep-func #'consult-ripgrep)
   (consult-org-roam-buffer-after-buffers t)
+  :init
+  (with-eval-after-load 'org-roam (consult-org-roam-mode 1))
   :config
   (consult-customize consult-org-roam-forward-links :preview-key (kbd "M-."))
-  :hook (after-init . consult-org-roam-mode)
   :bind
-  ("C-c n f" . consult-org-roam-file-find)
+  ("C-c n F" . consult-org-roam-file-find)
   ("C-c n r" . consult-org-roam-search)
   ("C-c n b" . consult-org-roam-backlinks))
 #+end_src
