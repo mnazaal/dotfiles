@@ -314,6 +314,18 @@ Current workflow:
 - =C-c C-d=   : Set a deadline to a headline entry.
 - =C-c C-t=   : Change TODO state.
 
+*Why =:defer t=.* Without it this block emitted a bare =(require 'org)= and org
+loaded at startup, taking =ol-notmuch= (hence all of notmuch), =ox-latex=,
+=org-habit= and =ox-hugo= with it. =use-package= defers a block only when it
+contributes an autoloadable command, and nothing here does: the =:bind= entries
+are a lambda and two *unbindings* of =org-mode-map=, and the =:hook= is a
+lambda. So the deferral has to be asked for explicitly.
+
+Everything still arrives on time. =:custom= is applied at startup either way,
+the global =C-x 8 s= binding is installed immediately, and the =org-mode-map=
+entries and the whole =:config= body run when org loads -- which is the first
+=.org= file, =C-c a= or =C-c c=. See [[*dashboard][dashboard]] for the other half of this.
+
 *On archiving and the clipboard.* =org-archive-subtree= cuts the entry, then
 =org-paste-subtree= validates the kill with =org-kill-is-subtree-p=, which reads
 =current-kill=, which consults =interprogram-paste-function=. The [[*emacs][emacs]] block
@@ -344,11 +356,19 @@ the entry is still in the kill ring, so it is recoverable with =C-y=.
 #+begin_src emacs-lisp
 (use-package org
   :ensure nil
+  :defer t
   :bind
   ("C-x 8 s" . (lambda () (interactive) (insert "\u200B"))) ;; 0-width space
   (:map org-mode-map
         ("C-c [" . nil)
-        ("C-c ]" . nil))
+        ("C-c ]" . nil)
+        ;; Lives here, not in the org-roam block. A `:bind (:map org-mode-map ...)'
+        ;; there is applied when ORG-ROAM loads, which used to be invisible only
+        ;; because org was eager and org-mode-map already existed. With org
+        ;; deferred the key stayed unbound until org-roam had been used once.
+        ;; `org-roam-node-insert' is in org-roam's `:commands', so pressing this
+        ;; autoloads it.
+        ("C-c n i" . org-roam-node-insert))
   :hook
   (org-mode . (lambda () (setq-local evil-shift-width 2)))
   :custom
@@ -623,8 +643,6 @@ large =~/org=.
   :bind
   ("C-c n f" . org-roam-node-find)
   ("C-c n l" . org-roam-buffer-toggle)
-  (:map org-mode-map
-        ("C-c n i" . org-roam-node-insert))
   :config
   (org-roam-setup)
   (setq org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
