@@ -100,7 +100,6 @@ Sensible defaults.
   (setq browse-url-browser-function #'browse-url-xdg-open)
   (setq plstore-cache-passphrase-for-symmetric-encryption t)
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
-  ;; pzi manages bibliography.bib; zotero.bib is the retired Zotero export.
   (setq bib-file (expand-file-name "bibliography.bib" bib-directory))
   (setq select-enable-clipboard t)
   (setq frame-resize-pixelwise t)
@@ -380,23 +379,12 @@ the entry is still in the kill ring, so it is recoverable with =C-y=.
   (org-todo-keywords
    '((sequence "TODO(t)" "WAITING(w)" "DELEGATED(o@/!)" "|" "DONE(d@/!)")
      (sequence "|" "INACTIVE(i)" "CANCELLED(c@/!)")))
-  ;; Refile destinations. projects.org holds the nine tagged projects and their
-  ;; subtrees, so a captured TODO can land where the work lives; notes.org takes
-  ;; level 1 only, because below that it is dated capture dumps. Deliberately NOT
-  ;; included: the calendar files, which cal-sync-cron regenerates (a heading
-  ;; refiled there is destroyed on the next sync), and the 923 roam notes, which
-  ;; have their own org-roam-refile.
   (org-refile-targets
    `((,(expand-file-name "data/projects.org" org-directory) :maxlevel . 3)
      (,(expand-file-name "data/notes.org" org-directory) :level . 1)))
-  ;; Show the file name in the completion path, and hand the whole path to the
-  ;; completion framework at once -- stepwise completion fights vertico/consult.
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
   (org-refile-allow-creating-parent-nodes 'confirm)
-  ;; Stored links use the entry's ID rather than its heading text, so they survive
-  ;; the heading being renamed, refiled or archived -- all three of which now
-  ;; happen routinely. org-roam already relies on the same mechanism.
   (org-id-link-to-org-use-id t)
   :config
   ;; Archive-on-DONE, the TODO under org-agenda below. org-archive-location is
