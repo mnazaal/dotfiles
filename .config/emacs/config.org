@@ -162,8 +162,22 @@ Keep Emacs directory clean from automatically generated files.
 
 ** dashboard                                                         :visual:
 This should be loaded before the =server= package to make sure the dashboard is actually available when running =emacsclient=.
+
+=dashboard-items= is set explicitly to drop the =agenda= widget, which the
+default includes. That widget is the reason it is set at all: rendering it reads
+=org-agenda-files=, which loads =org-agenda= and so =org=, and org drags
+=ol-notmuch= (hence all of notmuch), =ox-latex=, =org-habit= and =ox-hugo= in
+behind it. Use =C-c a= for the agenda instead. Recents and bookmarks are kept
+and cost nothing.
+
+The package itself is NOT the cost. Measured 2026-09-19 over five interleaved
+runs, dropping dashboard entirely was indistinguishable from keeping it without
+the agenda widget (best 0.764s vs 0.711s, against a within-variant spread of
+0.11s) -- so there is no reason to remove it.
 #+begin_src emacs-lisp
 (use-package dashboard
+  :custom
+  (dashboard-items '((recents . 5) (bookmarks . 5)))
   :init
   (dashboard-setup-startup-hook))
 #+end_src
