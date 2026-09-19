@@ -1477,16 +1477,32 @@ whole set in one go. The alist above is *not* bypassed by this:
 #+end_src
 
 ** treesit-fold                                               :visual:coding:
-#TODO Does not work
+Folding driven by the syntax tree rather than by indentation. It is the backend
+[[*kirigami][kirigami]] dispatches to in a =prog-mode= buffer, and it had two reasons not to
+work: no grammar was installed for any language (fixed under [[*treesit-auto][treesit-auto]]),
+and =treesit-fold-mode= was never switched on anywhere. Installing the package
+defines the commands but enables nothing, so =kirigami-fold-list= found no
+active backend and the =z= keys below fell through to the =outline= entry, which
+in a code buffer does nothing useful.
+
+=global-treesit-fold-mode= turns it on in every buffer whose major mode has a
+parser; buffers without one are left alone, so this is inert until a grammar
+exists for the language in hand.
 
 #+begin_src emacs-lisp
 (use-package treesit-fold
-  :vc (:url "https://github.com/emacs-tree-sitter/treesit-fold" :branch "master"))
+  :vc (:url "https://github.com/emacs-tree-sitter/treesit-fold" :branch "master")
+  :hook (after-init . global-treesit-fold-mode))
 #+end_src
 
 
 ** kirigami                                                          :visual:
-#TODO Does not work
+One set of fold keys across every folding backend — =treesit-fold-mode= in code,
+=outline-minor-mode= and =org-mode= in prose, =hs-minor-mode=, =TeX-fold-mode=
+and a dozen more. It dispatches on whichever of those minor modes is active in
+the buffer, so it is only ever as good as the backend underneath it: the "does
+not work" recorded here was [[*treesit-fold][treesit-fold]] never being enabled, not kirigami
+itself.
 
 #+begin_src emacs-lisp
 (use-package kirigami
