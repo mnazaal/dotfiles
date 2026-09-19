@@ -122,11 +122,8 @@ Sensible defaults.
   (setq backup-enable-predicate
         (lambda (name)
           (and (normal-backup-enable-predicate name)
-               (not (catch 'sensitive-file
-                      (dolist (regexp sensitive-file-regexps)
-                        (when (string-match-p regexp name)
-                          (throw 'sensitive-file t)))
-                      nil))))))
+               (not (seq-some (lambda (re) (string-match-p re name))
+                              sensitive-file-regexps))))))
 #+end_src
 
 ** package                                               :package_management:
