@@ -669,6 +669,7 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
 #+begin_src emacs-lisp
 (use-package ox-latex
   :ensure nil
+  :after org
   :config
   ;; Globally added packages reach EVERY LaTeX class, because
   ;; `org-latex-make-preamble' splices `org-latex-packages-alist' into all of
@@ -716,7 +717,8 @@ LaTeX editing setup (AUCTeX, latexmk, =TeX-engine=) lives under [[*tex][tex]].
 
 ** ox-twbs                                                          :writing:
 #+begin_src emacs-lisp
-(use-package ox-twbs)
+(use-package ox-twbs
+  :after org)
 #+end_src
 
 ** ox-beamer                                                        :writing:
@@ -752,7 +754,8 @@ resolve, and headless Chrome reports a fully initialized deck.
 
 ** ox-hugo                                                          :writing:
 #+begin_src emacs-lisp
-(use-package ox-hugo)
+(use-package ox-hugo
+  :after org)
 #+end_src
 
 ** clipetty                                                            :text:
@@ -939,6 +942,7 @@ Some tips and tricks of using TRAMP is detailed in [[https://willschenk.com/arti
 #+begin_src emacs-lisp
 (use-package tramp
   :ensure nil
+  :defer t
   :config
   (setenv "SHELL" "/bin/zsh")
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
@@ -963,6 +967,7 @@ running on ..." — rather than failing quietly.
 
 #+begin_src emacs-lisp
 (use-package zotra
+  :commands (zotra-add-entry zotra-download-attachment zotra-bibtex-completion)
   :custom
   (zotra-backend 'translation-server)
   (zotra-local-server-directory nil))
@@ -1036,6 +1041,7 @@ Add CSL citations for org exports, which can be set by via =#+cite_export:=, as 
 
 #+begin_src emacs-lisp
 (use-package citeproc
+  :defer t
   :custom
   (citar-citeproc-csl-styles-dir (expand-file-name "csl" bib-directory)))
 #+end_src
@@ -1691,6 +1697,7 @@ Evil users get vimdiff-style bindings from =evil-collection=; the vdiff command
 prefix map is on =,= in normal state.
 #+begin_src emacs-lisp
 (use-package vdiff
+  :defer t
   :custom
   (vdiff-diff-algorithm 'git-diff)
   :config
@@ -1727,6 +1734,7 @@ conflicts (so the =e= then =A=/=B= merge workflow above still applies).
 #+begin_src emacs-lisp
 (use-package ediff
   :ensure nil
+  :defer t
   :custom
   (ediff-window-setup-function 'ediff-setup-windows-plain)
   (ediff-split-window-function 'split-window-horizontally))
@@ -1766,6 +1774,7 @@ Helpful when searching for old code.
 #+begin_src emacs-lisp
 (use-package eshell
   :ensure nil
+  :defer t
   :config
   (require 'em-hist))
 #+end_src
@@ -2036,6 +2045,7 @@ Sharp bits:
 ** markdown-mode                                                    :writing:
 #+begin_src emacs-lisp
 (use-package markdown-mode
+  :defer t
   :custom
   (markdown-enable-math t))
 #+end_src
@@ -2066,6 +2076,7 @@ See [[https://www.reddit.com/r/emacs/comments/okfw91/notmuch_with_multiple_inbox
 
 #+begin_src emacs-lisp
 (use-package notmuch
+  :defer t
   :custom
   (notmuch-search-oldest-first nil)
   (notmuch-hello-recent-searches-max 0))
@@ -2080,7 +2091,8 @@ See [[https://www.reddit.com/r/emacs/comments/okfw91/notmuch_with_multiple_inbox
 
 ** ol-notmuch                                                         :email:
 #+begin_src emacs-lisp
-(use-package ol-notmuch)
+(use-package ol-notmuch
+  :after org)
 #+end_src
 
 ** notmuch-maildir                                                    :email:
