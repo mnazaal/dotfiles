@@ -944,7 +944,6 @@ Some tips and tricks of using TRAMP is detailed in [[https://willschenk.com/arti
   :ensure nil
   :defer t
   :config
-  (setenv "SHELL" "/bin/zsh")
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
   (add-to-list 'tramp-remote-path "~/.local/bin")
   (tramp-set-completion-function "ssh"
