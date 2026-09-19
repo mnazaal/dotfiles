@@ -1131,6 +1131,20 @@ Shows list of suggestions/results nicely, e.g. shows files in directories when f
 Sorting and history layer for completions.
 #NOTE Prescient handles ranking/persistence here, while =orderless= remains the main matching style.
 
+That division of labour is what =…-prescient-enable-filtering= decides, and it
+defaults to =t= in both the vertico and the corfu glue, which means prescient
+had been doing the *matching* too. Enabling either mode with filtering on
+advises the UI's setup function to rebind =completion-styles= to
+=prescient--completion-recommended-styles= — ='(prescient basic)= — and to
+replace =completion-category-overrides=, buffer-locally, every time the
+minibuffer or a corfu popup opens. The global =completion-styles= stayed
+=(orderless basic)=, which is why this looked right from
+=describe-variable=. It also took =M-s= in =vertico-map= for
+=prescient-toggle-map=, shadowing the =M-s= prefix the [[*consult][consult]] bindings use.
+
+Switching both off leaves prescient doing what the note above says it does —
+ranking and persistence — and gives the matching back to orderless.
+
 #+begin_src emacs-lisp
 (use-package prescient
   :config
@@ -1141,6 +1155,8 @@ Sorting and history layer for completions.
 #+begin_src emacs-lisp
 (use-package vertico-prescient
   :after (vertico prescient)
+  :custom
+  (vertico-prescient-enable-filtering nil)
   :init
   (vertico-prescient-mode t))
 #+end_src
@@ -1238,6 +1254,8 @@ See [[https://elpa.gnu.org/packages/corfu.html][documentation]] for more configu
 #+begin_src emacs-lisp
 (use-package corfu-prescient
   :after (corfu prescient)
+  :custom
+  (corfu-prescient-enable-filtering nil)
   :init
   (corfu-prescient-mode))
 #+end_src
