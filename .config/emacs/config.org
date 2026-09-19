@@ -644,10 +644,16 @@ Show LaTeX fragments nicely in =org= files. Also makes the LaTeX expressions the
 ** org-expose-emphasis-markers                                       :visual:
 Show markers for things like bold, italic, etc. when the cursor is at point.
 
+The hook names the mode rather than wrapping it in a lambda, which is not only
+shorter: =use-package= defers a block only when it contributes an autoloadable
+command, and a lambda contributes none. With the lambda this block loaded
+=org-expose-emphasis-markers= at startup, which =require='s =org= -- so it was
+one of the two reasons org could not be deferred.
+
 #+begin_src emacs-lisp
 (use-package org-expose-emphasis-markers
   :hook
-  (org-mode . (lambda () (org-expose-emphasis-markers-mode t))))
+  (org-mode . org-expose-emphasis-markers-mode))
 #+end_src
 
 ** ox-latex                                                         :writing:
