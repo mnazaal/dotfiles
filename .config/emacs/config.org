@@ -1490,21 +1490,26 @@ would retire this whole paragraph. Until then, pin.
 
 #+begin_src emacs-lisp
 (setq treesit-language-source-alist
-      '((c . ("https://github.com/tree-sitter/tree-sitter-c.git" "v0.24.2"))
-        (bash . ("https://github.com/tree-sitter/tree-sitter-bash.git" "v0.25.1"))
-        (css "https://github.com/tree-sitter/tree-sitter-css")
-        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
-        (go "https://github.com/tree-sitter/tree-sitter-go")
-        (html "https://github.com/tree-sitter/tree-sitter-html")
-        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
-        (json "https://github.com/tree-sitter/tree-sitter-json")
-        (make "https://github.com/alemuller/tree-sitter-make")
-        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
-        (python . ("https://github.com/tree-sitter/tree-sitter-python.git" "v0.23.6"))
-        (toml "https://github.com/tree-sitter/tree-sitter-toml")
-        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
-        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
-        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+      ;; Every entry is pinned. An unpinned entry installs whatever master
+      ;; declares today, which is how python silently started producing ABI 15.
+      ;; ABI verified per tag 2026-09-19; c and python additionally built and
+      ;; parsed against the ABI 14 runtime.
+      '((bash       . ("https://github.com/tree-sitter/tree-sitter-bash.git" "v0.23.3"))
+        (c          . ("https://github.com/tree-sitter/tree-sitter-c.git" "v0.23.6"))
+        (css        . ("https://github.com/tree-sitter/tree-sitter-css.git" "v0.23.2"))
+        (elisp      . ("https://github.com/Wilfred/tree-sitter-elisp.git" "1.5.0"))
+        (go         . ("https://github.com/tree-sitter/tree-sitter-go.git" "v0.23.4"))
+        (html       . ("https://github.com/tree-sitter/tree-sitter-html.git" "v0.23.2"))
+        (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript.git" "v0.23.1"))
+        (json       . ("https://github.com/tree-sitter/tree-sitter-json.git" "v0.24.8"))
+        ;; No tags in this repo, so pin the commit.
+        (make       . ("https://github.com/alemuller/tree-sitter-make.git" "a4b9187417d6be349ee5fd4b6e77b4172c6827dd"))
+        (markdown   . ("https://github.com/ikatyang/tree-sitter-markdown.git" "v0.7.1"))
+        (python     . ("https://github.com/tree-sitter/tree-sitter-python.git" "v0.23.6"))
+        (toml       . ("https://github.com/tree-sitter/tree-sitter-toml.git" "v0.5.1"))
+        (tsx        . ("https://github.com/tree-sitter/tree-sitter-typescript.git" "v0.23.2" "tsx/src"))
+        (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript.git" "v0.23.2" "typescript/src"))
+        (yaml       . ("https://github.com/ikatyang/tree-sitter-yaml.git" "v0.5.0"))))
 #+end_src
 
 ** treesit-auto                                                      :coding:
