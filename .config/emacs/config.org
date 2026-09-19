@@ -878,13 +878,23 @@ Directory management.
 #+end_src
 
 ** flash                                                         :navigation:
+The isearch and evil integrations used to sit in =:config=, which never ran:
+=:commands= defers loading until one of the listed commands is called, and
+nothing calls them, because the two things that would — =s= in evil normal state
+and the labels during =C-s= — are exactly what the =:config= body was there to
+set up. Measured 2026-09-19 on a full config load: =(featurep 'flash)= was =nil=
+and =flash-isearch-mode= was =nil=.
+
+Both are global integrations, so they have to run at startup, and running them
+loads the package: =flash-evil-setup= and =flash-isearch-mode= are autoloaded
+but their files =require= =flash=. That is the cost of having them work at all,
+and it is small — 17ms measured for =flash= plus =flash-isearch=.
+
 #+begin_src emacs-lisp
 (use-package flash
-  :commands (flash-jump flash-jump-continue
-              flash-treesitter)
   :custom
   (flash-multi-window t)
-  :config
+  :init
   (with-eval-after-load 'evil
     (require 'flash-evil)
     (flash-evil-setup t))
