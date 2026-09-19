@@ -301,6 +301,33 @@ Current workflow:
 - =C-c C-d=   : Set a deadline to a headline entry.
 - =C-c C-t=   : Change TODO state.
 
+*On archiving and the clipboard.* =org-archive-subtree= cuts the entry, then
+=org-paste-subtree= validates the kill with =org-kill-is-subtree-p=, which reads
+=current-kill=, which consults =interprogram-paste-function=. The [[*emacs][emacs]] block
+points that at =wl-paste= in a terminal under Wayland, so the concern was that it
+would answer with the system clipboard rather than the subtree just cut, aborting
+the archive *after* the cut had emptied the buffer.
+
+It does not, because the cut also reaches the system clipboard: [[*clipetty][clipetty]] advises
+=interprogram-cut-function= and sends the kill out over OSC 52, so by the time
+=org-paste-subtree= looks, =wl-paste= returns the subtree. Confirmed 2026-09-19
+both by hand (=dd= in terminal Emacs, then =wl-paste= in another terminal, which
+printed the killed line) and by simulation of the four
+clipboard/OSC-52 combinations against the real =org-archive-subtree=.
+
+An =:around= advice on =org-archive-subtree= used to bind
+=interprogram-paste-function= to nil for exactly this reason. Its evidence was
+measured in a *batch* session, where clipetty has no terminal to write to and the
+clipboard therefore never tracked the kill — an environment that does not match
+this one, so the advice was guarding a failure that cannot occur here. Removed
+2026-09-19.
+
+The one case it did cover and nothing else does: =clipetty--max-cut= is 74,994
+characters (=clipetty.el:144=), and past that clipetty declines to send and only
+messages "Selection too long to send to terminal". A subtree larger than that
+leaves the clipboard stale and archiving fails the old way. It fails loudly and
+the entry is still in the kill ring, so it is recoverable with =C-y=.
+
 #+begin_src emacs-lisp
 (use-package org
   :ensure nil
@@ -387,26 +414,6 @@ agenda/inbox-recurring.org is full of them."
                (not (org-get-repeat)))
       (org-archive-subtree-default)))
   (add-hook 'org-after-todo-state-change-hook #'nazaal/org-archive-when-done)
-  (defun nazaal/org-archive-ignoring-clipboard (fn &rest args)
-    "Run FN with the system clipboard kept out of the kill ring.
-
-`org-archive-subtree' cuts the entry, then `org-paste-subtree' validates the
-kill with `org-kill-is-subtree-p' -- which reads `current-kill', and
-`current-kill' consults `interprogram-paste-function'. The emacs block above
-sets that function to shell out to wl-paste whenever Emacs is in a TERMINAL
-under Wayland, and wl-paste has no notion of Emacs owning the selection, so it
-returns whatever the SYSTEM clipboard holds instead of the subtree just cut.
-Archiving then aborts with \"The kill is not a (set of) tree(s)\" AFTER the cut
-has already removed the entry from the buffer, leaving it only in the kill ring.
-
-Measured 2026-09-10 in a terminal-equivalent batch session: the clipboard held
-an unrelated sbatch command and every archive attempt failed this way, with and
-without the hook above. Binding the function to nil makes archiving depend on
-Emacs's own kill ring alone. This also repairs MANUAL archiving (C-c C-x C-a),
-which had the same exposure and is not something this config added."
-    (let ((interprogram-paste-function nil))
-      (apply fn args)))
-  (advice-add 'org-archive-subtree :around #'nazaal/org-archive-ignoring-clipboard)
   (setq org-export-async-debug nil)
   (plist-put org-format-latex-options :foreground 'default)
   (plist-put org-format-latex-options :background 'default)
