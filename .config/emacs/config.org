@@ -2097,9 +2097,22 @@ See [[https://www.reddit.com/r/emacs/comments/okfw91/notmuch_with_multiple_inbox
 #+end_src
 
 ** notmuch-maildir                                                    :email:
+A bare =use-package= with only =:vc= gives use-package no deferral trigger, so
+this block loaded at startup and dragged all of =notmuch= in with it. It has
+nothing to offer outside a notmuch buffer, so it now waits for one.
+
+This saves nothing *today*, and the reason is worth writing down because it is
+not obvious: [[*ol-notmuch][ol-notmuch]] is =:after org=, [[*org][org]] still loads at startup, and
+ol-notmuch =require='s notmuch -- so notmuch arrives anyway and this block's
+=:after= fires immediately. Measured 2026-09-19 over six interleaved paired
+runs: no improvement, within noise either way. The payoff is 231ms, and it
+appears only in a configuration where org is also deferred. Until then this is
+just an honest statement of the dependency rather than a saving.
+
 #+begin_src emacs-lisp
 (use-package notmuch-maildir
-  :vc (:url "https://github.com/emacsmirror/notmuch-maildir" :branch "master"))
+  :vc (:url "https://github.com/emacsmirror/notmuch-maildir" :branch "master")
+  :after notmuch)
 #+end_src
 
 ** notmuch-transient                                                  :email:
