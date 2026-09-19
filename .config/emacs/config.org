@@ -108,6 +108,7 @@ Sensible defaults.
   (setq org-directory (expand-file-name "~/org"))
   (setq bib-directory (expand-file-name "~/projects/bibliography"))
   (setq bib-file (expand-file-name "bibliography.bib" bib-directory))
+  (setq xterm-mouse-mode-called t)
   (setq select-enable-clipboard t)
   (setq frame-resize-pixelwise t)
   (setq-default indent-tabs-mode nil)
