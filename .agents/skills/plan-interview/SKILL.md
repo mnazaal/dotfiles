@@ -95,7 +95,8 @@ option; in chat, this is the shape of each numbered question in a round.
    decision log — `research-plan` owns its shape and home (a `## Decision log`
    section in `PLAN.md` by default, `docs/adr/` where that convention already
    exists). Never inline it into a plan section instead.
-7. Summarize decisions made, unresolved risks, and the recommended next action.
+7. Name the next action, and any unresolved risk that changes it. The decisions
+   are in the thread; do not restate them.
 
 ## Routing
 

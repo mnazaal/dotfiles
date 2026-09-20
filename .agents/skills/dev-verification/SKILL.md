@@ -50,8 +50,8 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 - Re-review the code, not the finding list. Verifying only the items a reviewer raised certifies those lines and nothing else; a repair's new defect is by construction absent from the list that prompted it.
 - Verify a review claim before accepting it, and push back with evidence when feedback is stale, unsafe, or contradicts current requirements. Agreement is not a response.
 - Before defending a change, name the single fact it is safe because of, then run something that fails loudly if that fact is false. Most changes that look risky are safe because of one fact; find it and the rest of the scary cases fall at once. A safety writeup reads convincing whether or not it is true.
-- Grade each load-bearing fact — every fact a recommendation, explanation, or defence rests on, not only safety facts — and say where it stopped: asserted / cited at `file:line` / failure path walked and shown unreachable / executed against the real code / reproduced in a full run. Below "executed", report it as unproven rather than settled. Executed usually means one short script importing the same code the experiment imports and calling the exact function in doubt, not a suite pass.
-- Report what you checked and cleared separately from what you confirmed as a risk. A search that found nothing is a stated result, not silence.
+- Grade each load-bearing fact — every fact a recommendation, explanation, or defence rests on, not only safety facts — and say where it stopped: asserted / cited at `file:line` / failure path walked and shown unreachable / executed against the real code / reproduced in a full run. Below "executed", report it as unproven rather than settled. Executed usually means one short script importing the same code the experiment imports and calling the exact function in doubt, not a suite pass. The grade goes inline in the sentence that makes the claim; never add a separate evidence section or status table to a reply.
+- A search that found nothing is a stated result, not silence — one line, not a section of cleared items.
 - Verify against an input the system has never seen when it caches by input. A repeat of an earlier command returns the cached, pre-fix artifact, so a real fix reads as broken and a real regression reads as fixed.
 - A "checked and clear" result inherits the scope of the search that produced it. When the property is semantic — a qualifier that must be attached, a condition that must be stated — grepping for the words that carry it finds the sites already complying and cannot find the site that omits them. Enumerate where the property must hold (statements, headings, tables), read those, and report the enumeration as the scope.
 
@@ -64,6 +64,9 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
 5. Only then make the claim.
 
 ## Evidence Table
+
+This table is what to run, not what to print: report the command and its result,
+and leave the row here.
 
 | Claim | Requires |
 |-------|----------|
