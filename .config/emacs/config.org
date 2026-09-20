@@ -1666,9 +1666,9 @@ adding one here would only restate the default.
 
 #+begin_src emacs-lisp
 (use-package apheleia
-  :hook
-  (prog-mode . apheleia-mode)
-  (LaTeX-mode . apheleia-mode)
+  ;; :hook
+  ;; (prog-mode . apheleia-mode)
+  ;; (LaTeX-mode . apheleia-mode)
   :config
   (setf (alist-get 'python-mode    apheleia-mode-alist) '(ruff-isort ruff))
   (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff))
