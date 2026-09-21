@@ -99,8 +99,21 @@ typeset -U PATH
 __pi_shell_readonly_prompt='Answer concisely for shell use. Read-only route. Do not edit files, write files, or run shell commands.'
 __pi_shell_command_prompt='Convert the user intent into exactly one safe Linux shell command. Output only the command. No markdown. No explanation. Do not execute anything.'
 
+# Extension discovery loads all nine packages in pi's settings.json and costs
+# ~7s of an ~8.8s startup (measured 2026-09-21, two interleaved reps of
+# `pi --offline --list-models`). Seven of them only serve the TUI, which `-p`
+# never draws. Disabling discovery and naming the two that matter cuts startup
+# to ~3.8s: guardrails gates every tool call, and web-access supplies
+# web_search/fetch_content. Skills, context files and prompt templates are free
+# to load, so they stay.
+__pi_shell_guardrails="$HOME/.config/pi/agent/extensions/guardrails.ts"
+__pi_shell_web="$HOME/.config/pi/agent/npm/node_modules/pi-web-access/index.ts"
+
 function '?' {
     pi -p --offline \
+        --no-extensions \
+        -e "$__pi_shell_guardrails" \
+        -e "$__pi_shell_web" \
         --tools read,grep,find,ls,web_search,fetch_content \
         --thinking off \
         --model openrouter/deepseek/deepseek-v4.1-flash \
