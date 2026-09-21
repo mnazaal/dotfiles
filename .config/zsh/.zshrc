@@ -103,7 +103,7 @@ function '?' {
     pi -p --offline \
         --tools read,grep,find,ls,web_search,fetch_content \
         --thinking off \
-        --model openrouter/deepseek/deepseek-v4-flash \
+        --model openrouter/deepseek/deepseek-v4.1-flash \
         --system-prompt "$__pi_shell_readonly_prompt" \
         "$*"
 }
@@ -115,7 +115,7 @@ function ',' {
         --no-extensions \
         --no-skills \
         --thinking off \
-        --model openrouter/deepseek/deepseek-v4-flash \
+        --model openrouter/deepseek/deepseek-v4.1-flash \
         --system-prompt "$__pi_shell_command_prompt" \
         "$*")" || return $?
     print -r -- "$command"
