@@ -96,25 +96,33 @@ fi
 typeset -U PATH
 
 # Pi shell helpers
-__pi_shell_readonly_prompt='Answer concisely for shell use. Read-only route. Do not edit files, write files, or run shell commands.'
+#
+# Both run the same stripped harness, because everything pi loads by default is
+# paid for on every call. Measured 2026-09-21 on "random permutation of
+# highlighted lines neovim": the full harness took 85.5s, and the session record
+# showed a 5288-token prompt for a one-line question. Skills and AGENTS.md are
+# what fill it -- they cost nothing at startup, so only the token count shows
+# them. Extension discovery loads the nine packages in pi's settings.json, seven
+# of which only serve the TUI that -p never draws, and costs ~7s of an ~8.8s
+# startup. Dropping all of it, plus the tools, gives 1.8-3.3s.
+#
+# --no-tools is what makes the rest safe to drop: with no tools there is nothing
+# for the guardrails extension to gate, which is why neither helper loads it.
+# It also removes the round trips -- given file tools, `?` went off to read the
+# config the question happened to name, and each tool call is another full model
+# call. Ask pi directly for anything needing the web or this machine's files.
+#
+# The line budget in the prompt is not cosmetic: output tokens ran at ~9/s, so
+# length is most of the wait.
+__pi_shell_readonly_prompt='Answer for shell use in at most 6 lines. Give the command or answer first, then at most three short bullets. No headings, no preamble, no code fences unless the answer is multi-line.'
 __pi_shell_command_prompt='Convert the user intent into exactly one safe Linux shell command. Output only the command. No markdown. No explanation. Do not execute anything.'
 
-# Extension discovery loads all nine packages in pi's settings.json and costs
-# ~7s of an ~8.8s startup (measured 2026-09-21, two interleaved reps of
-# `pi --offline --list-models`). Seven of them only serve the TUI, which `-p`
-# never draws. Disabling discovery and naming the two that matter cuts startup
-# to ~3.8s: guardrails gates every tool call, and web-access supplies
-# web_search/fetch_content. Skills, context files and prompt templates are free
-# to load, so they stay.
-__pi_shell_guardrails="$HOME/.config/pi/agent/extensions/guardrails.ts"
-__pi_shell_web="$HOME/.config/pi/agent/npm/node_modules/pi-web-access/index.ts"
-
 function '?' {
-    pi -p --offline \
+    pi -p --offline --no-tools \
+        --no-context-files \
         --no-extensions \
-        -e "$__pi_shell_guardrails" \
-        -e "$__pi_shell_web" \
-        --tools read,grep,find,ls,web_search,fetch_content \
+        --no-skills \
+        --no-prompt-templates \
         --thinking off \
         --model openrouter/deepseek/deepseek-v4.1-flash \
         --system-prompt "$__pi_shell_readonly_prompt" \
@@ -127,6 +135,7 @@ function ',' {
         --no-context-files \
         --no-extensions \
         --no-skills \
+        --no-prompt-templates \
         --thinking off \
         --model openrouter/deepseek/deepseek-v4.1-flash \
         --system-prompt "$__pi_shell_command_prompt" \
