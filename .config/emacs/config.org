@@ -969,7 +969,12 @@ Periodically save state related to packages like =prescient=, =recentf=, =savehi
 #+begin_src emacs-lisp
 (use-package persist-state
   :init
-  (persist-state-mode t))
+  (persist-state-mode t)
+  :config
+  (advice-add 'persist-state--maybe-save-eshell :around
+              (lambda (fn &rest args)
+                (when (boundp 'eshell-hist-mode)
+                  (apply fn args)))))
 #+end_src
 
 ** tramp                                                                :ssh:
