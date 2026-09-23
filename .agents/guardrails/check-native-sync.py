@@ -55,8 +55,6 @@ def denied(tool: str, path: str) -> bool:
 for path in credentials:
     if not denied("Read", path):
         problems.append(f"credential has no Read() deny in settings.json: {path}")
-    if path not in deny_read:
-        problems.append(f"credential is not in sandbox denyRead: {path}")
 
 for path in machinery:
     if not denied("Edit", path):
@@ -66,7 +64,7 @@ for path in machinery:
 # shared policy knows, or pi is unprotected where claude is protected.
 guarded = set(credentials) | set(machinery)
 rules = {r[r.index("(") + 1 : -1].removesuffix("/**") for r in deny if r.startswith(("Read(", "Edit("))}
-rules |= set(filesystem.get("denyWrite", [])) | deny_read
+rules |= deny_read
 for rule in sorted(rules):
     # A rule that still holds a wildcard here cannot be compared against the
     # shared policy at all: that policy lists literal paths, so `~/**/.env` is

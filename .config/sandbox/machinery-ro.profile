@@ -56,6 +56,10 @@ RO_LAST+=(
 	# Nothing writes here in normal use -- node is read from the default alias,
 	# and fnm install/alias are deliberate acts run outside a sandbox.
 	"$H/.local/share/fnm"
+	# 2026-09-23 review: host-executed config reachable through the writable cwd.
+	"$H/dotfiles/.config/git/config"
+	"$H/dotfiles/.config/systemd"
+	"$H/dotfiles/.config/pi/agent/mcp.json"
 )
 
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv

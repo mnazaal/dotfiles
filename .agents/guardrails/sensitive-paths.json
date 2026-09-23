@@ -27,7 +27,10 @@
     "~/.mozilla",
     "~/.claude/.credentials.json",
     "~/.config/pi/agent/auth.json",
-    "~/.config/onedrive"
+    "~/.config/onedrive",
+    "~/.config/google-chrome",
+    "~/.config/Signal",
+    "~/.dropbox"
   ],
   "sensitive_segments": [
     ".ssh",
@@ -72,6 +75,13 @@
     "~/.local/share/bun/bin",
     "~/.local/share/cargo/bin",
     "~/.local/share/go/bin",
-    "~/.local/share/pkgit/kitty/HEAD/kitty/launcher"
+    "~/.local/share/pkgit/kitty/HEAD/kitty/launcher",
+    "~/.config/git/config",
+    "~/dotfiles/.config/git/config",
+    "~/dotfiles/.config/systemd",
+    "~/.config/pi/agent/mcp.json",
+    "~/dotfiles/.config/pi/agent/mcp.json",
+    "~/.local/share",
+    "~/.local/bin"
   ]
 }

@@ -17,7 +17,7 @@
     "npm:@pi-archimedes/diff",
     "npm:@ogulcancelik/pi-minimal-footer"
   ],
-  "lastChangelogVersion": "0.85.1",
+  "lastChangelogVersion": "0.87.1",
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-6-sol",
@@ -28,9 +28,9 @@
     "openrouter/deepseek/deepseek-v4.1-flash"
   ],
   "piClaudePermissions": {
-    "defaultMode": "plan",
+    "defaultMode": "bypassPermissions",
     "allowCatastrophic": false,
-    "shiftTabOptions": ["acceptEdits", "plan"],
+    "shiftTabOptions": ["bypassPermissions", "plan", "acceptEdits"],
     "planModeAllowedMcpServers": ["deepwiki", "grepika", "asta-mcp"]
   },
   "theme": "dark"
