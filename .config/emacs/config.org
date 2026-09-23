@@ -1577,7 +1577,6 @@ exists for the language in hand.
   :hook (after-init . global-treesit-fold-mode))
 #+end_src
 
-
 ** kirigami                                                          :visual:
 One set of fold keys across every folding backend — =treesit-fold-mode= in code,
 =outline-minor-mode= and =org-mode= in prose, =hs-minor-mode=, =TeX-fold-mode=

@@ -9,19 +9,14 @@ The shared rules above are written tool-agnostically (for the pi agent). Map the
 - **Code search** — use the native `Grep`/`Glob` tools, and the `Explore`
   subagent for broad fan-out searches. Avoid raw `rg`/`grep`/`find` via `Bash`
   for code discovery.
-- **File inspection/edit** — prefer `Read`/`Edit`/`Write` for edits. `cat`/`head`/
-  `tail` for quick inspection are pre-allowed in `settings.json` and fine to use.
+- **File inspection/edit** — prefer `Read`/`Edit`/`Write` for edits. 
   Never pair `cd` with a relative file read in one Bash command — use an absolute
   path. For `grep`/`rg`/`diff`/`git`/`cp`/`mv`, Claude Code 2.1.259+ always
   prompts for that shape while any `Read()` deny rule exists, even under
   `bypassPermissions`.
 - **Docs** — use `WebFetch`/`WebSearch` for library/API docs.
-- **Subagents** — delegate via the `Task` tool. The agents in `~/.claude/agents/`
+- **Subagents** — delegate via the `Agent` tool. The agents in `~/.claude/agents/`
   are the equivalent of pi's subagents.
-- **Python tests** — run `pytest` / `pytest <path>` only. Never `python -m
-  pytest`, `.venv/bin/python -m pytest`, or `uv run pytest`: only the bare
-  `pytest` prefix matches the permission allow rule, anything else prompts.
-  Use `uv` for environment/dependency management only.
 
 ## Memory store
 
