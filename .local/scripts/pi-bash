@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Bash adapter for Pi's model tool and user !/!! commands.
+set -euo pipefail
+
+exec sandbox -p agent -- /bin/bash "$@"

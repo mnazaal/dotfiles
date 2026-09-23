@@ -70,31 +70,26 @@ existed for.
 | Profile | Adds |
 |---------|------|
 | `dev` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
-| `machinery-ro` | `RO_LAST` pins on the enforcement stack and `MASK`s on the credential stores — composed by every `agent-*` profile |
+| `machinery-ro` | `RO_LAST` pins on the enforcement stack and `MASK`s on the credential stores — composed by `agent` |
 | `agent` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
-| `agent-pi` | `use agent` + pi's control plane read-write, and the environment names pi needs |
 
 ## Coding agents
 
-Each harness has a different boundary, and that asymmetry is a decision
-(`PLAN.md`, "pi containment"): claude can host its own, pi cannot.
+Both harnesses keep their host process outside the Bash boundary.
 
-- **`claude` and `claude-agent-acp`** are confined by the `sandbox` block in
-  `~/.claude/settings.json` (Claude Code's own bubblewrap, Bash subprocesses
-  only, with `permissions.deny` rules covering the file tools). Neither needs a
-  launcher: the ACP adapter reads the same settings, verified 2026-09-07 in a
-  live Emacs session. The `denyWrite` list there and `machinery-ro.profile` here
-  must name the same persistence pins; `tests/sandbox-profile-test.sh` walks the
-  PATH for the profile side.
-- **`pi`** is `~/.local/scripts/pi`, a shim first on `PATH` that shadows the real
-  binary, resolves the ASTA MCP key from `pass` *outside* the boundary (the
-  password store is masked inside), and execs the real binary under
-  `sandbox -p agent-pi`. Nothing is typed before `pi`. pi's own permission
-  extension decides tool calls inside; network and MCP access remain enabled.
+- **`claude` and `claude-agent-acp`** use the `sandbox` block in
+  `~/.claude/settings.json` for Bash subprocesses, with `permissions.deny`
+  covering file tools. The `denyWrite` list there and `machinery-ro.profile`
+  here must name the same persistence pins.
+- **`pi` and `pi-acp`** use `~/.local/scripts/pi` only to resolve the ASTA MCP
+  key and launch the real host process. Pi's native `shellPath` points model
+  Bash and user `!`/`!!` commands at `~/.local/scripts/pi-bash`, which executes
+  `/bin/bash` under `sandbox -p agent`. Pi's guardrails extension covers typed
+  file tools. Pi and its loaded extensions are therefore trusted host code,
+  matching Claude's trust model.
 
-`agent-pi` must forward `PI_CODING_AGENT_DIR` and bind `~/.config/pi/agent`
-read-write, or pi silently starts with no configuration at all — see that
-profile's comments for why.
+`tests/sandbox-profile-test.sh` verifies the shared agent profile's kernel
+boundary; `tests/pi-shim-test.sh` verifies the two Pi launch paths.
 
 ## One-time setup
 

@@ -1,55 +1,36 @@
 #!/usr/bin/env bash
-# pi / pi-acp — run the pi coding agent confined, with nothing typed before it.
+# pi / pi-acp — launch the Pi host process, with Bash sandboxed separately.
 #
 # Deployed under BOTH names (pi-acp is a symlink to this file) and dispatches on
-# the name it was invoked as: the terminal entry point and the ACP adapter the
-# editors spawn need identical policy, and the way to guarantee that is one
-# file rather than two that drift.
-#
-# pi ships no sandbox of its own and says so in its docs/security.md, so the
-# boundary has to come from outside the process. This shim IS that outside: it
-# sits first on PATH ($ZDOTDIR/.zshenv prepends ~/.local/scripts last, so it
-# wins) and shadows the real binary under ~/.local/share/bun/bin.
-#
-# It replaces `renv pi` plus .config/renv/pi.sh, which did these same two things
-# behind a prefix that had to be typed and was easy to forget — and forgetting
-# it launched pi with no boundary and no key.
+# the name it was invoked as. Pi itself must stay outside the tool sandbox so its
+# login, configuration, extensions, and self-update behave like Claude's host
+# process. ~/.config/pi/agent/settings.json points both model Bash and !/!!
+# commands at ~/.local/scripts/pi-bash, which applies the OS boundary.
 set -euo pipefail
 
-# Resolve the real binary ABSOLUTELY. `command -v pi` finds this shim, so a
-# PATH lookup here would re-exec this file forever.
+# Resolve the real binary absolutely: this shim shadows `pi` on PATH. Export the
+# same Bun root so Pi's package manager recognizes the installation it came from.
 self=${0##*/}
-real="${BUN_INSTALL:-$HOME/.local/share/bun}/bin/$self"
+: "${BUN_INSTALL:=${XDG_DATA_HOME:-$HOME/.local/share}/bun}"
+export BUN_INSTALL
+real="$BUN_INSTALL/bin/$self"
 [ -x "$real" ] || {
 	printf '%s: the real binary is not executable at %s\n' "$self" "$real" >&2
 	exit 127
 }
 
-# Already inside a sandbox: run the real binary directly. Nesting a second
-# bubblewrap inside the first fails (it cannot mount proc), and the outer
-# boundary already confines this process — so this is the correct answer, not a
-# concession. Covers both this repo's engine and Claude Code's native sandbox.
+# A Pi invoked from a sandboxed Bash command inherits that boundary. Do not nest
+# bubblewrap, and do not try to read the password store hidden inside it.
 if [ -n "${SANDBOX_ENGINE:-}" ] || [ -n "${SANDBOX_RUNTIME:-}" ]; then
 	exec "$real" "$@"
 fi
 
-# Fail closed: without the wrapper the only outcome left is an unconfined agent.
-command -v sandbox >/dev/null 2>&1 || {
-	printf '%s: sandbox not found on PATH; refusing to run unconfined\n' "$self" >&2
-	exit 127
-}
-
-# Every diagnostic above and below goes to stderr. The ACP adapter speaks
-# JSON-RPC over stdout, so a single stray line there desyncs the editor.
-#
-# The MCP key is resolved HERE, outside the boundary, because machinery-ro masks
-# the password store inside — `pass` cannot work in there. Fail closed as the
-# launcher did: a harness that starts without its key fails later and less
-# legibly, at the first MCP call.
+# Resolve the MCP key outside the Bash boundary. Every diagnostic stays on
+# stderr because pi-acp speaks JSON-RPC on stdout.
 ASTA_MCP_API_KEY=$(pass show asta-mcp) || {
 	printf '%s: could not read asta-mcp from pass\n' "$self" >&2
 	exit 1
 }
 export ASTA_MCP_API_KEY
 
-exec sandbox -p agent-pi -- "$real" "$@"
+exec "$real" "$@"

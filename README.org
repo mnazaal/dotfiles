@@ -67,11 +67,12 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   in =.config/pkgit/= (see its README). =pkgit -i <pkg>= installs, =pkgit -b
   <pkg>,update= updates in place. Never =pkgit -u= or =-f=: both delete a
   package's source tree from under themselves
-- no agent takes a prefix. =claude= and =claude-agent-acp= are confined by the
-  sandbox block in their own settings.json. =pi= ships no sandbox, so
-  =.local/scripts/pi= shadows the real binary on PATH and runs it under
-  =sandbox -p agent-pi=, resolving its MCP key outside the boundary where the
-  password store is still readable. See =.config/sandbox/README.md=
+- no agent takes a prefix. =claude= and =claude-agent-acp= sandbox their Bash
+  subprocesses through their own settings.json. =pi= and =pi-acp= use
+  =.local/scripts/pi= to resolve the MCP key and launch the host process, while
+  Pi's =shellPath= sends model Bash and user =!=/=!!= commands through
+  =.local/scripts/pi-bash= and the shared =agent= sandbox profile. See
+  =.config/sandbox/README.md=
 - =.local/scripts/notmuch-cron= and =.local/scripts/rss2email-cron= depend on =pass=
 - =.local/scripts/cal-sync-cron= depends on encrypted ICS URL files in password store
 - =.local/scripts/onedrive-cron= depends on the =onedrive= client (abraunegg,

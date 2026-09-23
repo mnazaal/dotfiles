@@ -200,56 +200,32 @@ assert_mounts 'the projects container stays read-only' "$output" \
 	-- \
 	"--bind $home/projects $home/projects"
 
-# An agent that rewrites a config file atomically — temp file beside it, then
-# rename over the target — must not have that file bound individually: a file
-# bind makes the target its own mount point, the rename fails with EXDEV against
-# the parent's mount, and the agent reports a persistence error on every config
-# write. Bind the containing directory instead, and pin any machinery inside it
-# at its repository source, since every pinned path is reached through a stow
-# symlink into the repository.
-#
 # ~/.agents is stow symlinks into ~/dotfiles/.agents, so binding only the former
 # leaves AGENTS.md and every skill dangling whenever cwd is not ~/dotfiles — the
 # cwd auto-bind was the sole reason the targets ever resolved. Skills stay
 # writable in the case that matters (cwd ~/dotfiles, where the read-write cwd
-# bind wins over this read-only one), and are merely readable elsewhere, where
-# they were previously invisible. They are still deliberately NOT pinned
-# (unpinned 2026-08-18, reversing 4de2847): the user chose skill iteration speed
-# over the self-modification pin, and review happens at commit time. Assert the
-# unpin holds so a future edit cannot silently re-pin.
-# pi composes the shared `agent` base, so it reaches what claude reaches: the
-# read-only breadth below arrives from that base, not from this profile. Only
-# the writable paths are pi's own, and each must survive the enclosing
-# read-only ~/.config bind by being emitted after it.
-output=$(run "$project" -p agent-pi)
-assert_mounts agent-pi "$output" \
-	"--ro-bind $home/.agents $home/.agents" \
-	"--ro-bind $home/dotfiles $home/dotfiles" \
-	"--ro-bind $home/.config $home/.config" \
-	"--ro-bind $home/projects $home/projects" \
-	"--bind $home/.config/pi/agent $home/.config/pi/agent" \
-	-- \
-	"--bind $home/dotfiles $home/dotfiles"
+# bind wins over this read-only one), and are merely readable elsewhere. They
+# remain deliberately unpinned: the user chose skill iteration speed over a
+# self-modification pin, and review happens at commit time.
 
 # The guardrail source must be read-only AND bound after the writable dotfiles
 # bind that contains it: $HOME/.agents is stow symlinks into $HOME/dotfiles, so
 # the read-only bind there does not protect the targets. Launching with cwd
 # inside ~/dotfiles auto-binds the repo read-write, which is the harder case —
-# the machinery-ro fragment must still pin the sources read-only afterwards, for
-# EVERY harness profile, not just the ones composing `agent`.
-assert_mount_order "$home/dotfiles" agent-pi \
+# the shared agent profile must still pin the sources read-only afterwards.
+assert_mount_order "$home/dotfiles" agent \
 	"--bind $home/dotfiles $home/dotfiles" \
 	"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"
 
 # A harness binary sits under agent.profile's blanket read-write ~/.local/share,
 # so a plain read-only bind for it is emitted BEFORE that parent and shadowed by
 # it — protection that reads real and is not. The pin has to land after. Both
-# harnesses, because either could rewrite the other's executable and persist
-# outside the sandbox. This is the same hole the bun bin pin closes.
-assert_mount_order "$project" agent-pi \
+# harness binaries stay pinned because Pi Bash could otherwise rewrite either
+# executable and persist outside the sandbox.
+assert_mount_order "$project" agent \
 	"--bind $home/.local/share $home/.local/share" \
 	"--ro-bind $home/.local/share/claude $home/.local/share/claude"
-assert_mount_order "$project" agent-pi \
+assert_mount_order "$project" agent \
 	"--bind $home/.local/share $home/.local/share" \
 	"--ro-bind $home/.local/share/bun/bin $home/.local/share/bun/bin"
 
@@ -281,7 +257,7 @@ fi
 # while both the profile and this argv still look correct — so comparing those
 # two (make check-machinery-ro-sync) cannot detect it. The launcher therefore
 # asserts each pin inside the container before the command runs.
-out=$(run "$home/dotfiles" -p agent-pi)
+out=$(run "$home/dotfiles" -p agent)
 case "$out" in
 *sandbox-preflight*) ;;
 *)
@@ -343,8 +319,8 @@ chmod u+w "$ro_pin"
 # The masks must shadow a bind that is still there: if the blanket read-write
 # bind were narrowed away instead, these assertions would pass for the wrong
 # reason and stop testing the mask at all.
-output=$(run "$project" -p agent-pi)
-assert_mounts 'agent-pi still binds ~/.local/share read-write' "$output" \
+output=$(run "$project" -p agent)
+assert_mounts 'agent still binds ~/.local/share read-write' "$output" \
 	"--bind $home/.local/share $home/.local/share"
 printf 'sandbox profiles: credential and mail masks pass\n'
 
@@ -352,7 +328,7 @@ printf 'sandbox profiles: credential and mail masks pass\n'
 # a repeated destination's LAST bind win, which is why the emitter carries no
 # dedupe. A pin emitted before the writable bind that contains it would be
 # silently undone, and the argv would still look correct.
-output=$(run "$home/dotfiles" -p agent-pi)
+output=$(run "$home/dotfiles" -p agent)
 rest=${output#*"--bind $home/dotfiles $home/dotfiles"}
 case "$rest" in
 *"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"*) ;;
@@ -374,7 +350,7 @@ esac
 
 # Masks need --perms 0000 to be masks at all; a bare --tmpfs leaves a writable
 # empty directory, which passes any path-only assertion.
-output=$(run "$project" -p agent-pi)
+output=$(run "$project" -p agent)
 for store in gnupg pass password-store keyrings mail zsh; do
 	case "$output" in
 	*"--perms 0000 --tmpfs $home/.local/share/$store"*) ;;
@@ -409,16 +385,17 @@ printf 'sandbox profiles: the emitter enforces mask, order and env policy\n'
 # makes them necessary: a machine whose /etc/resolv.conf is a real file, or whose
 # users are in /etc/passwd, needs neither, and asserting them there would fail for
 # being correct.
-output=$(run "$project" -p agent-pi)
+output=$(run "$project" -p agent)
 
 resolv=$(readlink -f /etc/resolv.conf 2>/dev/null || true)
 case "$resolv" in
 "" | /etc/*) ;;
 *)
-	# Bound at its own path, not at /etc/resolv.conf: bwrap follows that symlink
-	# to create the destination and lands in the /run that is deliberately absent.
+	# Materialized at its real path, not /etc/resolv.conf: the latter is a symlink
+	# into /run. ro-bind-data creates the destination file after its directory
+	# chain, unlike a file bind whose missing destination aborts bwrap.
 	case "$output" in
-	*"--ro-bind $resolv $resolv"*) ;;
+	*"--ro-bind-data RESOLV_FD $resolv"*) ;;
 	*)
 		printf 'bwrap: %s is not bound, so /etc/resolv.conf dangles and DNS dies inside\n' \
 			"$resolv" >&2
@@ -469,13 +446,19 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 	# prints no matches and reads exactly like a clean run. Prove it launched
 	# first — it passed vacuously for one commit when `--engine` was deleted
 	# from under it.
+	set +e
 	ran=$(
 		cd "$project" || exit 1
 		HOME="$home" XDG_CONFIG_HOME="$home/.config" SANDBOX_PROFILE_PATH="$envprof" \
-			"$repo/.local/scripts/sandbox" -p envprobe -- /bin/echo launched 2>/dev/null
+			"$repo/.local/scripts/sandbox" -p envprobe -- /bin/echo launched \
+			2>"$tmp/envprobe-stderr"
 	)
-	if [ "$ran" != launched ]; then
-		printf 'bwrap: the env probe never launched, so its silence proves nothing\n' >&2
+	ran_rc=$?
+	set -e
+	if [ "$ran_rc" -ne 0 ] || [ "$ran" != launched ]; then
+		printf 'bwrap: the env probe never launched, so its silence proves nothing (exit %s)\n' \
+			"$ran_rc" >&2
+		cat "$tmp/envprobe-stderr" >&2
 		exit 1
 	fi
 	leaked=$(
@@ -537,7 +520,7 @@ for entry in "${host_path[@]}"; do
 	esac
 done
 for dir in "${pathdirs[@]}"; do
-	assert_path_entry_pinned "$project" agent-pi \
+	assert_path_entry_pinned "$project" agent \
 		"--bind $home/.local/share $home/.local/share" \
 		"$dir"
 done

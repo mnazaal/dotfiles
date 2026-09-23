@@ -145,9 +145,23 @@ run_bwrap() {
 	# fails, because bwrap follows that symlink to create the destination and
 	# lands in the /run that is not there. podman never hit this — its image
 	# shipped a real resolv.conf that podman rewrote per network.
-	local resolv
+	local resolv parent current part
+	local -a parts
 	if resolv=$(readlink -f /etc/resolv.conf 2>/dev/null) && [ -f "$resolv" ]; then
-		p+=(--ro-bind "$resolv" "$resolv")
+		# The target can live under /run, which is absent from the hand-built root.
+		# bwrap does not create the destination's parent directories for a file
+		# bind, so materialize that chain without exposing the host's /run tree.
+		case "$resolv" in
+		/run/*)
+			parent=${resolv%/*}
+			current=""
+			IFS=/ read -r -a parts <<<"${parent#/}"
+			for part in "${parts[@]}"; do
+				current="$current/$part"
+				p+=(--dir "$current")
+			done
+			;;
+		esac
 	fi
 	p+=(--tmpfs /tmp)
 	# Everything under $HOME is invisible unless the allowlist binds it back.
@@ -237,6 +251,9 @@ run_bwrap() {
 		# A descriptor number would be meaningless outside this process, so print a
 		# placeholder: the reconstruction is shown, and the line is not passed off as
 		# runnable.
+		if [ -n "$resolv" ]; then
+			p+=(--ro-bind-data RESOLV_FD "$resolv")
+		fi
 		if [ -n "$passwd_line" ]; then
 			p+=(--ro-bind-data PASSWD_FD /etc/passwd)
 		fi
@@ -250,7 +267,11 @@ run_bwrap() {
 		exit 0
 	fi
 	if [ -n "$SANDBOX_PATH_PREPEND" ]; then PATH="$SANDBOX_PATH_PREPEND:$PATH"; fi
-	local passwd_fd group_fd
+	local resolv_fd passwd_fd group_fd
+	if [ -n "$resolv" ]; then
+		exec {resolv_fd}<"$resolv"
+		p+=(--ro-bind-data "$resolv_fd" "$resolv")
+	fi
 	if [ -n "$passwd_line" ]; then
 		exec {passwd_fd}< <(
 			cat /etc/passwd

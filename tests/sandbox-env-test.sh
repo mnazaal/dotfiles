@@ -90,7 +90,8 @@ assert_profile_env() { # profile allowlisted names... -- excluded names...
 	done
 }
 
-# PI_CODING_AGENT_DIR must cross or pi runs with no configuration at all.
-assert_profile_env agent-pi ASTA_MCP_API_KEY PI_CODING_AGENT_DIR -- OPENROUTER_API_KEY UNRELATED_SECRET
+# Tool subprocesses receive no Pi control-plane path or MCP credential. Pi itself
+# stays on the host; only its Bash process enters this shared agent profile.
+assert_profile_env agent -- ASTA_MCP_API_KEY PI_CODING_AGENT_DIR OPENROUTER_API_KEY UNRELATED_SECRET
 
 printf 'sandbox env: the per-profile allowlist holds and no value enters argv\n'

@@ -144,11 +144,12 @@ Claude's credential denies are drift-checked against `sensitive-paths.json` by
 path list cannot express: dangerous commands, skill gates, ref-rewrite
 protection, and the `ask` tier.
 
-The filesystem boundary differs per harness and is not this hook: bare
-`claude` runs under the `sandbox` block of its own `settings.json` (Bash
-subprocesses at the kernel, file tools through `permissions.deny`), while pi
-runs under the `sandbox -p agent-pi` profile — see `.config/sandbox/README.md`.
-The core relaxes the machinery-in-bash rule wherever the kernel already pins
-those paths: inside a container it detects itself, and, for Claude, when the
-adapter reads an enabled native sandbox from the machinery-pinned
+The filesystem boundary is not this hook. Bare `claude` uses the `sandbox`
+block of its own `settings.json`; Pi's `shellPath` uses
+`~/.local/scripts/pi-bash` and the shared `sandbox -p agent` profile. Both put
+Bash subprocesses behind the kernel while typed file tools rely on their
+in-process deny rules — see `.config/sandbox/README.md`. The core relaxes the
+machinery-in-bash rule wherever the kernel already pins those paths: inside a
+container it detects itself, and, for Claude, when the adapter reads an enabled
+native sandbox from the machinery-pinned
 `settings.json` (never for a call carrying `dangerouslyDisableSandbox`).
