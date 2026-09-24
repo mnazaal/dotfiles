@@ -22,7 +22,7 @@ mkdir -p \
 	"$home/.local/share/gnupg" "$home/.local/share/pass" \
 	"$home/.local/share/password-store" "$home/.local/share/keyrings" \
 	"$home/.local/share/mail" "$home/.local/share/zsh" \
-	"$home/.local/state/headroom" "$home/.local/state/nvim" \
+	"$home/.cache/git/credential" "$home/.local/state/headroom" "$home/.local/state/nvim" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
 	"$home/projects/demo/src" "$project"
@@ -351,6 +351,13 @@ esac
 # Masks need --perms 0000 to be masks at all; a bare --tmpfs leaves a writable
 # empty directory, which passes any path-only assertion.
 output=$(run "$project" -p agent)
+case "$output" in
+*"--perms 0000 --tmpfs $home/.cache/git/credential"*) ;;
+*)
+	printf 'bwrap: Git credential-cache socket is not masked\n' >&2
+	exit 1
+	;;
+esac
 for store in gnupg pass password-store keyrings mail zsh; do
 	case "$output" in
 	*"--perms 0000 --tmpfs $home/.local/share/$store"*) ;;
@@ -485,6 +492,72 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 		exit 1
 	fi
 	printf 'sandbox profiles: the environment allowlist holds on a real launch\n'
+
+	# Git's credential-cache defaults to $XDG_CACHE_HOME/git/credential/socket.
+	# No secret is used: a fixture file checks whether that path crosses the
+	# broad writable ~/.cache bind. Prove the agent launched before interpreting
+	# a missing canary as an effective mask.
+	mkdir -p "$home/.cache/git/credential"
+	printf 'canary\n' >"$home/.cache/git/credential/socket"
+	credential_launch=$(
+		cd "$project" || exit 1
+		HOME="$home" XDG_CACHE_HOME="$home/.cache" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+			"$repo/.local/scripts/sandbox" -p agent -- /bin/echo launched 2>"$tmp/credential-probe-stderr"
+	) || {
+		printf 'credential-cache sandbox probe did not launch:\n' >&2
+		cat "$tmp/credential-probe-stderr" >&2
+		exit 1
+	}
+	[ "$credential_launch" = launched ] || {
+		printf 'credential-cache sandbox probe produced no launch marker\n' >&2
+		exit 1
+	}
+	credential_rc=0
+	(
+		cd "$project" || exit 1
+		HOME="$home" XDG_CACHE_HOME="$home/.cache" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+			"$repo/.local/scripts/sandbox" -p agent -- /bin/test -e "$home/.cache/git/credential/socket"
+	) 2>"$tmp/credential-probe-stderr" || credential_rc=$?
+	if [ "$credential_rc" -ne 1 ]; then
+		printf 'credential-cache socket is visible, or the probe failed to launch (exit %s)\n' "$credential_rc" >&2
+		cat "$tmp/credential-probe-stderr" >&2
+		exit 1
+	fi
+	printf 'sandbox profiles: Git credential-cache socket is hidden\n'
+
+	# The mask must also be emitted when the host directory has not been created
+	# yet. Git can start its daemon after an agent sandbox launches.
+	rm "$home/.cache/git/credential/socket"
+	rmdir "$home/.cache/git/credential" "$home/.cache/git"
+	output=$(run "$project" -p agent)
+	case "$output" in
+	*"--perms 0000 --tmpfs $home/.cache/git/credential"*) ;;
+	*)
+		printf 'bwrap: absent credential-cache directory lost its mask\n' >&2
+		exit 1
+		;;
+	esac
+	missing_launch=$(
+		cd "$project" || exit 1
+		HOME="$home" XDG_CACHE_HOME="$home/.cache" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+			"$repo/.local/scripts/sandbox" -p agent -- /bin/echo launched 2>"$tmp/credential-probe-stderr"
+	) || {
+		printf 'sandbox could not launch with an absent credential-cache directory:\n' >&2
+		cat "$tmp/credential-probe-stderr" >&2
+		exit 1
+	}
+	[ "$missing_launch" = launched ] || {
+		printf 'absent-directory probe produced no launch marker\n' >&2
+		exit 1
+	}
+	[ -d "$home/.cache/git/credential" ] || {
+		printf 'required credential-cache mask source was not prepared\n' >&2
+		exit 1
+	}
+	[ "$(stat -c %a "$home/.cache/git/credential")" = 700 ] || {
+		printf 'credential-cache mask source was not created private\n' >&2
+		exit 1
+	}
 
 else
 	printf 'sandbox profiles: SKIPPED the real-launch environment test (bwrap unavailable)\n'

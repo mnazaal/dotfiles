@@ -2,7 +2,9 @@ Basic dotfiles.
 
 * Deployment
 
-Canonical deployment from repository root - creates symlinks in relevant directories:
+Canonical deployment from repository root - creates symlinks in relevant directories
+and, in the real login home, installs =~/.local/cron= as the *entire* live
+crontab. Back up or merge existing personal cron jobs before the first run:
 #+begin_src bash
 make link
 #+end_src
@@ -17,7 +19,10 @@ Run the full repository checks (tests, drift checks, doctor, linters) with:
 make check
 #+end_src
 
-=make check= expects the managed links created by =make link=. It warns when
+=make check= requires ShellCheck, shfmt and PyYAML; missing tools or formatting
+drift fail the full check rather than being skipped. The isolated =make test=
+remains available without those lint dependencies. =make check= expects the
+managed links created by =make link=. It warns when
 the intentionally untracked =~/org/agenda= is absent; require it explicitly
 with =dotfiles-doctor --strict=.
 
@@ -27,7 +32,15 @@ make clean
 #+end_src
 
 A successful cleanup is silent. It does not remove unrelated symlinks or
-tracked source files.
+tracked source files. Cleanup refuses while tracked cron jobs are live: first
+run =make cron-unlink= in the real login home. That target removes only the
+tracked jobs and preserves unrelated jobs and comments. It refuses if some
+tracked jobs have drifted. It does not save the live crontab under the
+agent-visible =~/.cache=: unrelated jobs may contain credentials. Arrange a
+private backup outside the agent sandbox if you need one. =make clean= does
+not alter the crontab.
+The sync job in =~/.local/cron= restores the tracked schedule every 15 minutes;
+edit the tracked file, not =crontab -e=, while the deployment is active.
 
 Processes that start (or run) during =make clean= / =make link= capture the
 half-deployed state and do not heal afterwards — relaunch them:
@@ -39,6 +52,13 @@ half-deployed state and do not heal afterwards — relaunch them:
 - shells: a zsh spawned in the gap misses =$ZDOTDIR/.zshrc= and keeps the stock
   prompt for its lifetime (=ZDOTDIR= itself survives via the inherited
   environment) — =exec zsh= restores it.
+
+* Shell plugin setup
+
+First-time zsh plugin installation is an explicit operation, not a shell
+startup side effect. After linking, open zsh and run =zplugin-install= once;
+use =zplugin-update= deliberately when updating plugins. An offline shell
+starts without missing plugins rather than attempting to clone them.
 
 * Sharp bits
 

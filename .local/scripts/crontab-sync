@@ -67,7 +67,17 @@ command -v crontab >/dev/null 2>&1 || exit 0
 # reinstall on every run.
 entries() { grep -vE '^[[:space:]]*(#|$)' "$@" || true; }
 
-live_entries=$(crontab -l 2>/dev/null | entries)
+# An empty account makes `crontab -l` exit 1. Distinguish that expected
+# first-install case from an actual read failure before replacing any schedule.
+if live_cron=$(LC_ALL=C crontab -l 2>&1); then
+	:
+else
+	case "$live_cron" in
+	'no crontab for '*) live_cron='' ;;
+	*) fail "could not read live crontab: $live_cron" ;;
+	esac
+fi
+live_entries=$(printf '%s\n' "$live_cron" | entries)
 tracked_entries=$(entries "$CRON_FILE")
 
 [ "$live_entries" = "$tracked_entries" ] && exit 0

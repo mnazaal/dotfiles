@@ -62,6 +62,11 @@ RO_LAST+=(
 	"$H/dotfiles/.config/pi/agent/mcp.json"
 )
 
+# Git credential-cache normally opens $XDG_CACHE_HOME/git/credential/socket.
+# The parent cache is writable inside the agent sandbox; prepare this private
+# mountpoint even on a fresh account, then mask it before the command starts.
+MASK_PREPARE+=("$H/.cache/git/credential")
+
 # Host secrets that a broad read-write bind would otherwise hand over. .zshenv
 # relocates the GnuPG keyring and the password store under $H/.local/share, and
 # the mail store lives there too; agent.profile binds that whole directory

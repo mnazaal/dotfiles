@@ -1,9 +1,10 @@
-.PHONY: help link clean check test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages audit-skills
+.PHONY: help link clean cron-unlink check-clean-cron check check-requirements test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages audit-skills
 
 help:
 	@printf '%s\n' \
 		'link   - stow repository files' \
-		'clean  - silently remove links this repository deployed (DEEP=1 also sweeps $$HOME for links left by renames)' \
+		'clean  - remove owned links; refuse while tracked cron jobs are still live (DEEP=1 sweeps stale links)' \
+		'cron-unlink - remove only tracked jobs from the live crontab; retain unrelated jobs' \
 		'test   - run isolated repository behavior tests' \
 		'session-entry - point the GDM session at mango-session (needs root, once per machine)' \
 		'check  - run tests, the drift checks (agent roles, guardrail sync, machinery binds, skill frontmatter and spec, pi packages), doctor, ShellCheck, and shfmt (Org agenda optional)' \
@@ -33,7 +34,7 @@ link:
 # the one case the steps above cannot see — links left behind when repository
 # content is renamed or removed, which no longer correspond to anything stow
 # knows about.
-clean:
+clean: check-clean-cron
 	@stow --target="$(HOME)" --no-folding -D .
 	@cd "$(CURDIR)" && find . -mindepth 1 -depth -type d | sed 's|^\./||' | \
 		while IFS= read -r dir; do rmdir "$(HOME)/$$dir" 2>/dev/null || true; done
@@ -42,6 +43,83 @@ clean:
 			-path "$(CURDIR)" -prune -o \
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
+
+# Do not remove links while cron is still invoking them. On fixture homes,
+# crontab is the real user's even when HOME points at a fixture, so never inspect
+# it there. cron-unlink is explicit and refuses unless every tracked entry is
+# present; it never removes an unrelated job.
+define CRON_CLEAN_CHECK_PY
+import os, subprocess, sys
+from pathlib import Path
+tracked = Path(os.environ["CRON_FILE"])
+if not tracked.is_file():
+    print("clean: tracked crontab missing; cannot determine whether scheduled scripts remain", file=sys.stderr)
+    sys.exit(1)
+entries = {line for line in tracked.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")}
+result = subprocess.run(["crontab", "-l"], capture_output=True, text=True, env={**os.environ, "LC_ALL": "C"})
+if result.returncode:
+    if result.stderr.startswith("no crontab for "):
+        sys.exit(0)
+    print("clean: cannot inspect the live crontab; refusing to remove links", file=sys.stderr)
+    sys.exit(1)
+active = [line for line in result.stdout.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+if entries.intersection(active) or any(".local/scripts/" in line for line in active):
+    print("clean: dotfiles scripts are still scheduled; run 'make cron-unlink' or inspect drift", file=sys.stderr)
+    sys.exit(1)
+endef
+export CRON_CLEAN_CHECK_PY
+
+check-clean-cron:
+	@if [ "$(HOME)" = "$$(getent passwd "$$(id -un)" | cut -d: -f6)" ] && command -v crontab >/dev/null 2>&1; then \
+		CRON_FILE="$(HOME)/.local/cron" python3 -c "$$CRON_CLEAN_CHECK_PY"; \
+	fi
+
+# Preserve all unrelated lines, including comments, and validate before an
+# install. Never copy the full live crontab into the agent-visible ~/.cache:
+# an unrelated job may contain a credential.
+define CRON_UNLINK_PY
+import os, subprocess, sys, tempfile
+from pathlib import Path
+cron = Path(os.environ["CRON_FILE"])
+if not cron.is_file():
+    print("cron-unlink: tracked crontab is missing", file=sys.stderr)
+    sys.exit(1)
+tracked = {line for line in cron.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")}
+if not tracked:
+    print("cron-unlink: no tracked entries; refusing", file=sys.stderr)
+    sys.exit(1)
+live = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+if live.returncode:
+    print("cron-unlink: cannot read the live crontab", file=sys.stderr)
+    sys.exit(1)
+lines = live.stdout.splitlines(keepends=True)
+active = {line.rstrip("\r\n") for line in lines if line.strip() and not line.lstrip().startswith("#")}
+if not tracked.issubset(active):
+    print("cron-unlink: some tracked entries are not live; refusing an ambiguous removal", file=sys.stderr)
+    sys.exit(1)
+remaining = "".join(line for line in lines if line.rstrip("\r\n") not in tracked)
+with tempfile.NamedTemporaryFile(mode="w", delete=False) as candidate:
+    candidate.write(remaining)
+    candidate_path = candidate.name
+try:
+    if subprocess.run(["crontab", "-n", candidate_path], capture_output=True).returncode:
+        print("cron-unlink: remaining crontab is invalid; live schedule untouched", file=sys.stderr)
+        sys.exit(1)
+    if subprocess.run(["crontab", candidate_path], capture_output=True).returncode:
+        print("cron-unlink: install failed; live schedule may be unchanged; inspect it", file=sys.stderr)
+        sys.exit(1)
+    print("cron-unlink: removed tracked jobs; unrelated jobs preserved")
+finally:
+    os.unlink(candidate_path)
+endef
+export CRON_UNLINK_PY
+
+cron-unlink:
+	@if [ "$(HOME)" != "$$(getent passwd "$$(id -un)" | cut -d: -f6)" ]; then \
+		echo 'cron-unlink: HOME is not the login home; refusing to change a user-wide crontab' >&2; exit 1; \
+	fi
+	@command -v crontab >/dev/null 2>&1 || { echo 'cron-unlink: crontab not installed' >&2; exit 1; }
+	@CRON_FILE="$(HOME)/.local/cron" python3 -c "$$CRON_UNLINK_PY"
 
 # The one piece of this deployment that cannot be declarative: GDM reads only
 # system session directories, so the entry naming the session is root-owned and
@@ -52,42 +130,36 @@ session-entry:
 	sudo sed -i 's|^Exec=.*|Exec=$(HOME)/.local/scripts/mango-session|' /usr/share/wayland-sessions/mango.desktop
 	@grep -n '^Exec=' /usr/share/wayland-sessions/mango.desktop
 
-check: test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages
+check: check-requirements test check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages
 	./.local/scripts/dotfiles-doctor "$(CURDIR)"
 	@SHELL_SCRIPTS="$$(find .local/scripts .config/pass-extensions .config/git/hooks tests .claude/install-mcp.sh .agents/skills -type f \( -name '*.sh' -o -name '*.bash' -o -perm /111 \) 2>/dev/null | while IFS= read -r file; do \
 		case "$$file" in *.sh|*.bash) printf '%s\n' "$$file"; continue ;; esac; \
 		head -n 1 "$$file" | grep -Eq '^#!.*(sh|bash)' && printf '%s\n' "$$file"; \
 	done | sort)"; \
+	[ -n "$$SHELL_SCRIPTS" ] || { echo 'check: no shell scripts found' >&2; exit 1; }; \
 	SC_STATUS=0; \
-	if command -v shellcheck >/dev/null 2>&1; then \
-		if [ -n "$$SHELL_SCRIPTS" ]; then \
-			shellcheck --severity=warning $$SHELL_SCRIPTS || SC_STATUS=$$?; \
-		else \
-			echo "warn: no shell scripts found for shellcheck"; \
-		fi; \
-	else \
-		echo "warn: shellcheck not installed; skipping shellcheck"; \
-	fi; \
-	if command -v shfmt >/dev/null 2>&1; then \
-		if [ -n "$$SHELL_SCRIPTS" ]; then \
-			shfmt -d $$SHELL_SCRIPTS; \
-			SHFMT_FILES="$$(shfmt -l $$SHELL_SCRIPTS)"; \
-			if [ -n "$$SHFMT_FILES" ]; then \
-				echo "warn: shfmt would reformat:"; \
-				printf '%s\n' "$$SHFMT_FILES"; \
-			fi; \
-		else \
-			echo "warn: no shell scripts found for shfmt"; \
-		fi; \
-	else \
-		echo "warn: shfmt not installed; skipping shfmt"; \
+	shellcheck --severity=warning $$SHELL_SCRIPTS || SC_STATUS=$$?; \
+	SHFMT_FILES="$$(shfmt -l $$SHELL_SCRIPTS)" || exit 1; \
+	if [ -n "$$SHFMT_FILES" ]; then \
+		echo 'shfmt would reformat:' >&2; \
+		printf '%s\n' "$$SHFMT_FILES" >&2; \
+		exit 1; \
 	fi; \
 	if [ "$$SC_STATUS" -ne 0 ]; then \
 		echo "ShellCheck reported findings above; 'make check' fails on them." >&2; \
 		exit "$$SC_STATUS"; \
 	fi
 
+check-requirements:
+	@for cmd in shellcheck shfmt; do \
+		command -v "$$cmd" >/dev/null 2>&1 || { echo "check: $$cmd is required" >&2; exit 1; }; \
+	done
+	@python3 -c 'import yaml' || { echo 'check: PyYAML is required' >&2; exit 1; }
+
 test:
+	@bash tests/crontab-sync-test.sh
+	@bash tests/cron-unlink-test.sh
+	@bash tests/zsh-plugins-test.sh
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/guardrails-skill-state-test.sh
 	@bash tests/pi-shim-test.sh
@@ -142,13 +214,14 @@ import glob, os, sys
 try:
     import yaml
 except ImportError:
-    print("warn: PyYAML not installed; skipping skill-frontmatter check")
-    sys.exit(0)
+    print("skill-frontmatter: PyYAML not installed", file=sys.stderr)
+    sys.exit(1)
 status = 0
 # Enumerate DIRECTORIES, not SKILL.md files: globbing the file makes a skill
 # whose SKILL.md is missing or misnamed invisible, which is precisely the
 # silently-dropped-from-routing failure this check exists to catch.
-dirs = sorted(d for d in glob.glob(".agents/skills/*") if os.path.isdir(d))
+# synced/ is an ignored cache of externally managed skills, not a skill itself.
+dirs = sorted(d for d in glob.glob(".agents/skills/*") if os.path.isdir(d) and os.path.basename(d) != "synced")
 if not dirs:
     print("skill-frontmatter: no skill directories found -- wrong directory?", file=sys.stderr)
     sys.exit(1)
@@ -218,7 +291,7 @@ define SKILL_SPEC_PY
 import glob, pathlib, sys
 import skills_ref
 status = 0
-dirs = sorted(glob.glob(".agents/skills/*/"))
+dirs = sorted(d for d in glob.glob(".agents/skills/*/") if pathlib.Path(d).name != "synced")
 if not dirs:
     print("skill-spec: no skill directories found -- wrong directory?", file=sys.stderr)
     sys.exit(1)

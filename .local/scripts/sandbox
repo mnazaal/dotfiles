@@ -181,6 +181,19 @@ run_bwrap() {
 	# has no copy-up, so podman's load-bearing notmpcopyup has nothing to
 	# correspond to: there is no replica to make and no creation timeout to hit.
 	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--perms 0000 --tmpfs "$d"); fi; done
+	# Required masks must not disappear when a host source is absent at launch:
+	# the credential-cache daemon could create its socket afterwards. Create a
+	# private mountpoint before bwrap binds the writable cache parent. Dry runs
+	# print the mask without changing the host.
+	for d in "${MASK_PREPARE[@]}"; do
+		if [ "$DRYRUN" -eq 0 ]; then
+			[ ! -L "$d" ] || die "required mask source is a symlink: $d"
+			# Only the leaf contains the socket; the parent needs no private mode.
+			# shellcheck disable=SC2174
+			mkdir -p -m 0700 -- "$d" || die "cannot prepare required mask: $d"
+		fi
+		p+=(--perms 0000 --tmpfs "$d")
+	done
 
 	# An LDAP/sssd-backed user is absent from /etc/passwd, so the read-only bind
 	# above leaves the uid unresolvable and Node's os.userInfo() throws
@@ -297,7 +310,7 @@ run_bwrap() {
 # writable one stays read-only. Plain RO is emitted first, where an overlapping
 # RW bind wins — which is why the read-only $H/.agents bind does not protect
 # its stow targets under the writable $H/dotfiles bind.
-declare -a RW=() RO=() RO_LAST=() MASK=()
+declare -a RW=() RO=() RO_LAST=() MASK=() MASK_PREPARE=()
 # Only these non-secret host variables cross the sandbox boundary by default.
 # Profiles append the minimal harness-specific variables (including any required
 # launch-time credential) to SANDBOX_ENV.
@@ -349,7 +362,7 @@ is_home_or_ancestor() {
 
 # Reject binds that would re-expose all of $HOME or /, including ancestors of
 # $HOME such as /home. Such a bind defeats the allowlist just as completely.
-for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}" "${MASK[@]}"; do
+for d in "${RW[@]}" "${RO[@]}" "${RO_LAST[@]}" "${MASK[@]}" "${MASK_PREPARE[@]}"; do
 	rd=$(readlink -f "$d" 2>/dev/null || printf '%s' "$d")
 	if [ "$rd" = "/" ] || is_home_or_ancestor "$rd"; then
 		die "refusing to bind '$d' — it re-exposes all of \$HOME or /"
