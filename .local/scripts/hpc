@@ -230,7 +230,7 @@ esac
 mkdir -p "$runs"
 pidfile="$runs/$name.pid"; logfile="$runs/$name.log"; exitfile="$runs/$name.exit"
 
-if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+if [[ -f "$pidfile" && ! -e "$exitfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
   echo "hpc: run '$name' already in progress (pid $(cat "$pidfile")) -- tail $logfile, or pick a different --name." >&2
   exit 1
 fi
@@ -281,7 +281,7 @@ fi
 cur_sha=$(git rev-parse HEAD)
 if [[ "$cur_sha" != "$want_sha" ]]; then
   for p in "$runs"/*.pid; do
-    [[ -e "$p" ]] || continue
+    [[ -e "${p%.pid}.exit" ]] && continue
     if kill -0 "$(cat "$p")" 2>/dev/null; then
       echo "hpc: run '$(basename "$p" .pid)' is still running here (pid $(cat "$p")), and this launch would move $target from $cur_sha to $want_sha underneath it." >&2
       echo "hpc: wait for it to finish, or launch into a separate working copy with --dir." >&2
