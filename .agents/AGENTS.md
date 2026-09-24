@@ -70,6 +70,10 @@ This file is global routing and behavior policy. Keep it small.
 
 ## Shell Output Capture
 
+- When a read-only Bash command is denied for a machinery path, do not treat
+  the file as unreadable or work around the Bash guard. Try the built-in read
+  tool for a known file instead; if it also denies access, stop. This does not
+  apply to credential paths or authorize writes.
 - Anything the user must run or read themselves (handoff scripts, driver
   commands, logs) goes under `~/.cache/`, never `/tmp` or the agent
   scratchpad — those are container-private in sandboxed sessions, so a path
