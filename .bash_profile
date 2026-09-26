@@ -2,6 +2,9 @@
 # shell where chsh is unavailable (HPC login nodes), and there zsh is often a
 # user build in ~/.local/bin, which is not on PATH yet when bash reads this.
 # SHELL is exported so tmux and other shell spawners start zsh too.
+# FPATH is unset because zsh adopts an inherited FPATH IN PLACE OF its built-in
+# fpath: Lmod exports one for ksh, and zsh then cannot find compinit, vcs_info
+# or any other function it ships.
 # Set DOTFILES_NO_EXEC_ZSH=1 to stay in bash.
 case $- in
   *i*)
@@ -12,6 +15,7 @@ case $- in
       && [ "${DOTFILES_NO_EXEC_ZSH:-0}" != 1 ] \
       && [ -n "$zsh_bin" ]; then
       export SHELL="$zsh_bin"
+      unset FPATH
       exec "$zsh_bin"
     fi
     unset zsh_bin
