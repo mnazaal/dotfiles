@@ -12,6 +12,10 @@ set -eu
 printf '%s\n' "$1" >>"$MOCK_TRACE"
 case "$1" in
 -l)
+    if [ -f "$MOCK_DENIED" ]; then
+        printf 'You (fixture) are not allowed to access to (crontab) because of pam configuration.\n' >&2
+        exit 1
+    fi
     if [ -f "$MOCK_READ_ERROR" ]; then
         printf 'crontab: permission denied\n' >&2
         exit 1
@@ -40,7 +44,7 @@ SH
 chmod +x "$tmp/bin/crontab" "$tmp/bin/notify-send"
 
 export HOME="$tmp/home" PATH="$tmp/bin:$PATH" CRON_FILE="$tmp/cron"
-export MOCK_LIVE="$tmp/live" MOCK_TRACE="$tmp/trace" MOCK_READ_ERROR="$tmp/read-error"
+export MOCK_LIVE="$tmp/live" MOCK_TRACE="$tmp/trace" MOCK_READ_ERROR="$tmp/read-error" MOCK_DENIED="$tmp/denied"
 printf '* * * * * /bin/true\n' >"$CRON_FILE"
 
 # First deployment has no crontab. It must validate and install the tracked one.
@@ -87,4 +91,18 @@ fi
 [ "$(cat "$MOCK_TRACE")" = '-l' ]
 [ ! -e "$MOCK_LIVE" ]
 
-printf 'crontab sync: first install, idempotence, validation and read errors pass\n'
+# A host that bars this user from cron (cron.allow, PAM) has no schedule to keep
+# in step, like a host without crontab: skip with a note, install nothing.
+rm "$MOCK_READ_ERROR"
+touch "$MOCK_DENIED"
+: >"$MOCK_TRACE"
+"$repo/.local/scripts/crontab-sync" >"$tmp/out" 2>"$tmp/err" || {
+	printf 'crontab-sync failed where cron is not permitted:\n' >&2
+	cat "$tmp/err" >&2
+	exit 1
+}
+grep -q 'skipped' "$tmp/err"
+[ "$(cat "$MOCK_TRACE")" = '-l' ]
+[ ! -e "$MOCK_LIVE" ]
+
+printf 'crontab sync: first install, idempotence, validation, read errors and denied access pass\n'

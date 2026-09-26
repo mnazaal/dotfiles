@@ -69,11 +69,17 @@ entries() { grep -vE '^[[:space:]]*(#|$)' "$@" || true; }
 
 # An empty account makes `crontab -l` exit 1. Distinguish that expected
 # first-install case from an actual read failure before replacing any schedule.
+# A host that bars this user from cron (cron.allow, or PAM on an HPC login node)
+# is like a host without crontab: nothing to sync, and not a deploy failure.
 if live_cron=$(LC_ALL=C crontab -l 2>&1); then
 	:
 else
 	case "$live_cron" in
 	'no crontab for '*) live_cron='' ;;
+	*' are not allowed to '*)
+		printf 'crontab-sync: skipped, cron is not available to this user on this host: %s\n' "$live_cron" >&2
+		exit 0
+		;;
 	*) fail "could not read live crontab: $live_cron" ;;
 	esac
 fi
