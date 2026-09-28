@@ -178,16 +178,6 @@ constructed DOI only after that fails.
 
 ## Parsing Tips
 
-Use `scripts/arxiv_atom.py` rather than re-deriving the parse:
-
-```bash
-curl -s "https://export.arxiv.org/api/query?id_list=1706.03762" | python3 scripts/arxiv_atom.py -
-```
-
-It emits one JSON record per entry (`arxiv_id`, `version`, `title`, `abstract`, `authors`,
-`categories`, `doi`, `pdf_url`, dates) plus the feed's `total_results`, with the namespaces and the
-traps below already handled.
-
 If you do parse it yourself: the namespace is `http://www.w3.org/2005/Atom`, with arXiv extensions in
 `http://arxiv.org/schemas/atom`. Four things bite:
 
@@ -249,8 +239,6 @@ retry a request that arXiv rejected; fix it first.
 unknown arXiv ID in `id_list` behaves the same way -- `id_list=9999.99999` gives `totalResults` 0, no
 entry, no error. Report that as "not found in arXiv", not as a failed request.
 
-`scripts/arxiv_atom.py` exits non-zero on the Error entry and reports the echoed query, so a
-rewritten prefix surfaces instead of passing silently.
 
 ## Common Categories
 

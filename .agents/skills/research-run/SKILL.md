@@ -83,7 +83,7 @@ resolved hyperparameters after validation and before touching test. Answer
 is the leakage no data-path rule catches, since it is a fact about the
 researcher rather than the pipeline (`dev-ml-infra` owns the rest).
 
-Sink: `notes/design-<comparison>.md` (`context-project-docs` owns the prefix).
+Sink: `notes/design-<comparison>` (`context-project-docs` owns the prefix).
 The result's `LOG.md` entry points back at it, which is what makes a
 prediction checkable rather than remembered.
 
@@ -212,7 +212,7 @@ Every verdict has an exit, and three of them leave this skill.
 
 ## Output
 
-- Pre-registration: `notes/design-<comparison>.md`, or `none` and why
+- Pre-registration: `notes/design-<comparison>`, or `none` and why
 - Predicted / observed:
 - Evidence:
 - Verdict:

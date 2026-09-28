@@ -15,7 +15,8 @@
 # Assumes one session per transcript file, and that each skill load appears in
 # the text as "skill":"<name>". Three things are harness-specific: MARKER, the
 # transcript directory (argument 1), and the skills directory (argument 2);
-# the defaults below suit one harness, so pass all three for another.
+# the defaults below suit one harness, so for another pass both directories
+# and edit MARKER.
 #
 # Sections 1-5 are grep/awk over the raw text and need nothing installed.
 # Sections 6-8 read per-record JSON, so they need python3; without it they say
@@ -38,6 +39,9 @@ CANDIDATE_DIRS=(
 # both paths resolve to the repo tree when deployed).
 SKILLS="${2:-$HOME/.claude/skills}"
 MARKER='"skill":"[a-zA-Z0-9_-]*"'
+# Skills are the directories holding a SKILL.md; the listing also has others
+# (synced/), which would otherwise report as never fired.
+skill_names() { (cd "$SKILLS" && ls -1d -- */SKILL.md) | sed 's|/SKILL.md$||' | sort; }
 
 TRANSCRIPTS="${1:-${AGENT_TRANSCRIPT_DIR:-}}"
 if [ -z "$TRANSCRIPTS" ]; then
@@ -68,13 +72,13 @@ echo
 echo "=== 2. never fired (exists but zero loads) ==="
 # Weight by age before concluding: a skill added last week cannot have fired yet.
 comm -23 \
-	<(ls -1 "$SKILLS" | sort) \
+	<(skill_names) \
 	<(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
 
 echo
 echo "=== 3. fired but no skill directory (built-ins, or renamed/removed) ==="
 comm -13 \
-	<(ls -1 "$SKILLS" | sort) \
+	<(skill_names) \
 	<(grep -rho "$MARKER" --include="*.jsonl" "$TRANSCRIPTS" | sed 's/.*://;s/"//g' | sort -u)
 
 echo
