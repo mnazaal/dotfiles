@@ -169,8 +169,8 @@ end
 function M.make_prefix(opts)
   opts = opts or {}
   -- Extra `VAR=value` make args, for Makefiles that hardcode a system dir
-  -- (e.g. pass-otp's BASHCOMPDIR=/etc/bash_completion.d) which must be pointed
-  -- at a user-writable path for a ~/.local install.
+  -- (e.g. BASHCOMPDIR=/etc/bash_completion.d) which must be pointed at a
+  -- user-writable path for a ~/.local install.
   local extra = ""
   for name, value in M.sorted_pairs(opts.vars) do
     extra = extra .. " " .. name .. "=" .. M.q(value)

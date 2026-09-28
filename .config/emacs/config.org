@@ -2092,7 +2092,7 @@ the actual labels in the document, plus a jumpable table of contents.
 ** auctex-cont-latexmk                                        :writing:latex:
 Compile-on-save, from GNU ELPA rather than hand-rolled. =latexmk -pvc= runs in
 the background and rebuilds on every save, so there is no compile keystroke and
-no minibuffer command prompt; Evince picks up each rebuild on its own. Unlike
+no minibuffer command prompt; sioyek picks up each rebuild on its own. Unlike
 running =latexmk -pvc= in a terminal, errors come back through Flymake, so the
 existing =]d= / =[d= bindings (see [[*evil-collection][evil-collection]]) navigate LaTeX errors too.
 

@@ -115,7 +115,7 @@ check: check-requirements test check-agent-role-sync check-guardrails-native-syn
 	fi
 
 check-requirements:
-	@for cmd in shellcheck shfmt; do \
+	@for cmd in shellcheck shfmt bun uv; do \
 		command -v "$$cmd" >/dev/null 2>&1 || { echo "check: $$cmd is required" >&2; exit 1; }; \
 	done
 	@python3 -c 'import yaml' || { echo 'check: PyYAML is required' >&2; exit 1; }
@@ -148,8 +148,9 @@ check-guardrails-native-sync:
 # lists them in sensitive-paths.json; machinery-ro.profile is what enforces them
 # at launch. A rename in one file and not the other unprotects the path with no
 # symptom: the sandbox silently drops binds whose source is missing, and most
-# pins have no test of their own. Only ~/dotfiles entries are checked — the others are
-# the stow-deployed links, whose targets these pins already cover.
+# pins have no test of their own. Only ~/dotfiles entries are checked here; the
+# pins outside it (the ~/.local/share bin directories and ~/.local/share/claude)
+# are covered by tests/sandbox-profile-test.sh, which walks the real PATH.
 check-machinery-ro-sync:
 	@set -eu; \
 	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \

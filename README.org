@@ -19,9 +19,9 @@ Run the full repository checks (tests, drift checks, doctor, linters) with:
 make check
 #+end_src
 
-=make check= requires ShellCheck, shfmt and PyYAML; missing tools or formatting
+=make check= requires ShellCheck, shfmt, bun, uv and PyYAML; missing tools or formatting
 drift fail the full check rather than being skipped. The isolated =make test=
-remains available without those lint dependencies. =make check= expects the
+needs only bun of those. =make check= expects the
 managed links created by =make link=. It warns when
 the intentionally untracked =~/org/agenda= is absent; require it explicitly
 with =dotfiles-doctor --strict=.

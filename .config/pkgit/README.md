@@ -34,7 +34,7 @@ clones ref HEAD — so every pin in this config is a `checkout`.
 | CMake | `ccache`, `fastfetch`, `fish-shell`, `llama.cpp`, `pdfpc`, `qpdf` |
 | Make + PREFIX | `dunst`, `keyd` |
 | Autotools | `emacs`, `isync-isync`, `msmtp`, `nautilus-dropbox`, `notmuch`, `rdfind`, `stow` |
-| Custom | `fzf`, `kitty`, `neovim`, `sioyek` |
+| Custom | `curl`, `fzf`, `kitty`, `neovim`, `sioyek` |
 
 ## Verification
 
@@ -71,8 +71,7 @@ never loads the `repositories` table (`src/pkg_remove.c` omits the
 matches a marker file in the source tree against the `build_systems` keys and
 runs THAT entry's uninstall — then reports `[SUCCESS]` either way. So a removal
 runs the bare `lib.make_prefix()`/`lib.meson()`/`lib.cmake()` uninstall with none
-of the recipe's options: `pass-otp` without `BASHCOMPDIR`, `nautilus-dropbox`
-without `NAUTILUS_EXTENSION_DIR`, the Wayland-stack packages without their prefix
+of the recipe's options: `nautilus-dropbox` without `NAUTILUS_EXTENSION_DIR`, the Wayland-stack packages without their prefix
 pkgconfig. It also picks by table order when a tree carries two markers (`neovim`
 has both a `Makefile` and a `CMakeLists.txt`), so which one runs is not
 determined. Uninstall by hand instead; writing per-recipe `uninstall` functions
