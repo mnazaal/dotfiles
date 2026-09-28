@@ -6,9 +6,8 @@
 
 The shared rules above are written tool-agnostically (for the pi agent). Map their tool names onto Claude Code as follows:
 
-- **Code search** — use the native `Grep`/`Glob` tools, and the `Explore`
-  subagent for broad fan-out searches. Avoid raw `rg`/`grep`/`find` via `Bash`
-  for code discovery.
+- **Code search** — `grep`/`find` via `Bash` (current builds expose no
+  `Grep`/`Glob` tools), and the `Explore` subagent for broad fan-out searches.
 - **File inspection/edit** — prefer `Read`/`Edit`/`Write` for edits. 
   Never pair `cd` with a relative file read in one Bash command — use an absolute
   path. For `grep`/`rg`/`diff`/`git`/`cp`/`mv`, Claude Code 2.1.259+ always

@@ -99,7 +99,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Glob|Grep|Skill|Agent",
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|WebFetch|Glob|Grep|Skill|Agent|mcp__asta-mcp__.*",
         "hooks": [
           {
             "type": "command",
