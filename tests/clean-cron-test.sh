@@ -29,7 +29,11 @@ SH
 chmod +x "$tmp/bin/getent" "$tmp/bin/crontab"
 export HOME="$home" PATH="$tmp/bin:$PATH" MOCK_LIVE="$tmp/live"
 run() { make --no-print-directory -C "$repo" "$@" HOME="$home" >"$tmp/out" 2>"$tmp/err"; }
-fail() { printf '%s\n' "$1" >&2; cat "$tmp/err" >&2; exit 1; }
+fail() {
+	printf '%s\n' "$1" >&2
+	cat "$tmp/err" >&2
+	exit 1
+}
 
 # link installs the tracked file as the whole crontab; clean removes it.
 run link || fail 'make link failed'
