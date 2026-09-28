@@ -21,3 +21,6 @@ RW+=(
 	"$H/org/agents"             # shared agent wiki (read-write)
 )
 
+# The branch prefix the harness sets on its host process: shared git hooks read
+# an empty one as a HUMAN commit, so without it an agent's Bash can move main.
+SANDBOX_ENV+=("AGENT_BRANCH_PREFIX")

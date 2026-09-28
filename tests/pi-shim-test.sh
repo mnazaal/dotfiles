@@ -184,6 +184,13 @@ ext="$repo/.config/pi/agent/extensions/guardrails.ts"
 
 grep -q 'process\.env\.AGENT_BRANCH_PREFIX = "pi"' "$ext" ||
 	fail "the pi extension must set AGENT_BRANCH_PREFIX=pi in-process"
+# Setting it on the host process is not enough: pi's Bash runs under the real
+# sandbox, which drops every variable not on its allowlist.
+got=$(cd "$tmp" && AGENT_BRANCH_PREFIX=pi PATH="$repo/.local/scripts:$PATH" \
+	SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+	"$shell" -c 'printf "%s" "${AGENT_BRANCH_PREFIX-unset}"') ||
+	fail "pi-bash could not launch the sandbox"
+[ "$got" = pi ] || fail "AGENT_BRANCH_PREFIX does not reach pi's Bash (got: $got)"
 
 # Fail-closed launch: createGuardrails runs at import, and loadJson throws on a
 # missing or malformed policy, so a throw stops pi rather than starting it
