@@ -41,7 +41,7 @@ Adapters normalize host payloads to a `ToolEvent` (`command`, `paths`, `urls`,
 `tool`, `cwd`, `operation`) and call `createGuardrails(agent).evaluate(event,
 loadedSkills)`. Capabilities are not part of that payload: no adapter sets them,
 and the core derives them itself in `capabilitiesOf`. The core owns path checks,
-bash checks, multi-path handling, `apply_patch` path extraction,
+bash checks, multi-path handling,
 provider-neutral capability classification, and skill-gate matching. Adapters
 only keep session evidence and render host-specific deny/ask responses.
 
@@ -137,10 +137,10 @@ permission layer:
 | Agent  | Native layer                                | Status |
 |--------|---------------------------------------------|--------|
 | Claude | `.claude/settings.json` `permissions.deny`  | permanent — typed Read/Edit tool calls expose structured paths to match |
-| pi     | none                                        | pi ships no permission system of its own; the `tool_call` extension is the enforcement point |
+| pi     | `@zackify/pi-claude-permissions` package    | NOT synced: its own hard-coded protected-path and catastrophic-command lists, applied even in bypass mode; it reads `~/.pi/agent/settings.json`, so its `piClaudePermissions` block works only through the untracked `~/.pi` symlink. The `tool_call` extension remains the enforcement point for this policy |
 
 Claude's credential denies are drift-checked against `sensitive-paths.json` by
-`make check-guardrails-native-sync`. The hook stays primary for everything a
+`make check-guardrails-native-sync`; pi's package is not. The hook stays primary for everything a
 path list cannot express: dangerous commands, skill gates, ref-rewrite
 protection, and the `ask` tier.
 
@@ -149,7 +149,7 @@ block of its own `settings.json`; Pi's `shellPath` uses
 `~/.local/scripts/pi-bash` and the shared `sandbox -p agent` profile. Both put
 Bash subprocesses behind the kernel while typed file tools rely on their
 in-process deny rules — see `.config/sandbox/README.md`. The core relaxes the
-machinery-in-bash rule wherever the kernel already pins those paths: inside a
-container it detects itself, and, for Claude, when the adapter reads an enabled
+machinery-in-bash rule where the kernel already pins those paths: for Claude,
+when the adapter reads an enabled
 native sandbox from the machinery-pinned
 `settings.json` (never for a call carrying `dangerouslyDisableSandbox`).

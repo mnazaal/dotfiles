@@ -10,8 +10,8 @@ drifts into a different fault:
                        so a Read or Edit slips past where a Bash command would
                        not.
   settings -> policy   a rule Claude enforces that the shared policy has never
-                       heard of, which leaves PI uncovered — pi has no native
-                       permission layer, only this hook. Five live examples,
+                       heard of, which leaves PI uncovered — pi's permission
+                       package keeps its own list, which this does not check. Five live examples,
                        all found 2026-09-07: ~/.git-credentials,
                        ~/.git-credential-cache, ~/.local/share/keyrings,
                        ~/.local/share/mail and ~/.mozilla. Three

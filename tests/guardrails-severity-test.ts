@@ -11,9 +11,9 @@
  * silently: changing behavior must show up as an edit to an expectation here,
  * one row at a time, rather than as a diff buried in the JSON.
  *
- * Command severity is evaluated before skill gates (core.ts: evaluate returns
- * early on any non-allow guard result), so gated commands such as `git commit`
- * still report their command severity here rather than a skill-gate deny.
+ * Command severity is evaluated before skill gates, and evaluate returns the
+ * strictest of the two: a danger `deny` is final, while a danger `ask` still
+ * yields to a skill-gate `deny`.
  */
 import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from "node:fs";

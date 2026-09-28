@@ -19,26 +19,13 @@ import { homedir } from "node:os";
 const HOME = homedir();
 
 /**
- * Is this process inside the container sandbox? Machinery is unwritable at the
- * kernel there -- machinery-ro pins every path read-only at launch (nothing
- * re-checks the pins afterwards; the --verify-pins hook that once did was
- * deleted with the podman door) -- so denying it in bash
- * blocks the reads sensitive-paths.json explicitly allows ("blocked for
- * write/bash but allowed for normal read tools") while adding no protection.
- * The workaround it drives, splitting a path across string concatenation,
- * defeats the rule outright, so the rule mostly filters honest calls. Outside
- * the sandbox there is no such boundary and the rule stands.
- *
- * Deliberately not an environment variable: an agent can set one of those, and
- * this would become the confinement-tampering hole the guard exists to close.
- * Callers pass `inSandbox` explicitly: the Claude adapter does, for the native
- * bubblewrap sandbox that creates neither marker (it reads the machinery-pinned
- * settings.json instead), and the tests do.
+ * `inSandbox`: the kernel already pins machinery read-only, so denying it in
+ * bash would block the reads sensitive-paths.json explicitly allows ("blocked
+ * for write/bash but allowed for normal read tools") while adding no
+ * protection. The Claude adapter passes it when it reads an enabled native
+ * sandbox from the machinery-pinned settings.json. Deliberately not an
+ * environment variable: an agent can set one of those.
  */
-function detectSandbox(): boolean {
-  return existsSync("/run/.containerenv") || existsSync("/.dockerenv");
-}
-
 export type GuardOptions = { inSandbox?: boolean };
 
 export type Decision = { decision: "deny" | "ask" | "allow"; reason?: string };
@@ -54,7 +41,9 @@ export type ToolEvent = {
 export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
 
 // --- shared JSON loading ----------------------------------------------------
-// Prefer the deployed copy, then the ~/dotfiles stow source. Everything under
+// Prefer the policy beside this module, so a checkout's tests and adapters
+// evaluate that checkout's JSON rather than the deployed one. Then the deployed
+// copy, then the ~/dotfiles stow source. Everything under
 // ~/.agents is a stow symlink into ~/dotfiles, so a harness that can reach one
 // tree but not the other (fresh deploy, or a sandbox whose bind of ~/.agents was
 // skipped because the path did not exist at launch) must still find its policy.
@@ -62,6 +51,7 @@ export type GuardrailDecision = Decision & { skill?: string; skills?: string[] }
 // never an unprotected allow-all policy.
 function loadJson(name: string): any {
   const candidates = [
+    resolve(import.meta.dir, name),
     resolve(HOME, ".agents/guardrails", name),
     resolve(HOME, "dotfiles/.agents/guardrails", name),
   ];
@@ -652,7 +642,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
   const segments = new Set<string>(sp.sensitive_segments ?? []);
   // Bash-only relaxation. Typed write/edit tool calls still consult `machinery`
   // in every mode, and credentials are never relaxed in any mode.
-  const bashMachinery: string[] = (opts.inSandbox ?? detectSandbox()) ? [] : machinery;
+  const bashMachinery: string[] = (opts.inSandbox ?? false) ? [] : machinery;
 
   const ESCALATORS = new Set<string>(dc.escalators ?? []);
   const DESTRUCTIVE = new Set<string>(dc.destructive ?? []);
@@ -1344,7 +1334,7 @@ export function createSkillGate() {
     const hits: SkillGateHit[] = [];
     if (input.command) hits.push(...bashHits(input.command));
     const tool = (input.tool ?? "").toLowerCase();
-    const writes = input.operation === "write" || tool.includes("write") || tool.includes("edit") || tool.includes("apply_patch");
+    const writes = input.operation === "write" || tool.includes("write") || tool.includes("edit");
     if (writes) for (const path of input.paths ?? []) hits.push(...writeHits(path, cwd));
     if (tool === "" || tool.includes("fetch")) for (const url of input.urls ?? []) hits.push(...fetchHits(url));
     hits.push(...capabilityHits(capabilitiesOf({ ...input, cwd })));
@@ -1353,13 +1343,6 @@ export function createSkillGate() {
   }
 
   return { requiredSkills };
-}
-
-export function extractPatchPaths(patch: string): string[] {
-  const paths: string[] = [];
-  const re = /^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm;
-  for (const match of patch.matchAll(re)) paths.push(match[1].trim());
-  return [...new Set(paths)];
 }
 
 function stringValues(input: Record<string, unknown> | undefined, keys: string[]): string[] {
@@ -1372,8 +1355,6 @@ function stringValues(input: Record<string, unknown> | undefined, keys: string[]
 export function pathsFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string[] {
   const paths = stringValues(input, ["path", "filePath", "file_path", "file", "directory", "notebook_path"]);
   if ((tool ?? "").toLowerCase().includes("glob") && typeof input?.pattern === "string") paths.push(input.pattern);
-  const command = typeof input?.command === "string" ? input.command : undefined;
-  if ((tool ?? "").toLowerCase().includes("apply_patch") && command) paths.push(...extractPatchPaths(command));
   return [...new Set(paths)];
 }
 
@@ -1381,13 +1362,12 @@ export function inferOperation(tool: string | undefined, event: Pick<ToolEvent, 
   if (event.command) return "bash";
   const t = (tool ?? "").toLowerCase();
   if (event.urls?.length || t.includes("fetch")) return "fetch";
-  if (t.includes("apply_patch") || t.includes("write") || t.includes("edit")) return "write";
+  if (t.includes("write") || t.includes("edit")) return "write";
   if (["read", "list", "get", "context", "toc", "outline", "search", "refs", "diff", "glob", "grep"].some((s) => t.includes(s))) return "read";
   return "unknown";
 }
 
 export function commandFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string | undefined {
-  if ((tool ?? "").toLowerCase().includes("apply_patch")) return undefined;
   return typeof input?.command === "string" ? input.command : undefined;
 }
 
