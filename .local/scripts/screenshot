@@ -28,20 +28,20 @@ file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
 log "start mode=$mode file=$file"
 
 case "$mode" in
-full) grim "$file" ;;
+full) grim "$file" || die "grim failed" "grim failed" ;;
 region)
 	require slurp
-	region="$(slurp)"
-	if [ -z "$region" ]; then
-		log "cancelled: empty region"
+	# slurp exits non-zero when the selection is cancelled.
+	region="$(slurp)" || {
+		log "cancelled"
 		notify -u low "Screenshot cancelled"
 		exit 0
-	fi
-	grim -g "$region" "$file"
+	}
+	grim -g "$region" "$file" || die "grim failed" "grim failed"
 	;;
 *) die "invalid mode: $mode" "Invalid mode: $mode" 64 ;;
 esac
 
-wl-copy --type image/png <"$file"
+wl-copy --type image/png <"$file" || die "wl-copy failed" "Saved but not copied: $file"
 log "ok file=$file"
 notify -u low -i "$file" "Screenshot saved" "$file"

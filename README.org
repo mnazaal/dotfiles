@@ -99,7 +99,6 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   from the OpenSuSE Build Service repository — not Ubuntu's package) having been
   authorised once interactively with a bare =onedrive=. It refuses =--resync=,
   and reports the client's mandatory-resync exit status rather than looping on it
-- =.local/scripts/shell-share= depends on =ttyd=, =cloudflared=, and =tmux=
 
 * TODO
 - [ ] Consolidate AI agentic coding workflow within more formal constraints: pre-condition, loop invariant, post-condition.

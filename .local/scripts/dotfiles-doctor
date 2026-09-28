@@ -291,9 +291,9 @@ if [[ -f "$waybar_config" ]]; then
 	fi
 fi
 
-# cron never reads the repository copy -- it must be loaded by hand with
-# `crontab ~/.local/cron` -- so the live crontab and the tracked file drift in
-# silence. That is how the OneDrive sync came to be commented out in the live
+# cron never reads the repository copy, so the live crontab and the tracked
+# file can drift in silence; crontab-sync (run by `make link` and every 15
+# minutes) repairs it, and this reports drift it has not repaired yet. That is how the OneDrive sync came to be commented out in the live
 # crontab and absent from the tracked one, running nowhere and recorded nowhere.
 cron_file="$repo/.local/cron"
 if [[ ! -r "$cron_file" ]]; then

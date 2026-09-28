@@ -31,11 +31,19 @@ imap_password=$(pass show "$IMAP_PASSWORD_ENTRY" | sed -n '1p')
 
 rss=$(printf '%s\n' "$primary" | sed "s/@/+${RSS_EMAIL_SUFFIX}@/")
 
+# Escape for a sed replacement: an unescaped & inserts the placeholder into the
+# password, and a | ends the expression.
+sed_escape() { # value -> value safe after s|...|
+	local v=${1//\\/\\\\}
+	v=${v//&/\\&}
+	printf '%s' "${v//|/\\|}"
+}
+
 sed \
-	-e "s|__RSS2EMAIL_PRIMARY_EMAIL__|$primary|g" \
-	-e "s|__RSS2EMAIL_RSS_EMAIL__|$rss|g" \
-	-e "s|__RSS2EMAIL_SENDMAIL__|$RSS2EMAIL_SENDMAIL|g" \
-	-e "s|__RSS2EMAIL_IMAP_PASSWORD__|$imap_password|g" \
+	-e "s|__RSS2EMAIL_PRIMARY_EMAIL__|$(sed_escape "$primary")|g" \
+	-e "s|__RSS2EMAIL_RSS_EMAIL__|$(sed_escape "$rss")|g" \
+	-e "s|__RSS2EMAIL_SENDMAIL__|$(sed_escape "$RSS2EMAIL_SENDMAIL")|g" \
+	-e "s|__RSS2EMAIL_IMAP_PASSWORD__|$(sed_escape "$imap_password")|g" \
 	"$RSS2EMAIL_CONFIG" >"$tmp"
 
 if [[ $# -eq 0 ]]; then
