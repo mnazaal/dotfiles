@@ -16,8 +16,6 @@ fi
 
 export MANROFFOPT="-c"
 export MANPAGER="sh -c 'col -bx | (command -v bat >/dev/null 2>&1 && bat --paging=always --style=plain -l man || less)'"
-export EDITOR=$(command -v nvim || command -v vim || command -v vi)
-export VISUAL=$EDITOR
 export COLORTERM=truecolor
 export GPG_TTY=$TTY
 
@@ -42,8 +40,6 @@ export NPM_CONFIG_INIT_MODULE="$XDG_CONFIG_HOME/npm/config/npm-init.js"
 export NPM_CONFIG_CACHE="$XDG_CACHE_HOME/npm"
 export BUN_INSTALL="$XDG_DATA_HOME/bun"
 export BROWSER="firefox"
-export MAMBA_EXE="$HOME/.local/bin/micromamba"
-export MAMBA_ROOT_PREFIX="$XDG_DATA_HOME/micromamba"
 export GOROOT="$HOME/.local/go"
 export GOPATH="$XDG_DATA_HOME/go"
 export GOMODCACHE="$XDG_CACHE_HOME/go/mod"
@@ -74,5 +70,10 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.local/scripts:$PATH"
 export PATH="$XDG_DATA_HOME/fnm/aliases/default/bin:$PATH"
+
+# After PATH is complete: resolved earlier, a bare-PATH session (desktop, cron)
+# got /usr/bin/vim. Before ~/.localenv, so a host can still override it.
+export EDITOR=$(command -v nvim || command -v vim || command -v vi)
+export VISUAL=$EDITOR
 
 [[ -r "$HOME/.localenv" ]] && source "$HOME/.localenv"

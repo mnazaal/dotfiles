@@ -65,8 +65,6 @@ zstyle ':fzf-tab:*' fzf-flags --height=80% --preview-window=right:50%
 command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
 command -v direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
 command -v fnm >/dev/null 2>&1 && eval "$(fnm env --use-on-cd)"
-command -v "$MAMBA_EXE" >/dev/null 2>&1 &&
-    eval "$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2>/dev/null)"
 command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)" && export _ZO_DOCTOR=0
 
 # FZF options
@@ -160,7 +158,7 @@ if [[ -o interactive ]] &&
     command -v tmux >/dev/null 2>&1; then
     # xterm-256color is universally present; xterm-kitty terminfo may be
     # absent on remote/HPC nodes, which would stop tmux from starting.
-    [[ "$TERM" == "dumb" ]] && export TERM=xterm-256color
+    infocmp "$TERM" >/dev/null 2>&1 || export TERM=xterm-256color
     tmux start-server 2>/dev/null
     tmux attach-session -d 2>/dev/null || tmux new-session -s main
 fi

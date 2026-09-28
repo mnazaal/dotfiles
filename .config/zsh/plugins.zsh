@@ -1,3 +1,6 @@
+# zsh-vi-mode defaults to initialising on the first prompt, which rebinds ^R
+# after .zshrc has bound it to fzf. Initialise at source time instead.
+ZVM_INIT_MODE=sourcing
 ZPLUGINDIR="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
 ZPLUGIN_URLS=(
     https://github.com/aloxaf/fzf-tab
