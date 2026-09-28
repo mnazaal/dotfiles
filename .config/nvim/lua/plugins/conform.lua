@@ -6,12 +6,12 @@ local function options()
       lua = { "stylua" },
       python = { "ruff_fix", "ruff_format", "ruff_organize_imports" },
       sh = { "shfmt" },
-      json = { "prettier", stop_after_first = true },
+      json = { "prettier" },
       ["_"] = { "trim_whitespace" },
     },
     format_on_save = {
       timeout_ms = 500,
-      lsp_fallback = true,
+      lsp_format = "fallback",
     },
   }
 end
@@ -19,8 +19,8 @@ end
 function M.setup()
   require("conform").setup(options())
 
-  vim.keymap.set({ "n", "v" }, "<leader>f", function()
-    require("conform").format({ async = true, lsp_fallback = true })
+  vim.keymap.set({ "n", "v" }, "<leader>cf", function()
+    require("conform").format({ async = true, lsp_format = "fallback" })
   end, { desc = "Format buffer" })
 end
 

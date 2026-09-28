@@ -57,7 +57,7 @@ local function which_key_options()
       { "<leader>r", group = "+config" },
       { "<leader>f", group = "+find" },
       { "<leader>g", group = "+git" },
-      { "<leader>d", group = "+diagnostics" },
+      { "<leader>x", group = "+diagnostics" },
     },
   }
 end
@@ -76,7 +76,6 @@ local function gitsigns_options()
     numhl = false,
     linehl = false,
     watch_gitdir = {
-      interval = 1000,
       follow_files = true,
     },
     attach_to_untracked = true,
@@ -87,8 +86,12 @@ local function gitsigns_options()
         vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = desc })
       end
 
-      map("n", "]h", gs.next_hunk, "Next hunk")
-      map("n", "[h", gs.prev_hunk, "Prev hunk")
+      map("n", "]h", function()
+        gs.nav_hunk("next")
+      end, "Next hunk")
+      map("n", "[h", function()
+        gs.nav_hunk("prev")
+      end, "Prev hunk")
       map("n", "<leader>ghs", gs.stage_hunk, "Stage hunk")
       map("n", "<leader>ghr", gs.reset_hunk, "Reset hunk")
       map("v", "<leader>ghs", function()

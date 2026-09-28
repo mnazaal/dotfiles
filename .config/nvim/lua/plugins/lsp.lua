@@ -61,11 +61,7 @@ local function mason_packages()
     "json-lsp",
     "lua-language-server",
     "marksman",
-    "pyright",
     "yaml-language-server",
-    "stylua",
-    "shfmt",
-    "prettier",
   }
 end
 
@@ -220,8 +216,8 @@ local function configure_lsp_attach()
 end
 
 local function configure_diagnostic_keymaps()
-  vim.keymap.set("n", "<leader>dl", vim.diagnostic.open_float, { desc = "Diagnostic list" })
-  vim.keymap.set("n", "<leader>dq", vim.diagnostic.setloclist, { desc = "Diagnostic quickfix" })
+  vim.keymap.set("n", "<leader>xl", vim.diagnostic.open_float, { desc = "Diagnostic list" })
+  vim.keymap.set("n", "<leader>xq", vim.diagnostic.setloclist, { desc = "Diagnostic quickfix" })
 end
 
 function M.setup()
