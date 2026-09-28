@@ -31,14 +31,13 @@ Remove only links owned by this repository with:
 make clean
 #+end_src
 
-A successful cleanup is silent. It does not remove unrelated symlinks or
-tracked source files. Cleanup refuses while tracked cron jobs are live: first
-run =make cron-unlink= in the real login home. That target removes only the
-tracked jobs and preserves unrelated jobs and comments. It refuses if some
-tracked jobs have drifted. It does not save the live crontab under the
-agent-visible =~/.cache=: unrelated jobs may contain credentials. Arrange a
-private backup outside the agent sandbox if you need one. =make clean= does
-not alter the crontab.
+It does not remove unrelated symlinks or tracked source files. In the real
+login home it also removes the crontab that =make link= installed, printing one
+line when it does; otherwise it is silent. It refuses, changing nothing, when the
+live crontab differs from =.local/cron=: a job added with =crontab -e= would
+otherwise be deleted with it. The refusal names tracked jobs that are missing
+and counts hand-added ones without printing them, since a job may carry a
+credential.
 The sync job in =~/.local/cron= restores the tracked schedule every 15 minutes;
 edit the tracked file, not =crontab -e=, while the deployment is active.
 

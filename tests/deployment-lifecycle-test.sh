@@ -17,8 +17,18 @@ copy_repo() { rsync -a --no-devices --no-specials "$1/" "$2"; }
 
 home="$tmp/home"
 outside="$tmp/unrelated-target"
-mkdir -p "$home" "$outside"
+mkdir -p "$home" "$outside" "$tmp/bin"
 ln -s "$outside" "$home/unrelated"
+
+# crontab is per-user, not per-HOME: link and clean must leave it alone when
+# HOME is a fixture. Any call at all is the failure.
+cat >"$tmp/bin/crontab" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$CRONTAB_CALLS"
+exit 1
+SH
+chmod +x "$tmp/bin/crontab"
+export PATH="$tmp/bin:$PATH" CRONTAB_CALLS="$tmp/crontab-calls"
 
 make --no-print-directory -C "$repo" link HOME="$home" >/dev/null
 
@@ -122,5 +132,11 @@ make --no-print-directory -C "$source" clean HOME="$nested_home" >/dev/null
 
 [ -L "$source/.claude/skills" ] || {
 	printf 'make clean removed an internal source symlink\n' >&2
+	exit 1
+}
+
+[ ! -e "$CRONTAB_CALLS" ] || {
+	printf 'link or clean on a fixture HOME called crontab:\n' >&2
+	cat "$CRONTAB_CALLS" >&2
 	exit 1
 }
