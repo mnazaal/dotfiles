@@ -33,8 +33,8 @@ DESCRIPTION
   directory is read-write (not $PWD alone -- a subdirectory launch still binds
   the repository root, or nothing at all outside a repository),
   system dirs and whatever profiles add are read-only, everything else under
-  $HOME (ssh, gnupg, pass, other projects) is invisible. Secrets already in
-  the environment pass through, so callers can resolve them beforehand.
+  $HOME (ssh, gnupg, pass, other projects) is invisible. Environment
+  variables are dropped unless the SANDBOX_ENV allowlist names them.
 
   Env: $SANDBOX_PROFILE_PATH.
 EOF

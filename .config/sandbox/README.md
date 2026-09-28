@@ -14,9 +14,9 @@ sandbox -n -p dev -- make          # dry-run: print the bwrap command
 Only an allowlist is visible. The **repository** containing `$PWD` is
 read-write; system dirs and whatever the active profile adds are read-only;
 **everything else under `$HOME` — `~/.ssh`, `~/.gnupg`, `~/.password-store`,
-other projects — is invisible**. Secrets already in the environment pass
-through, so a caller can resolve them *before* entering the sandbox; the vaults
-themselves are never mounted.
+other projects — is invisible**. The vaults are never mounted, and secrets in
+the environment are dropped too unless a profile allowlists them (see
+Limits).
 
 "Invisible" is literal: only the allowlist is bound, so the rest of the host
 simply is not there.
@@ -71,9 +71,9 @@ existed for.
 
 | Profile | Adds |
 |---------|------|
-| `dev` | node/bun/fnm toolchains, `~/.gitconfig` (ro) + PATH fixup |
+| `dev` | node/bun/fnm toolchains, `~/.config/git` (ro) + PATH fixup |
 | `machinery-ro` | `RO_LAST` pins on the enforcement stack and `MASK`s on the credential stores — composed by `agent` |
-| `agent` | `use dev` + `machinery-ro` + `~/dotfiles`, `~/.agents` (ro) + `~/org/agents` (rw) |
+| `agent` | `use dev` + `machinery-ro`; read-only `~/.config`, `~/.local`, `~/projects` (every project), `~/dotfiles`, `~/.agents`, `~/org/roam`, `~/org/agenda`; read-write `~/.cache`, `~/.local/share`, `~/org/agents`. `agent.profile` is the full list |
 
 ## Coding agents
 
@@ -81,7 +81,7 @@ Both harnesses keep their host process outside the Bash boundary.
 
 - **`claude` and `claude-agent-acp`** use the `sandbox` block in
   `~/.claude/settings.json` for Bash subprocesses, with `permissions.deny`
-  covering file tools. The `denyWrite` list there and `machinery-ro.profile`
+  covering file tools. The `Edit()` deny rules there and `machinery-ro.profile`
   here must name the same persistence pins.
 - **`pi` and `pi-acp`** use `~/.local/scripts/pi` only to resolve the ASTA MCP
   key and launch the real host process. Pi's native `shellPath` points model
@@ -105,7 +105,7 @@ the capabilities Claude Code's nested step needs and is parked in `disable/`.
 
 - The network is shared (localhost services, the internal network). Convenient
   for in-the-loop use; not network isolation, and egress is accepted rather than
-  mitigated (`PLAN.md`, Open risks).
+  mitigated.
 - Environment: only the `SANDBOX_ENV` allowlist crosses (a small base set plus
   what the profile appends; pinned by `tests/sandbox-env-test.sh`). bubblewrap
   inherits the environment and the launcher subtracts with `--unsetenv`, so the
@@ -131,12 +131,8 @@ the capabilities Claude Code's nested step needs and is parked in `disable/`.
   not weighed at the time. It is consistent with the line above — this boundary
   is about mistakes, not exploits — but it should be a choice rather than an
   omission nobody wrote down.
-- **The two harnesses are confined at different scopes, and one is narrower
-  than this document's model implies.** Everything above describes whole-process
-  confinement, which is what pi gets: the shim execs the agent itself under the
-  launcher. The harness-native boundary that claude uses covers its Bash
-  subprocesses only; its typed file tools (Read, Edit, Write) are governed by
-  `permissions.deny` in settings.json and by the guardrail hook, which are
-  in-process policy rather than a kernel boundary. The practical consequence is
-  that for claude, a path's protection depends on which tool reaches for it, so
-  a rule added in only one of the two layers is not a boundary.
+- **Only Bash is behind the kernel, for both harnesses.** Their typed file
+  tools are in-process policy: `permissions.deny` and the guardrail hook for
+  claude, the guardrails extension for pi. A path's protection therefore
+  depends on which tool reaches for it, so a rule added in only one of the
+  layers is not a boundary.
