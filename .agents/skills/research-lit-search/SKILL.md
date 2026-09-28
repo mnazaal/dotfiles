@@ -35,6 +35,14 @@ description: "Use for literature search: related work, paper search, field surve
 When the search is a novelty gate (routed from `research-protocol` before building a new
 method), the output is sharper than a field map:
 
+- Search each claimed ingredient by its mechanism, not only in the project's vocabulary:
+  prior art doing the same thing to a neighbouring object carries another name. Query
+  three classes per ingredient: (a) sibling objects — the undirected, discrete, or
+  otherwise neighbouring version of the object; (b) the generic machinery it
+  instantiates, e.g. active learning or experimental design; (c) settings where the
+  project's motivating constraint is a hard limit rather than an assumption, e.g. a
+  privacy budget or a human oracle. An ingredient searched only in the project's own
+  terms has not been gated.
 - For each nearest neighbor, name the single defining feature it is missing — not a vague
   "it differs".
 - State the defensible delta as the *combination* no single paper has, and lead with it.
@@ -44,8 +52,11 @@ method), the output is sharper than a field map:
   reader sees the combination rather than being told about it.
 - A null result carries its boundary. "Nobody has done this" is only weighable
   beside what was searched: the cutoff date, the sources covered, the languages,
-  and what was reachable without a subscription. Unbounded, the gate's negative
-  cannot be re-judged later and quietly expires as the literature moves.
+  and what was reachable without a subscription, and which of classes (a)–(c)
+  each ingredient was searched in, with the query strings. A null result that
+  covered only the project's own vocabulary is a partial gate and says so.
+  Unbounded, the gate's negative cannot be re-judged later and quietly expires
+  as the literature moves.
 - Fix the columns from what the problem demands, BEFORE filling in our own row.
   Columns chosen after the fact produce a last row that sweeps every one of
   them, which is the shape a reviewer discounts on sight — it reads as axes
