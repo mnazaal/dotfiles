@@ -63,7 +63,7 @@
         "format-muted": "\ueee8  {format_source}",
         "format-source": "\uf130 {volume}%",
         "format-source-muted": "\uf131 ",
-        "on-click": "zsh -c 'source ~/.config/zsh/.zshenv; exec pwvucontrol'"
+        "on-click": "zsh -c 'exec pwvucontrol'"
     },
 
     "bluetooth": {
@@ -84,7 +84,7 @@
         "format": "{icon}  {capacity}%",
         "format-charging": "\uf0e7 {capacity}%",
         "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"],
-        "on-click": "zsh -c 'source ~/.config/zsh/.zshenv; exec gnome-power-statistics'"
+        "on-click": "zsh -c 'exec gnome-power-statistics'"
     },
 
     "network": {
@@ -116,13 +116,13 @@
 
     "custom/reboot": {
         "tooltip": false,
-        "on-click": "zsh -c 'source ~/.config/zsh/.zshenv; zenity --question --timeout=10 --text=\"Reboot in 10 seconds unless cancelled.\" --ok-label=\"Reboot\" --cancel-label=\"Cancel\"; r=$?; if [ \"$r\" -eq 0 ] || [ \"$r\" -eq 5 ]; then reboot; fi'",
+        "on-click": "zsh -c 'zenity --question --timeout=10 --text=\"Reboot in 10 seconds unless cancelled.\" --ok-label=\"Reboot\" --cancel-label=\"Cancel\"; r=$?; if [ \"$r\" -eq 0 ] || [ \"$r\" -eq 5 ]; then reboot; fi'",
         "format": "\udb81\udf09 "
     },
 
     "custom/shutdown": {
         "tooltip": false,
-        "on-click": "zsh -c 'source ~/.config/zsh/.zshenv; zenity --question --timeout=10 --text=\"Shutdown in 10 seconds unless cancelled.\" --ok-label=\"Shutdown\" --cancel-label=\"Cancel\"; r=$?; if [ \"$r\" -eq 0 ] || [ \"$r\" -eq 5 ]; then shutdown -h now; fi'",
+        "on-click": "zsh -c 'zenity --question --timeout=10 --text=\"Shutdown in 10 seconds unless cancelled.\" --ok-label=\"Shutdown\" --cancel-label=\"Cancel\"; r=$?; if [ \"$r\" -eq 0 ] || [ \"$r\" -eq 5 ]; then shutdown -h now; fi'",
         "format": "\udb81\udc25 "
     }
 }

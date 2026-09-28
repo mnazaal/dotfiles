@@ -7,3 +7,4 @@ Makefile
 PLAN\.md
 .claude/settings.local.json
 ^tests$
+^/\.editorconfig$
