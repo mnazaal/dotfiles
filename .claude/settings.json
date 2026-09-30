@@ -11,8 +11,8 @@
       "WebFetch(domain:*)"
     ],
     "deny": [
-      "Read(~/**/.env)",
-      "Read(~/**/.env.*)",
+      "Read(~/projects/*/.env)",
+      "Read(~/projects/*/.env.*)",
       "Read(~/.config/google-chrome/**)",
       "Read(~/.config/Signal/**)",
       "Read(~/.dropbox/**)",
@@ -85,7 +85,7 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus[1m]",
+  "model": "opus",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -138,10 +138,6 @@
         "~/projects",
         "~/org/agents",
         "~/Dropbox/org/agents"
-      ],
-      "denyRead": [
-        "~/projects/**/.env",
-        "~/projects/**/.env.*"
       ]
     }
   },
