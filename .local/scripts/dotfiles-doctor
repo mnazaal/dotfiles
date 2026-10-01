@@ -23,6 +23,7 @@ CHECKS:
   - Stow dry-run from repo root
   - Zsh bootstrap and target files exist after linking
   - zsh startup syntax/smoke test
+  - Executables on PATH under $HOME were built for this node's architecture
   - Kitty terminfo availability when TERM=xterm-kitty
   - SSH multiplex socket parent exists
   - Git hooks path and delta pager availability
@@ -181,6 +182,44 @@ if command -v zsh >/dev/null 2>&1; then
 	zsh -i -c exit >/dev/null 2>&1 && ok "zsh startup" || fail "zsh startup"
 else
 	fail "zsh not installed"
+fi
+
+# A home shared by login nodes of different CPU architectures (CSC Roihu: x86_64
+# CPU side, aarch64 GPU side) can hold a binary that PATH finds first but this
+# node cannot execute: `-x` passes, `command -v` finds it, only exec fails --
+# which in .bashrc's exec-zsh path killed every login on 2026-09-30. The ELF
+# e_machine field (2 bytes at offset 18, little-endian) is read directly, since
+# `file` and `readelf` are not guaranteed on a login node. Only PATH entries
+# under $HOME: the system directories are the node's own. warn, not fail: on
+# such a home the foreign copies are expected until ~/.local/<arch>/bin holds
+# their replacements, and the list IS the to-do list.
+case "$(uname -m)" in
+x86_64) want_machine=3e00 ;;
+aarch64 | arm64) want_machine=b700 ;;
+*) want_machine="" ;;
+esac
+if [[ -z "$want_machine" ]]; then
+	warn "PATH architecture check skipped: unknown machine $(uname -m)"
+else
+	foreign_bins=()
+	declare -A seen_dirs=()
+	IFS=: read -ra path_dirs <<<"$PATH"
+	for dir in "${path_dirs[@]}"; do
+		[[ "$dir" == "$HOME"/* && -d "$dir" && -z "${seen_dirs[$dir]:-}" ]] || continue
+		seen_dirs[$dir]=1
+		for bin in "$dir"/*; do
+			[[ -f "$bin" && -x "$bin" ]] || continue
+			[[ "$(head -c4 "$bin" 2>/dev/null)" == $'\x7fELF' ]] || continue
+			machine=$(od -An -tx1 -j18 -N2 "$bin" 2>/dev/null | tr -d ' \n')
+			[[ "$machine" == "$want_machine" ]] || foreign_bins+=("${bin/#$HOME/\~}")
+		done
+	done
+	if [[ ${#foreign_bins[@]} -eq 0 ]]; then
+		ok "PATH executables under ~ match $(uname -m)"
+	else
+		warn "${#foreign_bins[@]} PATH executable(s) under ~ built for another architecture than $(uname -m); on a shared home, install this node's copy under ~/.local/$(uname -m)/bin"
+		printf '%s\n' "${foreign_bins[@]}" | sed 's/^/      /'
+	fi
 fi
 
 hooks_path=$(git config --get core.hooksPath 2>/dev/null || true)
