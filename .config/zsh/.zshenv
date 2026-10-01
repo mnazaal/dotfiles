@@ -68,6 +68,19 @@ export PATH="$CARGO_HOME/bin:$PATH"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 export PATH="$HOME/.local/bin:$PATH"
+# A home shared by login nodes of different CPU architectures (CSC Roihu: x86_64
+# CPU side, aarch64 GPU side) keeps one build per arch under ~/.local/<arch>,
+# ahead of the arch-agnostic ~/.local/bin so a node picks its own binaries
+# first. Creating that directory is the opt-in: on such a node uv-installed
+# tools also go to arch-keyed dirs, since the default UV_TOOL_DIR and its
+# ~/.local/bin shims would otherwise be overwritten by the other arch.
+_arch_prefix="$HOME/.local/$(uname -m)"
+export PATH="$_arch_prefix/bin:$PATH"
+if [[ -d "$_arch_prefix" ]]; then
+    export UV_TOOL_DIR="$XDG_DATA_HOME/uv/tools-$(uname -m)"
+    export UV_TOOL_BIN_DIR="$_arch_prefix/bin"
+fi
+unset _arch_prefix
 export PATH="$HOME/.local/scripts:$PATH"
 export PATH="$XDG_DATA_HOME/fnm/aliases/default/bin:$PATH"
 
