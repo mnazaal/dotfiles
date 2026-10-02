@@ -15,6 +15,7 @@
 import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync, realpathSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 const HOME = homedir();
 
@@ -51,7 +52,7 @@ export type GuardrailDecision = Decision & { skill?: string; skills?: string[] }
 // never an unprotected allow-all policy.
 function loadJson(name: string): any {
   const candidates = [
-    resolve(import.meta.dir, name),
+    resolve(dirname(fileURLToPath(import.meta.url)), name),
     resolve(HOME, ".agents/guardrails", name),
     resolve(HOME, "dotfiles/.agents/guardrails", name),
   ];
