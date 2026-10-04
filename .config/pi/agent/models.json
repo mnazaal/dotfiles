@@ -3,6 +3,9 @@
     "openai-codex": {
       "baseUrl": "http://127.0.0.1:8787/v1",
       "modelOverrides": {
+        "gpt-6.1-sol": {
+          "contextWindow": 1050000
+        },
         "gpt-6-sol": {
           "contextWindow": 1050000
         },
@@ -31,10 +34,7 @@
             "xhigh": null,
             "max": "max"
           },
-          "input": [
-            "text",
-            "image"
-          ],
+          "input": ["text", "image"],
           "cost": {
             "input": 0.15,
             "output": 0.6,

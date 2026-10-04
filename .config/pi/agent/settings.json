@@ -5,18 +5,19 @@
   "tuiMode": "fullscreen",
   "hideThinkingBlock": false,
   "shellPath": "~/.local/scripts/pi-bash",
-  "npmCommand": ["bun"],
+  "npmCommand": [
+    "bun"
+  ],
   "packages": [
-    "npm:pi-mcp-adapter",
     "npm:pi-ask-user",
     "npm:pi-web-access",
     "npm:pi-simplify",
-    "npm:pi-subagents",
+    "git:github.com/nicobailon/pi-subagents",
     "npm:@zackify/pi-claude-permissions",
     "npm:@pi-archimedes/diff",
     "npm:@ogulcancelik/pi-minimal-footer"
   ],
-  "lastChangelogVersion": "0.87.1",
+  "lastChangelogVersion": "1.0.0",
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-6-sol",
@@ -24,13 +25,22 @@
     "openai-codex/gpt-6-luna",
     "openrouter/z-ai/glm-5.3-flash",
     "deepseek/deepseek-v4-pro",
-    "openrouter/deepseek/deepseek-v4.1-flash"
+    "openrouter/deepseek/deepseek-v4.1-flash",
+    "openai-codex/gpt-6.1-sol"
   ],
   "piClaudePermissions": {
     "defaultMode": "bypassPermissions",
     "allowCatastrophic": false,
-    "shiftTabOptions": ["bypassPermissions", "plan", "acceptEdits"],
-    "planModeAllowedMcpServers": ["deepwiki", "grepika", "asta-mcp"]
+    "shiftTabOptions": [
+      "bypassPermissions",
+      "plan",
+      "acceptEdits"
+    ],
+    "planModeAllowedMcpServers": [
+      "deepwiki",
+      "grepika",
+      "asta-mcp"
+    ]
   },
   "theme": "dark"
 }
