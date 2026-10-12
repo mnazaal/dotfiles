@@ -2,12 +2,19 @@ Basic dotfiles.
 
 * Deployment
 
-Canonical deployment from repository root - creates symlinks in relevant directories
-and, in the real login home, installs =~/.local/cron= as the *entire* live
-crontab. Back up or merge existing personal cron jobs before the first run:
+Canonical deployment from repository root - creates symlinks in relevant directories:
 #+begin_src bash
 make link
 #+end_src
+
+On a host that should run the tracked schedule, also install =~/.local/cron= as
+the *entire* live crontab, once per host. Back up or merge existing personal
+cron jobs first:
+#+begin_src bash
+make cron
+#+end_src
+=make link= never touches the crontab, so deploying on a cluster login node
+does not start the workstation's jobs there.
 
 Run the isolated repository behavior tests with:
 #+begin_src bash
@@ -32,7 +39,7 @@ make clean
 #+end_src
 
 It does not remove unrelated symlinks or tracked source files. In the real
-login home it also removes the crontab that =make link= installed, printing one
+login home it also removes the crontab that =make cron= installed, printing one
 line when it does; otherwise it is silent. It refuses, changing nothing, when the
 live crontab differs from =.local/cron=: a job added with =crontab -e= would
 otherwise be deleted with it. The refusal names tracked jobs that are missing

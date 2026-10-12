@@ -88,12 +88,11 @@ tracked_entries=$(entries "$CRON_FILE")
 
 [ "$live_entries" = "$tracked_entries" ] && exit 0
 
-# Validate before replacing. `crontab -n` is a dry run: on a malformed file it
-# exits non-zero with "errors in crontab file, can't install", so a bad tracked
-# file leaves the live schedule alone rather than wiping it.
-out=$(crontab -n "$CRON_FILE" 2>&1) || fail "$CRON_FILE is not a valid crontab, live schedule left alone: $out"
-
-out=$(crontab "$CRON_FILE" 2>&1) || fail "could not install $CRON_FILE: $out"
+# No separate dry run: `crontab <file>` parses into a temporary copy and refuses
+# to replace the live schedule when the file has errors ("errors in crontab
+# file, can't install"), in both Debian cron and cronie. The dry-run flag is not
+# portable between them -- Debian's `-n` is cronie's privileged "set host".
+out=$(crontab "$CRON_FILE" 2>&1) || fail "could not install $CRON_FILE, live schedule left alone: $out"
 
 printf '%s crontab-sync: installed %s (%s entries)\n' \
 	"$(date '+%F %T')" "$CRON_FILE" "$(printf '%s\n' "$tracked_entries" | grep -c . || true)"

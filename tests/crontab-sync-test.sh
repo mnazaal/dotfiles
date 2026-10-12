@@ -27,12 +27,14 @@ case "$1" in
     cat "$MOCK_LIVE"
     ;;
 -n)
-    if grep -q INVALID "$2"; then
-        printf 'bad crontab\n' >&2
-        exit 1
-    fi
+    printf 'must be privileged to set host with -n\n' >&2
+    exit 1
     ;;
 *)
+    if grep -q INVALID "$1"; then
+        printf 'errors in crontab file, can'"'"'t install.\n' >&2
+        exit 1
+    fi
     cp "$1" "$MOCK_LIVE"
     ;;
 esac
@@ -47,28 +49,28 @@ export HOME="$tmp/home" PATH="$tmp/bin:$PATH" CRON_FILE="$tmp/cron"
 export MOCK_LIVE="$tmp/live" MOCK_TRACE="$tmp/trace" MOCK_READ_ERROR="$tmp/read-error" MOCK_DENIED="$tmp/denied"
 printf '* * * * * /bin/true\n' >"$CRON_FILE"
 
-# First deployment has no crontab. It must validate and install the tracked one.
+# First deployment has no crontab. It must install the tracked one. The mock
+# rejects -n the way cronie does, so a dry-run call fails the test.
 "$repo/.local/scripts/crontab-sync" >"$tmp/out" 2>"$tmp/err" || {
 	printf 'crontab-sync failed on an empty account:\n' >&2
 	cat "$tmp/err" >&2
 	exit 1
 }
 cmp "$CRON_FILE" "$MOCK_LIVE"
-grep -qx -- '-n' "$MOCK_TRACE"
 
-# No change means no validation or install, even if the live copy has comments.
+# No change means no install, even if the live copy has comments.
 printf '# cron header\n' >"$MOCK_LIVE"
 cat "$CRON_FILE" >>"$MOCK_LIVE"
 : >"$MOCK_TRACE"
 "$repo/.local/scripts/crontab-sync" >"$tmp/out" 2>"$tmp/err"
 [ "$(cat "$MOCK_TRACE")" = '-l' ]
 
-# A changed schedule is validated before installation.
+# A changed schedule is installed.
 printf '0 0 * * * /bin/false\n' >"$MOCK_LIVE"
 : >"$MOCK_TRACE"
 "$repo/.local/scripts/crontab-sync" >"$tmp/out" 2>"$tmp/err"
 cmp "$CRON_FILE" "$MOCK_LIVE"
-[ "$(cat "$MOCK_TRACE")" = "$(printf '%s\n' '-l' '-n' "$CRON_FILE")" ]
+[ "$(cat "$MOCK_TRACE")" = "$(printf '%s\n' '-l' "$CRON_FILE")" ]
 
 # A broken tracked file must leave the live schedule untouched.
 printf 'INVALID\n' >"$CRON_FILE"
@@ -105,4 +107,4 @@ grep -q 'skipped' "$tmp/err"
 [ "$(cat "$MOCK_TRACE")" = '-l' ]
 [ ! -e "$MOCK_LIVE" ]
 
-printf 'crontab sync: first install, idempotence, validation, read errors and denied access pass\n'
+printf 'crontab sync: first install, idempotence, invalid file, read errors and denied access pass\n'

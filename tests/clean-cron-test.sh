@@ -6,7 +6,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 home="$tmp/home"
 mkdir -p "$tmp/bin" "$home/.cache"
-# The fixture home stands in for the login home, so link and clean reach the
+# The fixture home stands in for the login home, so cron and clean reach the
 # mocked crontab rather than skipping it.
 cat >"$tmp/bin/getent" <<'SH'
 #!/bin/sh
@@ -21,7 +21,6 @@ case "$1" in
 	[ -e "$MOCK_LIVE" ] || { echo 'no crontab for fixture' >&2; exit 1; }
 	cat "$MOCK_LIVE"
 	;;
--n) ;;
 -r) [ -e "$MOCK_LIVE" ] || { echo 'no crontab for fixture' >&2; exit 1; }; rm "$MOCK_LIVE" ;;
 *) cp "$1" "$MOCK_LIVE" ;;
 esac
@@ -35,8 +34,13 @@ fail() {
 	exit 1
 }
 
-# link installs the tracked file as the whole crontab; clean removes it.
+# link alone never touches the crontab: installing the schedule is per host.
 run link || fail 'make link failed'
+[ ! -e "$MOCK_LIVE" ] || fail 'make link installed a crontab'
+run clean || fail 'make clean failed after link'
+
+# cron installs the tracked file as the whole crontab; clean removes it.
+run cron || fail 'make cron failed'
 cmp "$repo/.local/cron" "$MOCK_LIVE"
 run clean || fail 'make clean refused the crontab link installed'
 [ ! -e "$MOCK_LIVE" ] || fail 'make clean left the crontab installed'
@@ -47,7 +51,7 @@ run clean || fail 'make clean is not idempotent'
 
 # A hand-added job blocks the whole clean: neither the job nor any link goes.
 # The job's text is not echoed, since it may carry a credential.
-run link || fail 'make link failed'
+run cron || fail 'make cron failed'
 printf '15 8 * * * /bin/echo personal-secret\n' >>"$MOCK_LIVE"
 cp "$MOCK_LIVE" "$tmp/expected"
 if run clean; then fail 'make clean removed a hand-added cron job'; fi

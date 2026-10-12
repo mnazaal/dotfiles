@@ -1,28 +1,26 @@
-.PHONY: help link clean clean-cron check check-requirements test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages audit-skills
+.PHONY: help link cron clean clean-cron check check-requirements test session-entry check-agent-role-sync check-guardrails-native-sync check-machinery-ro-sync check-skill-frontmatter check-skill-spec check-pi-packages pi-packages audit-skills
 
 help:
 	@printf '%s\n' \
 		'link   - stow repository files' \
-		'clean  - remove owned links and the crontab link installed; refuse if the crontab was edited by hand (DEEP=1 sweeps stale links)' \
+		'cron   - link, then install .local/cron as the whole live crontab (per host, once)' \
+		'clean  - remove owned links and the crontab cron installed; refuse if the crontab was edited by hand (DEEP=1 sweeps stale links)' \
 		'test   - run isolated repository behavior tests' \
 		'session-entry - point the GDM session at mango-session (needs root, once per machine)' \
 		'check  - run tests, the drift checks (agent roles, guardrail sync, machinery binds, skill frontmatter and spec, pi packages), doctor, ShellCheck, and shfmt (Org agenda optional)' \
 		'pi-packages - install pi packages that settings.json declares but are missing' \
 		'audit-skills - skill firing audit over the session transcripts (minutes; not part of check)'
 
-# Deploying also brings the live crontab into step. stow only creates symlinks,
-# and cron reads its own copy rather than the tracked file, so `make link` would
-# otherwise leave the schedule describing the last hand-run `crontab` call.
-# crontab-sync is idempotent and validates before installing.
-#
-# Guarded on HOME being the real login home: crontab is per-USER, not per-HOME,
-# so an unguarded call would install this repository's crontab over the live one
-# every time the test suite runs `make link HOME=<tmpdir>`.
 link:
 	stow --target="$(HOME)" --no-folding .
-	@if [ "$(HOME)" = "$$(getent passwd "$$(id -un)" | cut -d: -f6)" ]; then \
-		"$(HOME)/.local/scripts/crontab-sync"; \
-	fi
+
+# Installing the schedule is a per-host decision, so it is its own target rather
+# than part of link: a crontab says what this machine runs, and the same link on
+# a cluster login node would start the workstation's mail and OneDrive jobs
+# there. cron reads its own copy, never the tracked file; after this first
+# install the every-15-minutes crontab-sync job keeps the two in step.
+cron: link
+	"$(HOME)/.local/scripts/crontab-sync"
 
 # Undo what link deployed, driven by the repository tree rather than by a walk
 # of $HOME: stow removes its own links, and the rmdir pass clears directories
@@ -43,10 +41,10 @@ clean: clean-cron
 			-type l -exec sh -c 'for link do target=$$(readlink -m "$$link"); case "$$target" in "$$DOTFILES"/*) rm "$$link"; rmdir -p --ignore-fail-on-non-empty "$${link%/*}" 2>/dev/null || true;; esac; done' sh {} +; \
 	fi
 	@if [ "$(HOME)" = "$$(getent passwd "$$(id -un)" | cut -d: -f6)" ] && command -v crontab >/dev/null 2>&1 && crontab -l >/dev/null 2>&1; then \
-		flock "$(HOME)/.cache/crontab-sync.lock" crontab -r && echo 'clean: removed the crontab that make link installed'; \
+		flock "$(HOME)/.cache/crontab-sync.lock" crontab -r && echo 'clean: removed the crontab that make cron installed'; \
 	fi
 
-# Mirror link, which installs the tracked file as the WHOLE crontab: clean
+# Mirror cron, which installs the tracked file as the WHOLE crontab: clean
 # removes it. clean-cron runs first and refuses, changing nothing, when the live
 # crontab is not the tracked one, so a hand-added job is never deleted. The
 # crontab -r comes after unstowing: removing crontab-sync's link first means the
