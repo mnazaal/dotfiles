@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# zipold: pack finished run-output folders into one .tar each, to cut a FILE count. Built for clusters whose
+# scratch quota counts files (inodes), where each finished job leaves a dozen tiny files (hydra configs, submitit
+# pickles and logs, metrics) that matter only as a record.
+#
+# Usage:
+#   zipold [--apply] [--days N] [--min N] [--gzip] [--exclude NAME]... <dir>
+#
+#   <dir>            a folder whose subfolders are independent run outputs, e.g. a project's results/
+#   --apply          pack; without it, only list what would be packed (the default)
+#   --days N         skip a subfolder if anything in it changed in the last N days (default 2): it may
+#                    belong to a running job
+#   --min N          skip a subfolder holding fewer than N entries (default 50): packing it saves little
+#   --gzip           write .tar.gz instead of .tar (saves bytes, costs CPU; files saved are the same)
+#   --exclude NAME   never touch subfolder NAME; repeatable. `hpc` (the hpc driver's logs) is always excluded
+#
+# Lossless: a subfolder is removed only after its archive lists exactly as many entries as the subfolder held;
+# otherwise the archive is deleted and the subfolder kept. Restore with `tar xf NAME.tar` in <dir>. Symlinked and
+# hidden subfolders are skipped. Nothing outside <dir> is read or written.
+#
+# Run on a remote host without installing it there (stdin carries the script, `--` ends ssh's own options):
+#   ssh <host> bash -s -- /scratch/work/USER/projects/X/results < ~/.local/scripts/zipold
+#   ssh <host> bash -s -- --apply /scratch/work/USER/projects/X/results < ~/.local/scripts/zipold
+#
+# Not for folders that code reads back (checkpoints a job resumes from, a cache, data): packing those breaks the
+# reader until they are unpacked. Read the dry-run list before --apply.
+set -euo pipefail
+
+APPLY=0 DAYS=2 MIN=50 GZIP=0 DIR=""
+EXCLUDE=(hpc)
+usage() {
+	echo "usage: zipold [--apply] [--days N] [--min N] [--gzip] [--exclude NAME]... <dir>" >&2
+	echo "       a dry run unless --apply; see the header of this script for details" >&2
+	exit "${1:-2}"
+}
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--apply) APPLY=1 ;;
+	--days)
+		DAYS=${2:?--days needs a number}
+		shift
+		;;
+	--min)
+		MIN=${2:?--min needs a number}
+		shift
+		;;
+	--gzip) GZIP=1 ;;
+	--exclude)
+		EXCLUDE+=("${2:?--exclude needs a name}")
+		shift
+		;;
+	-h | --help) usage 0 ;;
+	-*)
+		echo "zipold: unknown option $1" >&2
+		usage
+		;;
+	*)
+		[ -z "$DIR" ] || {
+			echo "zipold: one <dir> only" >&2
+			usage
+		}
+		DIR=$1
+		;;
+	esac
+	shift
+done
+[ -n "$DIR" ] || usage
+case "$DAYS$MIN" in *[!0-9]*)
+	echo "zipold: --days and --min take whole numbers" >&2
+	exit 2
+	;;
+esac
+[ -d "$DIR" ] || {
+	echo "zipold: no such directory: $DIR" >&2
+	exit 2
+}
+DIR=$(cd "$DIR" && pwd -P)
+case "$DIR" in / | "$(cd "$HOME" && pwd -P)")
+	echo "zipold: refusing $DIR" >&2
+	exit 2
+	;;
+esac
+cd "$DIR"
+
+ext=tar
+topt=cf
+if [ "$GZIP" = 1 ]; then
+	ext=tar.gz
+	topt=czf
+fi
+packed=0 freed=0
+for d in */; do
+	[ -e "$d" ] || continue # no subfolders: the glob stayed literal
+	d=${d%/}
+	if [ -L "$d" ]; then
+		echo "skip $d: symlink"
+		continue
+	fi
+	for x in "${EXCLUDE[@]}"; do [ "$d" = "$x" ] && continue 2; done
+	if [ -e "$d.tar" ] || [ -e "$d.tar.gz" ]; then
+		echo "skip $d: an archive of it already exists"
+		continue
+	fi
+	if [ "$DAYS" -gt 0 ] && [ -n "$(find "$d" -mtime "-$DAYS" -print -quit)" ]; then
+		echo "skip $d: changed in the last $DAYS days"
+		continue
+	fi
+	n=$(find "$d" | wc -l | tr -d ' ')
+	if [ "$n" -lt "$MIN" ]; then
+		echo "skip $d: $n entries, under --min $MIN"
+		continue
+	fi
+	if [ "$APPLY" = 0 ]; then
+		echo "would pack $d ($n entries)"
+	else
+		tar "$topt" "$d.$ext" "$d"
+		m=$(tar tf "$d.$ext" | wc -l | tr -d ' ')
+		if [ "$m" != "$n" ]; then
+			echo "FAIL $d: archive lists $m entries, folder has $n; folder kept" >&2
+			rm -f "$d.$ext"
+			continue
+		fi
+		rm -rf "$d"
+		echo "packed $d ($n entries)"
+	fi
+	packed=$((packed + 1))
+	freed=$((freed + n - 1))
+done
+if [ "$APPLY" = 1 ]; then verb="packed"; else verb="would pack"; fi
+echo "$verb $packed folders; files and folders freed: $freed"
