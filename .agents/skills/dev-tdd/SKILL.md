@@ -10,6 +10,7 @@ description: "Use for test-first development: features, bug fixes, regression te
 - Test behavior through public interfaces, not private implementation details.
 - Prefer one observable behavior per test/check.
 - Make the check able to fail for the right reason.
+- When the red was forced by mutating code or a fixture, diff against a pristine copy to prove the mutation landed before trusting the red; a write that silently did not land (read-only path, wrong copy, cached build) fakes a red-capable test.
 - Rebuild or truncate shared fixture state per case. A fixture that one case writes and the next reads passes vacuously the moment the writer stops running: the later case asserts against data it never produced, and the assertion looks healthy right up until the earlier case is deleted.
 - Validate numerics against an independent oracle (exact enumeration, finite differences, analytic special case), not a re-derivation of the code's own formula.
 - For stochastic recovery, assert a distribution (e.g. median over seeds), not a single-seed threshold — a lucky seed hides seed-dependent failure.
@@ -19,6 +20,7 @@ description: "Use for test-first development: features, bug fixes, regression te
 - In greenfield suites or explicit project-policy changes, deselect the slow tier by default so the routine command is the fast gate: set `addopts = "-m 'not slow'"` in pyproject and run slow tests explicitly (`pytest -m slow`) or in CI. Do not override an existing project's test policy casually; ensure the excluded tier has an explicit verification path.
 - Write minimal code to pass; refactor only while green.
 - Keep I/O and external dependencies behind seams.
+- When proposing seams to test at, give each one line on what it catches and what it misses.
 - Do not batch tests ahead of implementation.
 - Prefer tracer bullets: the thinnest end-to-end behavior that proves the path works (https://www.aihero.dev/tracer-bullets).
 - Primary completion evidence is end-to-end: a test that exercises the real entry point (CLI, script, train step). Unit-test a piece in isolation only when its logic is tricky enough to earn it; unit-green alone never proves the pipeline. For ML pipelines the standing form is `dev-ml-infra`'s smoke run.

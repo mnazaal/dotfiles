@@ -47,6 +47,8 @@ A thirty-second flaky loop is barely better than none; a two-second
 deterministic one changes what is possible. The loop is done when one named
 command, already run once, goes red on the symptom, is deterministic, is fast,
 and can be run by the agent without the human.
+If the red was forced by mutating code or a fixture, diff against a pristine
+copy to prove the mutation landed before trusting the red.
 
 The ML-specific loops — overfit one batch, synthetic recovery, replay one
 batch through the step function — are `debug-ml-research`'s probe ladder;

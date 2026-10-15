@@ -82,6 +82,10 @@ resolved hyperparameters after validation and before touching test. Answer
 "has this test set been accessed before?" explicitly at the second phase — it
 is the leakage no data-path rule catches, since it is a fact about the
 researcher rather than the pipeline (`dev-ml-infra` owns the rest).
+An agent loop that consults a held-out set at every accept/reject step is
+tuning on it: a fresh worktree stops file contamination, not that statistical
+leakage. Keep one untouched set for the final claim, or report that the
+result was selected with repeated feedback from that set.
 
 Sink: `notes/design-<comparison>` (`context-project-docs` owns the prefix).
 The result's `LOG.md` entry points back at it, which is what makes a

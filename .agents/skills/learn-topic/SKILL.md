@@ -29,6 +29,7 @@ instructions name. Create files lazily, on first use.
 - Never teach from parametric knowledge alone — find and cite a high-quality external source per lesson before writing it.
 - Target the zone of proximal development: read `LOG.md` first, then teach the most relevant next thing that's challenging but not overwhelming.
 - Knowledge (new facts) wants minimum difficulty — teach only what the lesson's skill requires. Skill practice wants effortful retrieval (recall, spacing, interleaving) — that difficulty is the point, not a flaw.
+- In a quiz, make every option the same length and form, and vary which position holds the correct answer; formatting or order must not give it away.
 - Reuse `assets/` components before writing new ones; promote a new one to `assets/` the moment a second lesson would duplicate it.
 - Keep `CONTEXT.md` pure compressed reference — no narrative, five-second lookup, devoid of implementation/lesson-plan detail.
 - When the user needs real-world calibration a lesson can't give (practice, critique, current field norms), point them at a high-reputation community rather than guessing — drop it if they don't want one.

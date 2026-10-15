@@ -73,6 +73,11 @@ Before calling it ungateable, look for an adjacent emitted event (the command
 that creates the state, the write that follows the decision); only when none
 exists is prose the ceiling.
 
+Before proposing a new check, look for an existing one that is unwired or
+silently broken — that gap is the finding, not a reinvention. A mechanical
+violation (a fixed pattern, a banned call, a file-location rule) gets a gate;
+a judgement call gets a review rule.
+
 Separate that from the description question, which the Firing Audit answers
 below and which this does not overrule. A description can still be wrong for an
 absence-triggered behaviour, and fixing it still helps: it decides whether the

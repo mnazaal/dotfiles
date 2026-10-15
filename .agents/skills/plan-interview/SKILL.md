@@ -74,6 +74,7 @@ one fixed shape, in chat and in a structured question tool alike:
 3. **Recommendation last**: the option you would pick and the one or two
    reasons that decide it. A question you cannot attach a recommendation to is
    not ready to ask — inspect or probe first.
+   Word the question so that "yes" accepts the recommendation.
 
 In a structured question tool, the options map onto the tool's option slots
 (pro and con in each description) with the recommendation marked on its
