@@ -181,17 +181,7 @@ project/
   tests/
 
   manuscript/
-    main.tex
-    sections/
-      00_abstract.tex
-      01_intro.tex
-      02_background.tex
-      03_method.tex
-      04_experiments.tex
-      05_related_work.tex
-      06_discussion.tex
-      07_limitations.tex
-      08_conclusion.tex
+    main.tex          # the whole paper: preamble, every section, appendix
     figures/
       source/         # generators live here ONLY if the manuscript is not externally synced
       generated/      # committed artifacts (the interface)
@@ -202,6 +192,12 @@ project/
     latexmkrc
     Makefile
 ```
+
+The paper is ONE `main.tex` holding every section and the appendix, the shape
+venue templates ship in (user preference). Section boundaries are `\section`
+headings inside it, and generated floats still arrive by `\input`. When a project
+already splits prose into per-section files, propose merging rather than
+extending the split.
 
 `manuscript/` is the publication-facing layer. It should consume outputs from
 code, experiments, notes, and bibliography tooling, not replace them. When it is
