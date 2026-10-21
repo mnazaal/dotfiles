@@ -59,6 +59,16 @@ project-name/
   depends on methods; methods do not depend on the harness.
 - `results/` is the only generated-output root. Put MLflow state, Hydra
   outputs, sweeps, checkpoints, figures, tables, logs, and artifacts under it.
+- Place each output by what reads it, when the run writes it. A record
+  (metrics, resolved config, logs, summaries) is read on the laptop and is
+  pulled. Resume state (training checkpoints, caches a requeued job reloads)
+  is read only by the cluster job: write it under the run's `.ckpt/`. A large
+  final artifact (weights) is pulled on demand: write a sidecar beside it
+  (`weights.sha256`) so a readout checks the sidecar, not the artifact.
+- Track `results/.rsync-filter` (gitignore `results/*` plus
+  `!results/.rsync-filter`; a bare `results/` cannot be re-included). It lists
+  `.ckpt/` and every other kind the laptop never reads; `rsync -F` applies it
+  on the cluster (`dev-hpc`).
 - `results/runs/<run_id>/` is the canonical human-readable per-run record:
   resolved config, git commit, seed, metrics, logs, and artifacts.
 - Make each run's output path unique by its FULL sweep key — every varied
