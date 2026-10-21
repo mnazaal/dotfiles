@@ -145,6 +145,16 @@ function ',' {
 alias '?'='noglob ?'
 alias ','='noglob ,'
 
+# Environment modules on HPC login nodes. `module` is a shell function the system's
+# bash startup defines; .bashrc's exec into zsh keeps the exported environment but
+# drops functions, so rebuild it from the init file the module system ships for zsh.
+if (( ! $+functions[module] )); then
+    for __modinit in "${LMOD_PKG:+$LMOD_PKG/init/zsh}" "${MODULESHOME:+$MODULESHOME/init/zsh}"; do
+        [[ -n $__modinit && -r $__modinit ]] && { source "$__modinit"; break; }
+    done
+    unset __modinit
+fi
+
 # Machine-local config
 [[ -r "$HOME/.localrc" ]] && source "$HOME/.localrc"
 
