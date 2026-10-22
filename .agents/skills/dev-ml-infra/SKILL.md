@@ -107,6 +107,16 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - MLflow is the default backend; `import mlflow` appears in exactly one adapter module, so swapping to wandb is one file.
 - Log config, git commit, and seed at run start; metrics at a fixed cadence; artifacts by path.
 
+## Output Size
+
+A run's output is sized when its writer is written, not when the laptop fills.
+
+- Arrays go in `np.savez_compressed`. JSON/JSONL rows hold scalars; a trajectory or per-step array goes in the run's compressed array file. A float written as JSON text costs ~19 bytes, against 4 stored as float32.
+- Store each field at the precision its readout needs, not the precision it was computed in: float64 numerics usually store as float32. Keep float64 for a field a readout subtracts or exponentiates at full precision, and say which.
+- Decide before launch whether any readout needs raw samples. If none does, store the summaries the readouts compute. If one does, the samples are a large final artifact (Research Project Layout).
+- A finished sweep gets a collect step on the cluster that merges its per-task files into one table for the tag (`results/<tag>/table.parquet`); readouts read the table. Per-task files stay (see Smoke Run on shared writes), but 100k files of 3 KB cost twice their bytes in filesystem blocks and pull slowly.
+- The task writes `status.json` in its run dir from a `try/finally` around the whole body: `ok`, or the exception and traceback. That is the task-body outcome `dev-hpc` otherwise reads from hydra's `*_result.pkl` (~80 KB of pickled config per run), which then goes in `.rsync-filter`.
+
 ## Extension Contract
 
 - One config-driven entry point runs any method or baseline (`python -m proj.run method=X data=Y`); adding a method = implement the shared method interface (`dev-python`) + one config entry — true for your own next baseline and for external users alike.
@@ -120,7 +130,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 
 ## Smoke Run
 
-- Every experiment repo has a standing e2e smoke test: the full pipeline through the real entry point on tiny synthetic data with a known answer (~50 steps) — asserts loss decreases, metrics/artifacts land in the tracker, checkpoint reloads.
+- Every experiment repo has a standing e2e smoke test: the full pipeline through the real entry point on tiny synthetic data with a known answer (~50 steps) — asserts loss decreases, metrics/artifacts land in the tracker, checkpoint reloads, and the run's output dir minus `.ckpt/` stays under a byte budget scaled from the expected per-run size. The budget is what makes Output Size hold: a format that bloats fails a test before it reaches the cluster.
 - The smoke run, not unit-test green, is the completion evidence for pipeline changes (`dev-verification`).
 - No backward compatibility: change configs and interfaces freely and fix call sites (`dev-ponytail`).
 - Every run must converge on re-run. Ask what a second launch does, and what a launch after a crash mid-write does. The failure is a truncated cache, checkpoint, or metrics file that still loads: write to a temp path and rename, and validate a cache before adopting it. Resume must reach the same end state as a clean run.
