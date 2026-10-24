@@ -71,7 +71,7 @@ need separate review; changing the policy does not remove them.
   (vc-make-backup-files t)
   (epa-file-cache-passphrase-for-symmetric-encryption t)
   (epa-file-select-keys 'silent)
-  (epa-pinentry-mode 'loopback)
+  (epg-pinentry-mode 'loopback)
   :config
   (set-language-environment "utf-8")
   (prefer-coding-system 'utf-8)
@@ -1271,9 +1271,7 @@ If the target is a file suggestion in the minibuffer, we can use embark to delet
 ** embark-consult                                                   :utility:
 #+begin_src emacs-lisp
 (use-package embark-consult
-  :after (embark consult)
-  :hook
-  (embark-collect-mode . embark-consult-preview-minor-mode))
+  :after (embark consult))
 #+end_src
 
 ** nerd-icons                                                        :visual:
@@ -1360,7 +1358,6 @@ Template expansion layered on top of CAPF completion.
 (use-package tempel
   :custom
   (tempel-path (expand-file-name "templates/tempel.eld" org-directory))
-  (tempel-trigger-prefix "\\")
   :init
   (defun tempel-setup-capf ()
     (setq-local completion-at-point-functions
