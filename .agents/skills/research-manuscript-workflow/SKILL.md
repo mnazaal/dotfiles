@@ -1,6 +1,6 @@
 ---
 name: research-manuscript-workflow
-description: "Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, reviewer responses and rebuttals, and agent-safe manuscript collaboration."
+description: "Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, double-blind anonymisation, code release, reviewer responses and rebuttals, and agent-safe manuscript collaboration."
 ---
 
 # Skill: Research Manuscript Workflow
@@ -480,6 +480,20 @@ outranks a longer one raised by one.
 
 But final text changes remain human-owned unless the user explicitly changes
 the project policy as described in the `.tex` guardrail.
+
+## Submission and Code Release
+
+- **Double-blind.** The anonymous supplement is a fresh export, never the
+  repo: no git history, author names in paths or `pyproject.toml`, tracker or
+  cluster URLs, or PDF metadata (`pdfinfo` both PDFs). Self-citations go in
+  the third person.
+- **Venue checklist.** Fill it from the record: compute in GPU-hours
+  including tuning and failed runs, seeds, dataset licences. A number the
+  record cannot back is answered "no", not estimated.
+- **Release.** Tag the commit every reported number came from, add a licence
+  and `CITATION.cff`, archive the tag for a DOI, and run the reproduce script
+  from a fresh clone with the lockfile before the paper names the URL. A
+  release that has never been run from a clean clone is unverified.
 
 ## Checklist for Setting Up a Manuscript
 
