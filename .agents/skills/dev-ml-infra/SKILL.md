@@ -80,6 +80,9 @@ project-name/
   of the identical config. (`dev-hpc` covers the sibling hydra `job.num` case.)
 - Track only layout/provenance docs inside generated-data/output directories
   (`data/README.md`, `results/README.md`); gitignore generated contents.
+  `data/README.md` names each dataset's source, version or hash, download date,
+  and licence, including whether it permits redistribution and whether it holds
+  personal data — written when the data arrives, not at submission.
 - One command path should run every method/baseline through the same interface:
   `python -m project_name.run method=X data=Y seed=0`.
 
@@ -106,7 +109,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 - Experiment code depends on a small `Tracker` protocol (`start_run`, `log_params`, `log_metrics`, `log_artifact`, `end_run`) — one module.
 - MLflow is the default backend; `import mlflow` appears in exactly one adapter module, so swapping to wandb is one file.
 - Create the MLflow experiment with an explicit `artifact_location` under `results/`: the artifact store defaults to `./mlruns` at the cwd even when the tracking DB lives under `results/`.
-- Log config, git commit, and seed at run start; metrics at a fixed cadence; artifacts by path.
+- Log config, git commit, seed, dirty-tree flag (with `git diff` as an artifact when dirty), the `uv.lock` hash, jax/jaxlib/CUDA versions, device type, and the dataset identity (version or content hash) at run start; metrics at a fixed cadence; artifacts by path.
 
 ## Output Size
 

@@ -62,7 +62,7 @@ code is correct without it.
   collapse to chance.
 - Axis, broadcast, or reduction suspect → shape probe with every dimension a
   distinct prime.
-- Seeding or pairing suspect → same seed twice (bit-identical), two seeds
+- Seeding or pairing suspect → same seed twice (bit-identical on CPU; on GPU see `dev-jax`), two seeds
   (different).
 - Eval path suspect → a tripwire arm that must fail (transposed adjacency,
   random graph, zero-width interval) through the identical path.
