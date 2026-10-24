@@ -132,12 +132,16 @@
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
     "filesystem": {
       "allowWrite": [
         "~/.cache",
         "~/projects",
         "~/org/agents",
         "~/Dropbox/org/agents"
+      ],
+      "denyRead": [
+        "/tmp"
       ]
     }
   },
@@ -145,10 +149,12 @@
   "effortLevel": "high",
   "modelSettings": {
     "claude-opus-5-5": {
-      "effortLevel": "medium"
+      "effortLevel": "medium",
+      "autoCompactWindow": 500000
     },
     "claude-fable-5-1": {
-      "effortLevel": "medium"
+      "effortLevel": "medium",
+      "autoCompactWindow": 500000
     }
   },
   "tui": "fullscreen",
