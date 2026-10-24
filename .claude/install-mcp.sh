@@ -18,7 +18,7 @@
 #
 # Note: deepwiki and grepika were intentionally dropped to reduce per-session
 # context/token cost (grepika also ships a large instructions block). Claude uses
-# native Grep/Glob + the Explore subagent for code search instead. Re-add with:
+# grep/find through Bash + the Explore subagent for code search instead. Re-add with:
 #   claude mcp add -s user --transport http deepwiki https://mcp.deepwiki.com/mcp
 #   claude mcp add -s user grepika -- bunx -y @agentika/grepika --mcp
 set -eu

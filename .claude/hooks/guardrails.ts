@@ -18,8 +18,8 @@ const tool = data.tool_name ?? "";
 const ti = data.tool_input ?? {};
 
 /**
- * The core relaxes the machinery-in-bash rule only inside a container it can
- * see (/run/.containerenv). Claude Code's own sandbox is bubblewrap and leaves
+ * The core relaxes the machinery-in-bash rule only when told the call is
+ * sandboxed (opts.inSandbox). Claude Code's sandbox is bubblewrap and leaves
  * no marker, yet its denyWrite list pins the same paths at the kernel for every
  * Bash call -- so the rule fired where it protected nothing and denied honest
  * reads. The decision is read from settings.json, which is machinery-pinned

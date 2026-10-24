@@ -29,7 +29,7 @@ set -uo pipefail
 # argument 1 or AGENT_TRANSCRIPT_DIR to avoid touching this file at all.
 CANDIDATE_DIRS=(
 	"$HOME/.claude/projects"
-	"$HOME/.config/agent/sessions"
+	"$HOME/.config/pi/agent/sessions"
 )
 
 # Default is the deployed Claude skills path. If the skills dir is missing,
