@@ -175,7 +175,7 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - What data/split?
 - What metric/eval path?
 - What seed(s)?
-- What config/commit/log path?
+- What config/commit/log path? Was the tree clean at that commit, and does the test suite pass there? A run from uncommitted code is `unknown`: the code that produced it is not recoverable. A test failing at that commit in a unit the result depends on makes it `broken`.
 - Is effect bigger than noise?
 - If non-significant: was the design ever powered for the minimum effect worth acting on (Before Launching)? Below that N the result is inconclusive, not "no effect".
 - A null correlation across a narrow predictor range is not evidence of no relationship. Check the range actually spanned against what the fitted relationship would predict across it; a real dependence is invisible when the predictor barely moved.

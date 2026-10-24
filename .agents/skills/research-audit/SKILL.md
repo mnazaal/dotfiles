@@ -1,6 +1,6 @@
 ---
 name: research-audit
-description: "Use for a complete, independent, first-principles review of a research project: audit the project, review it from scratch, is the problem well defined, is the gap real or already scooped, is the method correct, are the claims supported by the experiments, a periodic check before submission or after a long run of work."
+description: "Use for a complete, independent, first-principles review of a research project: audit the project, review it from scratch, is the problem well defined, is the gap real or already scooped, is the method correct, is the load-bearing code tested, are the claims supported by the experiments, a periodic check before submission or after a long run of work."
 ---
 
 # Skill: Research Audit
@@ -37,7 +37,8 @@ produces verdicts, not understanding.
 1. **Locate the inputs.** The problem statement in the narrowest form the
    project states it, the data, the claim spine (`claims.md`, else the
    paper's contributions), the last novelty-gate record and its cutoff date,
-   and the date of the previous audit if one is logged.
+   the test suite and its run command, and the date of the previous audit if
+   one is logged.
 2. **Cold reconstruction.** From the problem statement and data alone: what a
    solution must deliver, which assumptions make the problem well posed, the
    strongest fair baseline, and the experiment that would separate a real
@@ -54,11 +55,20 @@ produces verdicts, not understanding.
    - **Correctness** — re-derive the load-bearing result independently, then
      check the code against the derivation (`research-map` divergences,
      `code-review`). A divergence is a defect until the record justifies it.
+     Then audit the tests: list the load-bearing units (`dev-tdd` What Earns
+     a Characterization Test — losses, log-probs, samplers, metrics, the
+     split and eval path) and, for each, the test that would fail if it were
+     wrong. A unit with no test, or whose test asserts the code's own output
+     rather than an independent oracle, is untested — a defect, not a nit.
+     Run the suite at the commit the results came from and report it.
    - **Evidence** — walk every `claims.md` line: open the `results/` artifact
      it points to, confirm its strength label and that the wording does not
      claim more than the design delivers, and run the `research-run`
      Checklist and the evaluation-validity review over the supporting runs.
      A line whose artifact is missing is `asserted`, whatever its label says.
+     Check each supporting run names its commit and resolved config and ran
+     from a clean tree; a result no one can re-run from the record goes under
+     that claim's `## Known weaknesses`.
 4. **Merge.** Cross-leg contradictions are the highest-value findings — a
    claim the evidence leg accepts but the correctness leg breaks, a gap the
    novelty leg finds occupied.

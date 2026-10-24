@@ -50,6 +50,11 @@ to `research-session`; if decisions are unresolved, route to `plan-interview`.
   mechanism from the nearest cheap heuristic — pitted against the *strongest
   fair* form of that heuristic (a win over a strawman baseline is a false
   positive), with ground truth not derived from the method under test.
+- Early tests name each load-bearing unit (`dev-tdd` What Earns a
+  Characterization Test) with its independent oracle — closed form, finite
+  differences, brute-force enumeration, the reference implementation — and
+  sit in the execution order before the first experiment that depends on it.
+  A unit whose oracle cannot be named is a risk, not a test.
 - State what graduates to the shared library vs stays project-side
   (promote on second duplication).
 - Unpublished-idea privacy: the plan lives in the project repo, never in a

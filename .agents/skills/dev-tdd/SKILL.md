@@ -1,6 +1,6 @@
 ---
 name: dev-tdd
-description: "Use for test-first development: features, bug fixes, regression tests, red-green-refactor, public-interface behavior tests, small vertical slices, seams for I/O and dependencies."
+description: "Use for test-first development: features, bug fixes, regression tests, gradient checks, simulation-based calibration, property tests, red-green-refactor, public-interface behavior tests, small vertical slices, seams for I/O and dependencies."
 ---
 
 # Skill: Dev TDD
@@ -59,6 +59,9 @@ pass cannot alter behavior silently.
 Standing tests for ML code — the proactive form of `debug-ml-research`'s checks; write them before the failure, not after. Check details live there, not here:
 
 - From the `debug-ml-research` ladder, as standing regression tests: tiny-overfit, synthetic recovery (median over seeds, per the stochastic rule above), gradient flow, invariance/equivariance, leakage and train/eval parity.
+- Gradient check: any custom gradient, `stop_gradient`, or hand-written VJP gets a standing finite-difference test in float64 (`jax.test_util.check_grads`).
+- Simulation-based calibration for any inference code: draw θ from the prior, simulate data, infer, and test the rank of θ in the posterior for uniformity. Recovery at one fixed truth cannot show miscalibration.
+- Invariants as property tests (Hypothesis): permutation equivariance, normalisation to 1, log-prob vs its exponentiated form, batch-vs-loop equality — over generated inputs, not one hand-picked case.
 - Loss-at-init sanity: initial loss matches theory (≈ log C for C-class cross-entropy); catches broken losses/labels at step 0.
 - Shape/dtype: `jaxtyping` annotations with runtime checking on public functions double as tests; add explicit cases only for tricky broadcasting.
 - E2E: the `dev-ml-infra` smoke run through the real entry point is the standing pipeline gate.
