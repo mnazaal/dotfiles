@@ -15,6 +15,7 @@ description: "Use for Python code/projects: pyproject.toml, virtual environments
 - Put runnable experiments under existing project experiment conventions.
 - Use `pytest` for Python tests unless the project dictates otherwise.
 - Prefer existing project tools. In greenfield projects, default without asking to: `uv` (env/deps), `pytest`, `ruff`, `ty` (type check), and `dev-ml-infra`'s experiment stack (hydra-zen configs, MLflow behind a tracker seam). Ask only when deviating from these defaults.
+- Put dev tools (pytest, ruff, ty) in `[dependency-groups] dev`, which a plain `uv sync` installs. In an optional `[dev]` extra, the next bare `uv sync` uninstalls them.
 - Type public surfaces fully: complete signatures on public functions/methods. `Any`, untyped `dict` payloads, and bare `# type: ignore` are code smells — reach for a precise type, `TypedDict`/dataclass, or protocol first; if `Any` is truly unavoidable, say why at the use site.
 - Annotate array code with `jaxtyping` shape/dtype types (`Float[Array, "batch dim"]`); shapes in types beat shapes in comments or docstrings.
 - Research code is a library others benchmark against and extend: every method *and baseline* implements the same small, deep interface; a method coupled to the harness is a structural smell. The entry-point/extension contract lives in `dev-ml-infra`.
@@ -36,7 +37,7 @@ description: "Use for Python code/projects: pyproject.toml, virtual environments
 
 ```bash
 # Environment and deps (uv)
-uv venv && uv pip install -e ".[dev]"
+uv sync                 # project + dev group, from the lockfile
 uv add <package>        # adds to pyproject.toml + lockfile
 uv lock                 # re-resolve after a MANUAL pyproject edit (uv add/remove do this for you)
 uv sync                 # restore from lockfile

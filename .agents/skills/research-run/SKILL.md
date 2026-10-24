@@ -1,6 +1,6 @@
 ---
 name: research-run
-description: "Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken/unknown verdicts, a run whose artifacts are missing."
+description: "Use for ML/research runs at both ends. Before launching — stating the hypothesis, pre-registering the prediction and the analysis path, designing a sweep or ablation, how many seeds, sizing/powering a comparison, pairing arms, choosing the regime. After — configs, logs, metrics, ablations, seeds, reproducibility, result interpretation, improve/degrade/noise/broken/unknown verdicts, a run whose artifacts are missing. Also before writing any pre-registration or verdict entry, including a re-analysis of finished runs with a new metric or readout."
 ---
 
 # Skill: Research Run
@@ -61,7 +61,9 @@ of which can be made honestly once the numbers exist:
   extremes before fixing it. A statistic censored by its own construction — a
   fraction that saturates at 1 once the worst arm reaches zero, a ratio bounded by
   a floor — cannot discriminate the hypothesis, and that is invisible until the
-  numbers exist. Same for a null control: state its criterion in the units the
+  numbers exist. The same holds for a pass threshold: a "matches the reference"
+  criterion set at the reference's own noise floor fails every approximate arm,
+  so the rule decides nothing. Same for a null control: state its criterion in the units the
   mechanism moves, not whichever summary is at hand.
 - **The rival explanations.** Which non-mechanism accounts could produce the
   predicted result, and what in the design rules each one out. Work the classes

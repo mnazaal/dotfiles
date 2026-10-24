@@ -36,6 +36,7 @@ is hit, with the version it was verified against.
 | numerics | `jnp.trapz` | `jnp.trapezoid` (`trapz` removed) |
 | optimizers | `from jax.experimental import optimizers` | removed; use `optax` |
 | sharding | `jax.experimental.maps` / `pjit` | `maps` removed; `jax.jit` with `in_shardings`/`out_shardings` and `jax.sharding.NamedSharding` (`pjit` still imports) |
+| VI (blackjax 1.7.1, 2026-10-23) | `info.elbo` from `meanfield_vi`/`fullrank_vi` is the ELBO | it is the minimised loss, -ELBO (reaches -log Z on a Gaussian). `fullrank_vi` diverged on every setting piloted at 141 dims (cause unconfirmed); a closed-form-entropy full-rank VI on optax converged |
 
 ## Workflow
 

@@ -50,6 +50,8 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    sections); deviations from the agreed plan, each attributed — user-directed
    or agent-decided; and exit criteria as runnable commands — the command(s)
    whose output confirms the state the handoff claims.
+   Read branch and ref facts (`git branch -vv`, `git rev-parse <ref>`) at write
+   time; the user may have merged or moved refs since the session last looked.
    It sits above the plan because a cold reader needs it first, and it stays
    short because everything durable lives below it.
 3. Route durable content to its existing home rather than restating it: verdicts

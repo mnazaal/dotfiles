@@ -105,6 +105,7 @@ python -m project_name.run method=my_method data=synthetic seed=0
 
 - Experiment code depends on a small `Tracker` protocol (`start_run`, `log_params`, `log_metrics`, `log_artifact`, `end_run`) — one module.
 - MLflow is the default backend; `import mlflow` appears in exactly one adapter module, so swapping to wandb is one file.
+- Create the MLflow experiment with an explicit `artifact_location` under `results/`: the artifact store defaults to `./mlruns` at the cwd even when the tracking DB lives under `results/`.
 - Log config, git commit, and seed at run start; metrics at a fixed cadence; artifacts by path.
 
 ## Output Size

@@ -1,6 +1,6 @@
 ---
 name: understand-project
-description: "Use to rebuild understanding of a research project from its own records: walk me through this project, I have lost the thread, explain what was done and why, what does this claim rest on, what is the generative model, why does this proof work, where does it break, help me defend this to a reviewer. Works on a project being run, joined, resumed after a gap, or reviewed. Retrospective comprehension, not choosing what to do next."
+description: "Use to rebuild understanding of a research project from its own records: walk me through this project, I have lost the thread, explain what was done and why, what does this claim rest on, what is the generative model, why does this proof work, where does it break, help me defend this to a reviewer. Works on a project being run, joined, or resumed after a gap. Retrospective comprehension, not choosing what to do next or auditing whether the project holds up."
 ---
 
 # Skill: Understand Project
@@ -129,6 +129,8 @@ Route each; do not fix silently.
 - "What should I work on", briefing, or idea triage → `research-session`.
 - "Resume where we left off" with a handoff artifact → `session-handoff`.
 - Attacking a claim the user already understands → `critique-argument`.
+- Auditing whether the whole project holds up — problem, gap, method,
+  evidence — → `research-audit`.
 - A project with no record to transfer — an external paper and its release —
   → `research-paper` and `research-map`; there is nothing here to read.
 - Understanding a codebase rather than a research record → `understand-codebase`.

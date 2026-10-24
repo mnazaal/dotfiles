@@ -33,6 +33,9 @@ do not follow from general plotting sense.
   mean±std bands. Overlapping bars are not the test in either direction
   (`research-run`); a figure supporting a significance claim should show the
   difference the claim is about.
+- **A one-cell figure speaks for every setting that cell holds fixed.** When
+  proposing it, name the fixed settings the effect could depend on and say
+  whether the claim covers them; where banked runs vary one, show that axis.
 - **Show n, and say what the interval is.** Number of seeds behind every error
   bar, and whether it is SD, SEM, or a bootstrap CI. They differ by large
   factors and are indistinguishable by eye, so an unlabelled bar is unreadable

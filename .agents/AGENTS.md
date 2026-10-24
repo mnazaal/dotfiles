@@ -45,6 +45,8 @@ This file is global routing and behavior policy. Keep it small.
   follow" — is evidence the register was wrong for the thread, not just for
   that message. Switch to plain language and stay there, rather than
   simplifying once and reverting.
+- Introduce every figure, table or handed-over command with one plain sentence:
+  what it computes and which question it answers, before any number.
 - Disagree when the evidence disagrees: before executing a plan or accepting a
   claim, state the strongest objection in one line, unprompted. Do not optimize
   for agreement. Route a full stress-test to `critique-argument`.
@@ -74,6 +76,8 @@ This file is global routing and behavior policy. Keep it small.
   the file as unreadable or work around the Bash guard. Try the built-in read
   tool for a known file instead; if it also denies access, stop. This does not
   apply to credential paths or authorize writes.
+- The user's shell is zsh: a variable or quoted string holding several words
+  expands as ONE argument. Split it with `${=var}` or use an array.
 - Anything the user must run or read themselves (handoff scripts, driver
   commands, logs) goes under `~/.cache/`, never `/tmp` or the agent
   scratchpad — those are container-private in sandboxed sessions, so a path
