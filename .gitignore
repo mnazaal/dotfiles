@@ -54,9 +54,6 @@ dist/
 __pycache__/
 .pytest_cache/
 
-# Local agent/tool state
-.kiro/
-
 # Claude Code: track the curated config, ignore runtime/state and local overrides
 .claude/*
 !.claude/CLAUDE.md

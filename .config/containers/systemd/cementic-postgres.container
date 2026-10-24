@@ -3,15 +3,12 @@
 #
 # One-time setup:
 #
-#   1. Build the image once (same image compose.yml builds):
-#        podman build -f containers/postgres-vectorscale/Containerfile \
-#          -t cementic-postgres-vectorscale:latest .
-#      (or: podman compose build)
+#   1. Build the image once, from the cementic checkout (same image
+#      compose.yml builds):
+#        podman compose build
 #
-#   2. Install this unit for your user (copy or symlink):
-#        mkdir -p ~/.config/containers/systemd
-#        ln -s "$(pwd)/containers/quadlet/cementic-postgres.container" \
-#          ~/.config/containers/systemd/cementic-postgres.container
+#   2. Installed by `make link` (stow); cementic's own copy of this unit is
+#      src/cementic/templates/postgres/quadlet/ in that checkout.
 #
 #   3. This file MUST exist before first start, even if you don't want any
 #      overrides. On Podman 4.9.3, Quadlet's EnvironmentFile= does not honor

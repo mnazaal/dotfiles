@@ -1,13 +1,9 @@
 # paperazzi capture server as a systemd *user* service.
 #
-# Install:
-#   mkdir -p ~/.config/systemd/user
-#   cp packaging/systemd/pzi.service ~/.config/systemd/user/
-#   # Point ExecStart at your real pzi path if it isn't ~/.local/bin/pzi:
-#   #   systemctl --user edit pzi.service   (or edit the copy directly)
-#   systemctl --user daemon-reload
-#   systemctl --user enable --now pzi.service
-#   loginctl enable-linger "$USER"   # keep running when logged out
+# Installed and enabled by `make link` (stow, plus the tracked
+# default.target.wants symlink). After changing this file:
+#   systemctl --user daemon-reload && systemctl --user restart pzi.service
+# `loginctl enable-linger "$USER"` keeps it running when logged out.
 #
 # Logs (no terminal needed):  journalctl --user -u pzi -f
 #
