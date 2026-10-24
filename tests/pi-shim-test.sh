@@ -175,6 +175,17 @@ model_config = json.load(open(sys.argv[2], encoding="utf-8"))
 assert "gpt-5.6" not in json.dumps(model_config)
 PY
 
+# A non-zsh caller may lack PI_CODING_AGENT_DIR. The package check must still
+# inspect this repo's deployed XDG config, not silently skip ~/.pi/agent.
+package_home="$tmp/package-home"
+mkdir -p "$package_home/.config/pi/agent/npm"
+if env -u PI_CODING_AGENT_DIR HOME="$package_home" \
+	XDG_CONFIG_HOME="$package_home/.config" make -s -C "$repo" check-pi-packages >"$tmp/package-check.out" 2>&1; then
+	fail 'package check skipped an active XDG Pi install missing every package'
+fi
+grep -q 'pi-package drift:' "$tmp/package-check.out" ||
+	fail 'package check failed for a reason other than missing packages'
+
 # --- pi's guardrail adapter: the two properties nothing else covers ----------
 # This file is pi's ONLY enforcement layer for typed file tools. Both properties
 # below fail silently: an unguarded pi looks healthy until a protected write is

@@ -125,6 +125,7 @@ test:
 	@bash tests/agent-checkpoint-test.sh
 	@bash tests/guardrails-skill-state-test.sh
 	@bash tests/pi-shim-test.sh
+	@if command -v emacs >/dev/null 2>&1; then emacs --batch -Q --script tests/emacs-sensitive-test.el; else echo 'skip: emacs sensitive-file test (emacs not installed)'; fi
 	@bash tests/git-hooks-confinement-test.sh
 	@bash tests/sandbox-env-test.sh
 	@bash tests/sandbox-profile-test.sh
@@ -300,9 +301,12 @@ mode = sys.argv[1]
 repo = os.environ.get("REPO") or "."
 settings = os.path.join(repo, ".config/pi/agent/settings.json")
 
-# pi finds its config from PI_CODING_AGENT_DIR and otherwise falls back to
-# ~/.pi/agent, which is what it does on a machine that has not set the variable.
-agent_dir = os.environ.get("PI_CODING_AGENT_DIR") or os.path.expanduser("~/.pi/agent")
+# This repo deploys Pi under XDG_CONFIG_HOME/pi/agent. A non-zsh caller may not
+# have sourced .zshenv's PI_CODING_AGENT_DIR, but the check must inspect the
+# same deployment it reads settings from rather than silently skipping it.
+agent_dir = os.environ.get("PI_CODING_AGENT_DIR") or os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "pi", "agent"
+)
 node_modules = os.path.join(agent_dir, "npm", "node_modules")
 
 if not os.path.exists(settings):

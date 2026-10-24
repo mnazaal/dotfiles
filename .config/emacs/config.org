@@ -14,7 +14,9 @@ Sharp bits:
 * Packages
 ** emacs                                                              :emacs:
 Sensible defaults.
-# TODO: Find a way to exclude specific files such as .env, .gpg, and files opened with sudo from backups and recent files.
+Files matched by =sensitive-file-regexps= below are excluded from backups,
+recent files, previews and autosaves. Existing copies made before this policy
+need separate review; changing the policy does not remove them.
 
 #+begin_src emacs-lisp
 (use-package emacs
@@ -120,17 +122,28 @@ Sensible defaults.
   (setq global-auto-revert-non-file-buffers t)
   (defvar sensitive-file-regexps
     '("\\.gpg\\'"
-      "\\.env\\'"
+      "\\.env\\(?:\\..*\\)?\\'"
       "\\.envrc\\'"
       "/\\.ssh/"
       "/\\.gnupg/"
+      "/\\.config/pi/agent/auth\\.json\\'"
+      "/\\.claude/\\.credentials\\.json\\'"
+      "/\\.config/onedrive/"
+      "/\\.netrc\\'"
+      "/\\.npmrc\\'"
       "^/\\(?:ssh\\|su\\|sudo\\)?:")
-    "Regexps for files that should not be saved in history, previews, or backups.")
+    "Regexps for files excluded from history, previews, backups and autosaves.")
   (setq backup-enable-predicate
         (lambda (name)
           (and (normal-backup-enable-predicate name)
                (not (seq-some (lambda (re) (string-match-p re name))
-                              sensitive-file-regexps))))))
+                              sensitive-file-regexps)))))
+  (add-hook 'find-file-hook
+            (lambda ()
+              (when (and buffer-file-name
+                         (seq-some (lambda (re) (string-match-p re buffer-file-name))
+                                   sensitive-file-regexps))
+                (auto-save-mode -1))))
 #+end_src
 
 ** package                                               :package_management:
