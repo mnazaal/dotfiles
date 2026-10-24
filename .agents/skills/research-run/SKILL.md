@@ -130,6 +130,9 @@ cost of getting them wrong is the whole sweep.
   "more of the loop" also mean "more compute", and the contrast then measures
   both. Fix the product — steps × per-step budget — so the arms differ in
   structure and not in spend.
+- **Give every arm the same tuning budget.** Baselines get the same search
+  space size, trials and early-stopping rule as the method. A tuned method
+  against default-config baselines measures tuning effort.
 - **Check a searched setting landed interior.** A value chosen at the edge of its
   grid is best-of-grid, not tuned: the optimum is outside what you looked at.
   Report interior-or-edge alongside the value, and widen before treating an edge
@@ -183,7 +186,8 @@ Driving one metric over many attempts, as opposed to designing one comparison.
 - Did pairing hold, or only nominally? Per-seed differences far larger than the effect are the tell, and they read identically to a heavy-tailed effect (next bullet) while being nuisance rather than unreliability. Separate them by reading the arms' RNG consumption, not the numbers (Before Launching).
 - Does the mean difference agree with the median and the win-rate? A significant mean with a near-zero median and a ~50% win-rate is a heavy-tailed effect: a few cases moved far in *both* directions. Report median, win-rate and the tail beside the mean, and word the finding as unreliability rather than a shift.
 - Is there a simpler baseline/control?
-- Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches).
+- Is each baseline the reference/established implementation (wired via an adapter), or one we reimplemented? A self-coded comparator can be subtly weak in ways that inflate our method's gain — prefer the authors'/library code behind an adapter (isolated env if it needs legacy deps; patch only runtime-compat, never the algorithm, and record the patches). Then reproduce one number the baseline's paper reports, in its own setting, before using it in yours; a miss is a pipeline defect until explained.
+- Across several datasets, report per-dataset paired results and a rank-based summary (win counts, Wilcoxon over datasets); an average over datasets with different metric scales is dominated by the widest-scale one.
 - Does the objective's own optimum reach ground truth? Measure the oracle/ceiling before reading any recovery-vs-truth number. A flat 0% recovery is usually a non-identifying objective or a broken metric, not a failing method.
 - What condition would force this effect to zero, and has it been run? Every mechanism implies a null-control — an arm where the claimed *cause* is structurally absent (latent made irrelevant, signal removed, knob at its no-op value). Distinct from the oracle, which bounds what is *achievable*: this bounds what the mechanism *explains*. An effect that survives its own null-control is either more general than the story attached to it, or an artifact of the comparison, and nothing else in the sweep separates those. Unlike the oracle it stays repairable after the fact — usually one extra cell.
 - Across a budget/scale/size sweep, are both arms on the *sloped* part of their curves, not saturated at a floor/ceiling? Two saturated arms give an uninformative comparison — move to a regime where the axis still bites.
