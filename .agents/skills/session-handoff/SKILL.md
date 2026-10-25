@@ -40,7 +40,8 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    ```
 
 2. Keep it to state with no other home: current branch, uncommitted or unmerged
-   work, experiments still running (cluster job IDs, background tasks), env
+   work, jobs that outlive the session (cluster job IDs, services) each with
+   the command that checks it, env
    quirks found this session, scratchpad artifacts promoted into the repo and
    where they landed, and the single **entry point** — which section to read
    first and what concrete action follows, in words, never chat-local shorthand.
@@ -65,6 +66,13 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    It is session-scoped and usually gone next session, so anything not promoted
    is lost — and which artifacts the next session needs cannot be predicted,
    which is why this is a list rather than a judgement.
+   Do the same for running work. Session-bound work — background shells,
+   subagents, monitors, scheduled wake-ups — dies or is orphaned when the
+   session closes, and its result has nowhere to arrive; recording it saves
+   nothing. For each item: wait for it and route its result, or stop it and
+   list it under next actions as not done. Only work that outlives the session
+   stays running, recorded per step 2. This step is done when no session-bound
+   work is still running.
 5. Cold-read check before finishing: re-read the block as if you had none of
    this session's context, and name what you would still have to re-derive. Fix
    those gaps. This step is explicit because the writer holds maximum context
