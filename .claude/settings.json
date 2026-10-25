@@ -2,7 +2,6 @@
   "cleanupPeriodDays": 3650,
   "env": {
     "AGENT_BRANCH_PREFIX": "claude",
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
     "ENABLE_TOOL_SEARCH": "true",
     "DISABLE_AUTOUPDATER": "1"
   },
@@ -11,8 +10,6 @@
       "WebFetch(domain:*)"
     ],
     "deny": [
-      "Read(~/projects/*/.env)",
-      "Read(~/projects/*/.env.*)",
       "Read(~/.config/google-chrome/**)",
       "Read(~/.config/Signal/**)",
       "Read(~/.dropbox/**)",
@@ -141,6 +138,8 @@
         "~/Dropbox/org/agents"
       ],
       "denyRead": [
+        "~/projects/*/.env",
+        "~/projects/*/.env.*",
         "/tmp"
       ]
     }
