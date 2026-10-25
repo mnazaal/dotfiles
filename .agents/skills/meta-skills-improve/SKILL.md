@@ -91,6 +91,17 @@ agent's judgement, or accepting partial compliance and saying so.
 The dual of this is already in Rules: if only a hook could enforce a lesson,
 record that and stop.
 
+## Friction Log
+
+The log the global instructions name carries lessons from sessions that ended
+without this skill running. Writing: at a session's end, one line per skill
+that loaded and misled you, or that the user had to correct you against —
+`- YYYY-MM-DD <skill> — <project> — <what happened> — <the correction>`. A
+skill that should have loaded and did not gets a line marked `(did not load)`.
+No friction, no line; commit the log in its own repository. Reading: two
+entries on one skill meet the seen-twice rule. Delete entries once applied or
+rejected.
+
 ## Firing Audit
 
 The highest-value input to this skill, and the one reading can never supply.
@@ -184,7 +195,7 @@ does not. Check both when a skill's step names an end state.
 
 ## Workflow
 
-1. Capture the reusable lesson from the session.
+1. Capture the reusable lesson from the session, and read the Friction Log.
 2. Separate general workflow from one-off project context.
 3. Inspect relevant skills in `~/.agents/skills`.
 4. Choose the narrowest existing skill that fits, or justify a new skill.

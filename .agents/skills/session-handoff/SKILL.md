@@ -18,7 +18,7 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
 ## Workflow
 
 0. **Confirm you were asked.** The explicit handoff request is the authorization
-   for this whole workflow — the block write AND the step-6 commit; without it
+   for this whole workflow — the block write AND the step-7 commit; without it
    you have neither, because writing or replacing this block mutates a
    standing document exactly as committing it would. If the existing block is
    merely *stale* because this session committed, branched, or closed an item
@@ -78,7 +78,9 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    those gaps. This step is explicit because the writer holds maximum context
    and is therefore the worst-placed reader to notice what is missing — that is
    precisely how a record ends up complete and unusable (`understand-project`).
-6. Commit as the final act (`dev-git`). The handoff request itself authorizes
+6. Record this session's skill friction per `meta-skills-improve`'s Friction
+   Log section. It is a separate commit from step 7's.
+7. Commit as the final act (`dev-git`). The handoff request itself authorizes
    this commit and is the staging instruction `dev-git` expects: it covers
    exactly the files this workflow wrote, routed, or promoted (steps 1–4),
    staged by name — dirty files it did not touch stay out, and a routed file

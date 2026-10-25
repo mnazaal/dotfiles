@@ -164,7 +164,8 @@ Skills live in `~/.agents/skills/` and are auto-discovered.
   sandbox profile, and is a git repository — commit what you write there. Its
   subtrees, one slug-named entry per topic in each: `wiki/` is the
   cross-project literature store (`research-lit-search`), `learning/` holds
-  learning workspaces (`learn-topic`). Once a topic becomes a project, its map
+  learning workspaces (`learn-topic`). `skill-friction.md` at its root is the
+  skill-friction log (`meta-skills-improve`). Once a topic becomes a project, its map
   moves to that project's `notes/` (`context-project-docs`) and the agents copy
   is deleted, not left to fork. Everywhere else under `~/org`, never write:
   propose Org edits as snippets the user applies in Emacs. `~/org/agenda/` is
