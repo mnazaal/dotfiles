@@ -17,7 +17,7 @@
     "npm:@pi-archimedes/diff",
     "npm:@ogulcancelik/pi-minimal-footer"
   ],
-  "lastChangelogVersion": "1.4.0",
+  "lastChangelogVersion": "1.5.0",
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-6-sol",
@@ -40,5 +40,9 @@
       "asta-mcp"
     ]
   },
-  "theme": "dark"
+  "theme": "dark",
+  "extensionChangelogVersions": {
+    "{\"source\":\"npm:pi-web-access\",\"scope\":\"user\"}": "0.46.0",
+    "{\"source\":\"git:github.com/nicobailon/pi-subagents\",\"scope\":\"user\"}": "0.84.0"
+  }
 }
