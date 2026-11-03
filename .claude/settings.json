@@ -33,6 +33,8 @@
       "Read(./.env)",
       "Read(~/.claude/.credentials.json)",
       "Read(~/.config/pi/agent/auth.json)",
+      "Read(~/.config/pi/agent/mcp-auth.json)",
+      "Read(~/.pi/agent/mcp-auth.json)",
       "Read(~/.config/onedrive/**)",
       "Read(~/.local/share/keyrings/**)",
       "Read(~/.local/share/mail/**)",

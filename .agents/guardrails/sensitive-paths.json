@@ -27,6 +27,8 @@
     "~/.mozilla",
     "~/.claude/.credentials.json",
     "~/.config/pi/agent/auth.json",
+    "~/.config/pi/agent/mcp-auth.json",
+    "~/.pi/agent/mcp-auth.json",
     "~/.config/onedrive",
     "~/.config/google-chrome",
     "~/.config/Signal",
