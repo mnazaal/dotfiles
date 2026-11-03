@@ -234,6 +234,13 @@ if [[ -f "$pidfile" && ! -e "$exitfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev
   echo "hpc: run '$name' already in progress (pid $(cat "$pidfile")) -- tail $logfile, or pick a different --name." >&2
   exit 1
 fi
+# A finished run under this name would be erased: the log is truncated below and the
+# exit file removed, and nothing in results/<tag>/ would say that two launches wrote it
+# (causal-benchmark LOG 2026-10-29: a relaunch appended into the morning launch's files).
+if [[ -e "$exitfile" ]]; then
+  echo "hpc: run '$name' already finished (exit $(cat "$exitfile"), log $logfile) -- pick a different --name; the output directory the command writes to must change too." >&2
+  exit 1
+fi
 
 cd "$target" 2>/dev/null || {
   echo "hpc: $target does not exist on $(hostname) -- clone the repo there first (git clone <origin-url> $target)." >&2
@@ -321,6 +328,11 @@ nohup setsid bash -c "timeout $timeout_dur $cmd; echo \$? > '$exitfile'" \
 echo $! > "$pidfile"
 disown
 echo "hpc: launched (pid $(cat "$pidfile"))."
+# Prove the driver reached the scheduler: show the queue once. A driver that dies before
+# sbatch, or an array that never queues, is otherwise found a day later from the log.
+sleep 45
+echo "hpc: queue after 45 s (empty = nothing submitted yet, or already failed: read $logfile):"
+squeue --me --format='%.12i %.9P %.24j %.2t %.10M %.6D %R' 2>/dev/null || echo "hpc: squeue unavailable on $(hostname)"
 REMOTE
 
 case "$runs_dir" in
