@@ -37,8 +37,6 @@
       "acceptEdits"
     ],
     "planModeAllowedMcpServers": [
-      "deepwiki",
-      "grepika",
       "asta-mcp"
     ]
   },

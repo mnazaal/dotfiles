@@ -3,20 +3,9 @@
     "asta-mcp": {
       "url": "https://asta-tools.allen.ai/mcp/v1",
       "headers": {
-        "x-api-key": "${ASTA_MCP_API_KEY}"
+        "x-api-key": "!pass show asta-mcp"
       },
       "exposure": "direct"
-    },
-    "deepwiki": {
-      "url": "https://mcp.deepwiki.com/mcp"
-    },
-    "grepika": {
-      "command": "bunx",
-      "args": [
-        "-y",
-        "@agentika/grepika",
-        "--mcp"
-      ]
     }
   }
 }

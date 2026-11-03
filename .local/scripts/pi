@@ -19,18 +19,13 @@ real="$BUN_INSTALL/bin/$self"
 	exit 127
 }
 
+# Never forward a caller-provided MCP key to Pi or its extensions.
+unset ASTA_MCP_API_KEY
+
 # A Pi invoked from a sandboxed Bash command inherits that boundary. Do not nest
 # bubblewrap, and do not try to read the password store hidden inside it.
 if [ -n "${SANDBOX_ENGINE:-}" ] || [ -n "${SANDBOX_RUNTIME:-}" ]; then
 	exec "$real" "$@"
 fi
-
-# Resolve the MCP key outside the Bash boundary. Every diagnostic stays on
-# stderr because pi-acp speaks JSON-RPC on stdout.
-ASTA_MCP_API_KEY=$(pass show asta-mcp) || {
-	printf '%s: could not read asta-mcp from pass\n' "$self" >&2
-	exit 1
-}
-export ASTA_MCP_API_KEY
 
 exec "$real" "$@"

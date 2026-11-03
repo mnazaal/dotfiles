@@ -1109,7 +1109,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
           continue;
         }
         if (findPolicy === "always") {
-          if (record({ reason: "find — prefer grepika/read tools", category: "find" })) return worst;
+          if (record({ reason: "find — prefer read tools", category: "find" })) return worst;
         } else if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) {
           if (record({ reason: "find with -exec/-delete", category: "find" })) return worst;
         }

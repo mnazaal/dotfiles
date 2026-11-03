@@ -83,8 +83,9 @@ Both harnesses keep their host process outside the Bash boundary.
   `~/.claude/settings.json` for Bash subprocesses, with `permissions.deny`
   covering file tools. The `Edit()` deny rules there and `machinery-ro.profile`
   here must name the same persistence pins.
-- **`pi` and `pi-acp`** use `~/.local/scripts/pi` only to resolve the ASTA MCP
-  key and launch the real host process. Pi's native `shellPath` points model
+- **`pi` and `pi-acp`** use `~/.local/scripts/pi` to launch the real host
+  process without exporting the ASTA MCP key; Pi resolves it from `pass` only
+  when connecting to ASTA. Pi's native `shellPath` points model
   Bash and user `!`/`!!` commands at `~/.local/scripts/pi-bash`, which executes
   `/bin/bash` under `sandbox -p agent`. Pi's guardrails extension covers typed
   file tools. Pi and its loaded extensions are therefore trusted host code,

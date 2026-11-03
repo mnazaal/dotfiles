@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pi itself runs on the host like Claude; only its Bash tool is sandboxed.
-# Assert both launch paths, the MCP key handoff, and fail-closed guardrails.
+# Assert both launch paths, no ambient MCP key, and fail-closed guardrails.
 set -euo pipefail
 
 repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
@@ -8,6 +8,7 @@ shim="$repo/.local/scripts/pi"
 shell="$repo/.local/scripts/pi-bash"
 settings="$repo/.config/pi/agent/settings.json"
 models_config="$repo/.config/pi/agent/models.json"
+mcp_config="$repo/.config/pi/agent/mcp.json"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -60,14 +61,20 @@ refuses() { # label command...
 	fi
 }
 
-# The top-level Pi process stays on the host. The shim resolves its one secret,
-# exports the Bun root used to find the executable, and adds no sandbox layer.
+# The top-level Pi process stays on the host, exports Bun's root, and never
+# passes the MCP key through its environment; Pi resolves it only on connect.
 run_shim --version >/dev/null
 [ -s "$capture" ] || fail 'top-level Pi never reached the real binary directly'
 args=$(<"$capture")
-expect 'resolves the key outside the tool sandbox' "$args" 'asta=secret-asta-mcp'
+[ "${args%%$'\n'*}" = 'asta=' ] || fail 'top-level Pi received an ambient MCP key'
 expect 'exports the Bun install root' "$args" "bun_install=$bun"
 expect 'runs the real binary directly' "$args" '--version'
+
+out=$(env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME ASTA_MCP_API_KEY=fake-ambient \
+	PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" --version)
+args=$(<"$capture")
+[ "${args%%$'\n'*}" = 'asta=' ] || fail 'shim passed through a pre-existing MCP key'
+expect 'still launches with a pre-existing key' "$out" 'real-pi-ran --version'
 
 # Self-update follows the same host path; there is no updater exception or
 # package-specific sandbox profile.
@@ -94,36 +101,21 @@ env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME -u ASTA_MCP_API_KEY \
 args=$(<"$capture")
 expect 'exports the default Bun root' "$args" "bun_install=$default_bun"
 
-# Outside an existing boundary the key and real binary remain fail-closed.
+# Starting Pi does not need pass; only the missing real binary blocks launch.
 printf '#!/usr/bin/env bash\nexit 1\n' >"$bin/pass"
 chmod +x "$bin/pass"
-refuses 'when the key cannot be read' env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME \
-	-u ASTA_MCP_API_KEY PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" --version
-cat >"$bin/pass" <<'EOF'
-#!/usr/bin/env bash
-[ "$1" = show ] || exit 1
-printf '%s\n' "secret-$2"
-EOF
-chmod +x "$bin/pass"
+run_shim --version >/dev/null || fail 'launcher still depends on pass'
 refuses 'when the real binary is missing' env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME \
 	-u ASTA_MCP_API_KEY PATH="$bin:$PATH" BUN_INSTALL="$tmp/absent" "$shim" --version
 
 # A nested Pi launched by a sandboxed Bash command must not try to read the
 # masked password store. It inherits the existing boundary and runs directly.
-printf '#!/usr/bin/env bash\nexit 1\n' >"$bin/pass"
-chmod +x "$bin/pass"
 rm -f "$capture"
 out=$(env -u SANDBOX_RUNTIME -u ASTA_MCP_API_KEY SANDBOX_ENGINE=bwrap \
 	PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" --version)
 expect 'runs directly when already sandboxed' "$out" 'real-pi-ran --version'
 args=$(<"$capture")
-expect 'does not resolve a host credential when nested' "$args" 'asta='
-cat >"$bin/pass" <<'EOF'
-#!/usr/bin/env bash
-[ "$1" = show ] || exit 1
-printf '%s\n' "secret-$2"
-EOF
-chmod +x "$bin/pass"
+[ "${args%%$'\n'*}" = 'asta=' ] || fail 'nested Pi received an ambient MCP key'
 
 # Both deployed names keep the same host-process policy while selecting their
 # corresponding real executable.
@@ -154,9 +146,9 @@ expect 'sandboxed shell selects the agent profile' "$args" $'-p\nagent'
 expect 'sandboxed shell invokes Bash after the boundary' "$args" $'--\n/bin/bash'
 expect 'sandboxed shell preserves -c and its script' "$args" $'-c\nprintf shell-ran'
 
-# Configuration is part of the public behavior: both Bash entry points must use
-# the adapter, and GPT-5.6 must not remain in the startup or cycling set.
-python3 - "$settings" "$models_config" <<'PY'
+# Configuration is part of the public behavior: both Bash entry points must
+# use the adapter, and the MCP key must resolve from pass only at connection.
+python3 - "$settings" "$models_config" "$mcp_config" <<'PY'
 import json
 import sys
 
@@ -171,8 +163,12 @@ expected = {
 }
 assert expected <= set(models)
 assert not any("gpt-5.6" in model for model in models)
+assert settings["piClaudePermissions"]["planModeAllowedMcpServers"] == ["asta-mcp"]
 model_config = json.load(open(sys.argv[2], encoding="utf-8"))
 assert "gpt-5.6" not in json.dumps(model_config)
+mcp_config = json.load(open(sys.argv[3], encoding="utf-8"))
+assert set(mcp_config["mcpServers"]) == {"asta-mcp"}
+assert mcp_config["mcpServers"]["asta-mcp"]["headers"]["x-api-key"] == "!pass show asta-mcp"
 PY
 
 # A non-zsh caller may lack PI_CODING_AGENT_DIR. The package check must still
