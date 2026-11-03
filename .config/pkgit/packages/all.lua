@@ -73,7 +73,6 @@ local repos = {
     url = "https://github.com/fastfetch-cli/fastfetch.git",
     targets = lib.cmake({ ccache = true, flags = { "-DENABLE_VULKAN=OFF", "-DCMAKE_INSTALL_SYSCONFDIR=etc" } }),
   },
-  ["fish-shell"] = { url = "https://github.com/fish-shell/fish-shell.git", targets = cc },
   fzf = {
     url = "https://github.com/junegunn/fzf.git",
     targets = lib.target({
