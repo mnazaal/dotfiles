@@ -5,5 +5,6 @@ tools: read
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true
+inheritGlobalContext: true
 inheritSkills: false
 ---
