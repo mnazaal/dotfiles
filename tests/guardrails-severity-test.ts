@@ -16,7 +16,7 @@
  * yields to a skill-gate `deny`.
  */
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createGuardrails } from "../.agents/guardrails/core.ts";
@@ -692,6 +692,46 @@ test("shell history is protected where zsh writes it", () => {
   const path = `${process.env.HOME}/.local/state/zsh/history`;
   const r = rails.evaluate({ tool: "Read", paths: [path], cwd, operation: "read" }, loadedSkills);
   expect(r.decision).toBe("deny");
+});
+
+// A symlink into guarded territory must not launder the path. Needs a real target
+// on this machine, because the guard resolves through the filesystem.
+const guardedDir = `${process.env.HOME}/.config/pi/agent`;
+test.skipIf(!existsSync(guardedDir))("a symlink does not walk around path rules", () => {
+  const link = join(fixture, "pi-link");
+  symlinkSync(`${process.env.HOME}/.config/pi`, link);
+  const linkedCwd = join(fixture, "linked-pi-agent");
+  symlinkSync(guardedDir, linkedCwd);
+  for (const agent of AGENTS) {
+    const rails = createGuardrails(agent);
+    const ask = (tool: string, path: string, operation: "read" | "write") =>
+      rails.evaluate({ tool, paths: [path], cwd, operation }, loadedSkills).decision;
+    expect(ask("Read", `${link}/agent/auth.json`, "read")).toBe("deny");
+    expect(ask("Edit", `${link}/agent/extensions/guardrails.ts`, "write")).toBe("deny");
+    // A file being created has no realpath; its existing parent decides.
+    expect(ask("Write", `${link}/agent/extensions/new-file.ts`, "write")).toBe("deny");
+    expect(ask("Write", `${link}/agent/extensions/${"d/".repeat(45)}x`, "write")).toBe("deny");
+    for (const command of [`cat ${link}/agent/auth.json`, `cat <${link}/agent/auth.json`, `(cat ${link}/agent/auth.json)`]) {
+      expect(`${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`).toBe(`${command}: deny`);
+    }
+    expect(rails.evaluate({ tool: "bash", command: "cat auth.json", cwd: linkedCwd }, loadedSkills).decision).toBe("deny");
+    // Near miss: an ordinary file in the same fixture stays allowed.
+    expect(ask("Write", `${fixture}/plain/notes.md`, "write")).toBe("allow");
+  }
+});
+test("a linked working directory does not make every word a link", () => {
+  const linkedCwd = join(fixture, "linked-cwd");
+  symlinkSync(join(fixture, "plain"), linkedCwd);
+  const rails = createGuardrails("claude");
+  const command = "find . -not -path '*/.env/*'";
+  expect(rails.evaluate({ tool: "bash", command, cwd: linkedCwd }, loadedSkills).decision).toBe("allow");
+});
+test("a link into machinery stays runnable from Bash", () => {
+  const python = join(fixture, "venv-python");
+  symlinkSync(`${process.env.HOME}/.local/share/uv/python/x/bin/python3`, python);
+  const rails = createGuardrails("claude", { inSandbox: false });
+  expect(rails.evaluate({ tool: "bash", command: `${python} run.py`, cwd }, loadedSkills).decision).toBe("allow");
+  expect(rails.evaluate({ tool: "Write", paths: [`${fixture}/venv-python`], cwd, operation: "write" }, loadedSkills).decision).toBe("deny");
 });
 
 for (const { command, expected, note } of TABLE) {

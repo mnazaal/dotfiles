@@ -12,7 +12,7 @@
  *
  * Entry point: createGuardrails(agent).evaluate(toolEvent, loadedSkills?) -> Decision.
  */
-import { readFileSync, existsSync, statSync, mkdirSync, writeFileSync, realpathSync } from "node:fs";
+import { readFileSync, readlinkSync, existsSync, statSync, mkdirSync, writeFileSync, realpathSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -684,6 +684,36 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
   }
 
   // path guard ---------------------------------------------------------------
+  /**
+   * The path with every symlink resolved, for rules that compare literal paths:
+   * ~/.pi links to ~/.config/pi, so its spelling otherwise walks past every rule
+   * naming the real location. A path being created has no realpath of its own,
+   * so resolve its deepest existing ancestor and keep the rest. A dangling link
+   * is followed by hand, because a write through it creates its target, and the
+   * count stops a link cycle. Nothing past PATH_MAX can be opened at all.
+   */
+  function resolvedThroughLinks(path: string): string {
+    if (path.length > 4096) return path;
+    const tail: string[] = [];
+    let current = path;
+    for (let links = 0; links < 40;) {
+      try {
+        return join(realpathSync.native(current), ...tail);
+      } catch {
+        try {
+          current = resolve(dirname(current), readlinkSync(current));
+          links++;
+          continue;
+        } catch {}
+        const parent = dirname(current);
+        if (parent === current) return path;
+        tail.unshift(current.slice(parent === "/" ? 1 : parent.length + 1));
+        current = parent;
+      }
+    }
+    return path;
+  }
+
   function blocked(path: string, operation: Operation = "unknown", machineryList: string[] = machinery): string | undefined {
     for (const s of credentials) {
       const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
@@ -735,6 +765,21 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
       if (searching && i > 0 && PATTERN_FLAGS.has(tokens[i - 1])) continue;
       for (const comp of tok.replace(/\\/g, "/").split("/")) if (segments.has(comp)) return comp;
       const r = blocked(resolveAny(tok, cwd), "bash", bashMachinery);
+      if (r) return r;
+    }
+    // A link's target is judged for secrets, not machinery: .venv/bin/python links
+    // into ~/.local/share, and running it is routine. A search pattern is exempt as
+    // above, or a linked working directory would make every pattern a path.
+    // Punctuation can sit against the name, as in `cat <link`.
+    const words = pathTokenize(norm.replace(/[()`<>]/g, " "));
+    for (let i = 0; i < words.length; i++) {
+      const tok = words[i];
+      if (tok.startsWith("-")) continue;
+      if (searching && i > 0 && PATTERN_FLAGS.has(words[i - 1])) continue;
+      const literal = resolveAny(tok.slice(tok.indexOf("=") + 1), cwd);
+      const target = resolvedThroughLinks(literal);
+      if (target === literal) continue;
+      const r = blocked(target, "bash", []);
       if (r) return r;
     }
   }
@@ -1139,7 +1184,8 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     const cwd = input.cwd || HOME;
     const operation = input.operation ?? (input.command ? "bash" : "unknown");
     for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) {
-      const r = blocked(resolveAny(path, cwd), operation);
+      const target = resolveAny(path, cwd);
+      const r = blocked(target, operation) ?? blocked(resolvedThroughLinks(target), operation);
       if (r) return { decision: "deny", reason: `sensitive path (${r})` };
     }
     if (input.command) {
