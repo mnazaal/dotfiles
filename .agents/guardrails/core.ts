@@ -664,6 +664,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 
   const credentials: string[] = [...(sp.credentials ?? [])];
   const protectedWriteGlobs: string[] = [...(sp.protected_write_globs ?? [])];
+  const GLOB_READERS = new Set<string>(sp.protected_glob_readers ?? []);
+  const GLOB_GIT_READERS = new Set<string>(sp.protected_glob_git_readers ?? []);
+  const LATEX_ENGINES = new Set(["latex", "pdflatex", "lualatex", "xelatex", "latexmk"]);
+  const ENGINE_FLAGS = /^-(interaction=\w+|halt-on-error|file-line-error|synctex=-?\d+|recorder|draftmode|no-shell-escape|pdf|pdflua|pdfxe|lualatex|xelatex|dvi|ps|f|g|silent|quiet|(output-directory|outdir|auxdir|aux-directory|jobname)=[\p{L}\p{N}_.\/+-]+)$/u;
   // Only an explicit `false` disables machinery protection: an absent or
   // malformed setting must not read as an unprotected default.
   const machinery: string[] = perAgent(sp.machinery_enabled, agent) !== false ? [...(sp.machinery ?? [])] : [];
@@ -748,15 +752,101 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     }
     if (hasProtectedSegment(path, operation)) return "protected";
     if (operation !== "read") {
-      const normalized = path.replace(/\\/g, "/");
-      for (const g of protectedWriteGlobs) {
-        if (globMatch(g, normalized)) return `protected write glob (${g})`;
-      }
       for (const s of machineryList) {
         const r = s.startsWith("~/") ? resolve(HOME, s.slice(2)) : resolve(s);
         if (path === r || path.startsWith(r + "/")) return s;
       }
     }
+  }
+
+  function matchingProtectedGlob(path: string): string | undefined {
+    const normalized = path.replace(/\\/g, "/");
+    return protectedWriteGlobs.find(g => globMatch(g, normalized));
+  }
+
+  /**
+   * Every word in a command that could name a file: quotes removed, one level of
+   * braces opened (`*.{aux,x}`), and split on anything a filename rarely holds, so
+   * a name inside a quoted script or fused to punctuation still counts.
+   */
+  function wordsNamingFiles(command: string): string[] {
+    const notName = /[^\p{L}\p{N}_.*?\/~+-]+/u;
+    const words = new Set<string>();
+    for (const tok of command.replace(/\\\n/g, "").replace(/["']/g, "").split(/\s+/)) {
+      for (const word of tok.split(notName)) words.add(word);
+      for (const m of tok.matchAll(/\{([^{}]*)\}/g)) {
+        const before = tok.slice(Math.max(0, m.index - 4096), m.index).split(notName).pop();
+        const after = tok.slice(m.index + m[0].length, m.index + m[0].length + 4096).split(notName)[0];
+        for (const alt of m[1].split(",")) words.add(`${before}${alt}${after}`);
+      }
+    }
+    words.delete("");
+    return [...words];
+  }
+
+  /** One pipeline step whose arguments ask for no write: a listed reader, minus its write options. */
+  function isReadingStep(toks: string[]): boolean {
+    const [name, ...args] = toks;
+    if (!name || !GLOB_READERS.has(name)) return false;
+    const flags = args.filter(a => a.startsWith("-"));
+    if (name === "git") return GLOB_GIT_READERS.has(args[0] ?? "") && !flags.some(f => /^--(out|ext-diff)/.test(f));
+    if (name === "sed") return flags.every(f => f === "-n") && /^[0-9,$\s]*p$/.test(args.find(a => !a.startsWith("-")) ?? "");
+    if (name === "find") return !args.some(a => FIND_EXEC.has(a));
+    if (name === "rg") return !flags.some(f => /^--(pre|hostname-bin)/.test(f));
+    if (LATEX_ENGINES.has(name)) {
+      // An allowlist, because these tools have many options that write or run
+      // something (-output-driver, --lua, -deps -MF, latexmk's -e). Either dash count
+      // works. An operand must be a plain filename, as anything else can be TeX source.
+      return flags.every(f => ENGINE_FLAGS.test(f.replace(/^--/, "-"))) &&
+        args.filter(a => !a.startsWith("-")).every(a => /^[\p{L}\p{N}_.\/+-]+$/u.test(a));
+    }
+    return true;
+  }
+
+  /**
+   * A command simple enough to be read as what it says: reader steps joined by a
+   * pipe or `&&`, with no redirect, variable, loop or substitution outside single
+   * quotes. Anything else is not parsed further, because a write is not reliably
+   * visible in the text: `f=a.x; echo > "$f"` never names its target.
+   */
+  function isPlainRead(command: string): boolean {
+    const text = command.replace(/\\\n/g, "").replace(/(^|\s)2>(\/dev\/null|&1)(?=\s|$)/g, "$1").trim();
+    let quote = "";
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quote === "'") { if (c === "'") quote = ""; continue; }
+      if (quote === '"') {
+        if (c === '"') quote = "";
+        else if (c === "$" || c === "`" || c === "\\") return false;
+        continue;
+      }
+      if (c === "'" || c === '"') { quote = c; continue; }
+      if (c === "&" && text[i + 1] === "&") { i++; continue; }
+      if ("$`\\<>(){};&#\n".includes(c)) return false;
+    }
+    return !quote && splitSegments(text).every(seg => isReadingStep(tokenize(seg)));
+  }
+
+  /**
+   * Bash may read a file matching protected_write_globs but not change it. Naming
+   * one refuses the command unless the whole command is a plain read, so a form
+   * nobody thought of is refused rather than allowed.
+   *
+   * Best-effort, as the rest of this file is: it reads command text, so it does not
+   * see a name built at runtime, a wildcard or pathspec that never spells the
+   * extension (`git checkout .`), a name spelled with an escape (`main.te\\x`), a
+   * link reached after a `cd`, or a script, latexmkrc or TeX document that writes
+   * the file on its own.
+   */
+  function protectedGlobCommandReason(command: string, cwd: string): string | undefined {
+    let named: string | undefined;
+    for (const word of wordsNamingFiles(command)) {
+      const path = resolveAny(word, cwd);
+      named = matchingProtectedGlob(path) ?? matchingProtectedGlob(resolvedThroughLinks(path));
+      if (named) break;
+    }
+    if (!named || isPlainRead(command)) return undefined;
+    return `sensitive path in command (protected write glob (${named})): only a plain read may name it, with no redirect, variable, loop or substitution. Use the Read tool, or run the read on its own`;
   }
 
   // A mention ends at a path boundary: ~/.aws-sdk-notes.md is not ~/.aws, and
@@ -1222,12 +1312,19 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     const operation = input.operation ?? (input.command ? "bash" : "unknown");
     for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) {
       const target = resolveAny(path, cwd);
-      const r = blocked(target, operation) ?? blocked(resolvedThroughLinks(target), operation);
+      const real = resolvedThroughLinks(target);
+      const r = blocked(target, operation) ?? blocked(real, operation);
       if (r) return { decision: "deny", reason: `sensitive path (${r})` };
+      // Not in blocked(), which every Bash word reaches: a command is judged whole,
+      // by protectedGlobCommandReason.
+      const glob = operation === "read" ? undefined : matchingProtectedGlob(target) ?? matchingProtectedGlob(real);
+      if (glob) return { decision: "deny", reason: `sensitive path (protected write glob (${glob}))` };
     }
     if (input.command) {
       const r1 = blockedCommand(input.command, cwd);
       if (r1) return { decision: "deny", reason: `sensitive path in command (${r1})` };
+      const glob = protectedGlobCommandReason(input.command, cwd);
+      if (glob) return { decision: "deny", reason: glob };
       const r2 = dangerReason(input.command, cwd);
       if (r2) return { decision: severityOf(r2.category), reason: r2.reason };
     }

@@ -42,11 +42,12 @@ section headings, commented `\input` hooks; no prose/claims). The agent never
 writes `.tex`, even generated ones; the human's execution does. (Some harnesses
 enforce this at the permission layer.)
 
-A harness may enforce this with a command guard that matches the literal
-extension anywhere in a shell command, so a read-only `grep`, a `cp`, or a
-commit message naming one can be refused. Treat that refusal as the guard, not
-a bug, and pass the name another way (`git commit -F <file>`, a pathspec,
-string concatenation) rather than disabling it.
+A harness may enforce this with a command guard: a shell command naming a `.tex`
+file is refused unless it is a plain read, such as `cat`, `grep`, `pdflatex`,
+`git diff` or `git add`, with no redirect, variable, loop or substitution. Treat
+that refusal as the guard, not a bug. Run the read on its own or use the file-read
+tool, and never disguise the name to get past it. A commit message built with a
+heredoc is refused if it names the file, so use `git commit -F <file>`.
 
 ## Core Rule: a synced/portable manuscript directory IS the artifact
 

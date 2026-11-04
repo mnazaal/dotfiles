@@ -26,7 +26,9 @@ Adapters (thin, import `core.ts`):
 ## Decisions
 
 `evaluate()` returns `deny`, `ask`, or `allow`. Path rules decide secrets,
-machinery writes, and protected globs. Command rules are classified by
+machinery writes, and protected globs. A protected glob such as `**/*.tex` denies
+typed writes, and a Bash command naming a match is refused unless it is a plain
+read of the kind `protected_glob_readers` lists. Command rules are classified by
 `severity` in `dangerous-commands.json`: a category maps either to one decision
 for every agent, or to a per-agent object shaped like `find_policy`. An unlisted
 category falls back to `ask`, so the mechanism stays inert until a category is

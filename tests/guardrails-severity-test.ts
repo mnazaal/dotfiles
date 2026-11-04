@@ -795,6 +795,92 @@ test("every Asta tool and fetch form reaches the research-protocol gate", () => 
   expect(decide("code_snippets", { id: "x" })).toBe("allow");
 });
 
+// Readable, not editable: the ask on 2026-11-04. Both lists matter, because a rule
+// that refused everything passes the first and one that allowed everything the second.
+const TEX_READS = [
+  "cat main.tex", "grep foo main.tex", "grep -rn foo --include='*.tex' .", "rg foo -g '*.tex'",
+  "head -5 sections/intro.tex", "wc -l main.tex", "sed -n 1,20p main.tex", "ls *.tex",
+  "diff a.tex b.tex", "find . -name '*.tex'", "pdflatex main.tex", "latexmk -pdf main.tex",
+  "latexmk -pdf -interaction=nonstopmode -outdir=build -synctex=1 main.tex",
+  "pdflatex -interaction=nonstopmode \\\n  main.tex", "git diff \\\n  main.tex",
+  "git diff main.tex", "git add main.tex", "git log -- main.tex", "git status main.tex",
+  "git rev-parse HEAD:main.tex", "git ls-tree HEAD main.tex", "git cat-file -p HEAD:main.tex",
+  "cat main.tex | wc -l", "cat main.tex 2>/dev/null", "cat main.tex 2>&1 | head -5",
+  "cd paper && pdflatex main.tex", "ls main.tex && echo y",
+  "git commit -m 'fix main.tex'", "echo main.tex",
+  "grep '>' main.tex", "grep -n '->' main.tex", "grep '<foo>' main.tex", "rg '=>' main.tex", "grep \"a >\" main.tex",
+];
+// Refused, whether or not each one writes: the rule is that a name is refused
+// unless the command is a plain read, so the near-writes prove it stays that way.
+const TEX_REFUSED = [
+  "echo x > main.tex", "echo x >main.tex", "echo x >> main.tex", "cat a.txt 2> main.tex", "cat a.txt &> main.tex",
+  "> main.tex", "cat a.tex>b.tex", "cat a.txt | tee main.tex", "sed -i s/a/b/ main.tex", "sed -n 'w out.tex' a.txt",
+  "sed s/a/b/w main.tex", "perl -pi -e s/a/b/ main.tex", "awk '{print}' main.tex", "python3 fix.py main.tex",
+  "cp a.txt main.tex", "cp main.tex /tmp/x", "mv a.tex b.tex", "rm main.tex", "touch main.tex", "tee main.tex",
+  "truncate -s0 main.tex", "dd if=/dev/zero of=main.tex", "bash -c 'echo x > main.tex'", "sort -o main.tex a.txt",
+  "uniq a.txt main.tex", "find . -name '*.tex' -delete", "find . -name '*.tex' -exec rm {} ;",
+  "find . -name '*.tex' | xargs rm", "cat main.tex && rm notes.txt", "cat $(rm main.tex)", "git checkout -- main.tex",
+  "git restore main.tex", "git rm main.tex", "git mv a.tex b.tex", "git apply fix.patch main.tex",
+  "git diff --output=main.tex", "git diff --outp=main.tex", "git -c core.pager=x diff main.tex",
+  "pdflatex -shell-escape main.tex", "rg --pre=./x foo main.tex", "latexmk -e x main.tex", "latexmk -pdflatex=./x main.tex",
+  "for f in *.tex; do rm \"$f\"; done", "for f in *.tex; do wc -l \"$f\"; done",
+  "for f in *.tex; do echo '% x' >> \"$f\"; done", "f=main.tex; echo x > \"$f\"",
+  "ls *.tex | while read -r f; do cat notes.txt > \"$f\"; done", "cat main.tex > /tmp/copy.txt",
+  "python3 -c \"open('main.tex','w').write('x')\"", "bash -c 'sed -i s/a/b/ main.tex; echo done'",
+  "sh -c 'echo x > main.tex; ls'", "awk '{print > \"main.tex\"}' notes.txt", "echo \"$(rm main.tex)\"",
+  "mv main.tex{,.bak}", "rm main.{tex,aux}", "rm -f *.{aux,log,tex}", "sed -i s/a/b/ main.{tex,bib}",
+  "./test main.tex", "./sort main.tex", "scripts/file main.tex", "bin/find main.tex",
+  "chktex -o main.tex a.tex", "texcount -out=main.tex a.tex", "sort --outp main.tex notes.txt",
+  "sort --out=main.tex notes.txt", "biber --output-file=main.tex x", "env FOO=1 cat main.tex",
+  "cat main.tex # don't edit yet\nsed -i 's/a/b/' main.tex # now it's fine", "rm main.t{e,}x",
+  "latexmk --e x main.tex", "latexmk --r x main.tex", "pdflatex -cnf-line=shell_escape=t main.tex",
+  "lualatex '\\directlua{io.open(\"main.tex\",\"w\")}'", "pdflatex '\\input{main.tex}'",
+  "printf -v 'a[$(rm main.tex)]' 1", "test -v 'a[$(rm main.tex)]'", "[[ 'a[$(rm main.tex)]' -eq 1 ]]",
+  "xelatex -output-driver='sh -c x' doc.tex main.tex", "lualatex e.tex '^^5cdirectlua{x}' main.tex",
+  "latexmk -pdf -deps -MF main.tex doc.tex", "lualatex --lua=x.lua main.tex", "tr\\\nuncate -s0 main.tex",
+  "bash -c $'rm main.tex\ntrue'", "printf 'main.tex\n' | xargs rm", "printf 'rm main.tex\n' | sh",
+];
+test("protected globs: Bash reads pass and everything else is refused", () => {
+  for (const agent of AGENTS) {
+    const rails = createGuardrails(agent);
+    const decide = (command: string) => `${agent} ${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`;
+    for (const command of TEX_READS) expect(decide(command)).toBe(`${agent} ${command}: allow`);
+    for (const command of TEX_REFUSED) expect(decide(command)).toBe(`${agent} ${command}: deny`);
+  }
+});
+test("protected globs: typed tools read and do not write", () => {
+  for (const agent of AGENTS) {
+    const rails = createGuardrails(agent);
+    const path = `${cwd}/main.tex`;
+    expect(rails.evaluate({ tool: "Read", paths: [path], cwd, operation: "read" }, loadedSkills).decision).toBe("allow");
+    expect(rails.evaluate({ tool: "Edit", paths: [path], cwd, operation: "write" }, loadedSkills).decision).toBe("deny");
+    expect(rails.evaluate({ tool: "Write", paths: [path], cwd, operation: "write" }, loadedSkills).decision).toBe("deny");
+  }
+});
+test("protected globs: a path on a tool that also carries a command is still judged", () => {
+  const rails = createGuardrails("claude");
+  const event = toolEventFromInput("mcp__x__write_file", { command: "x", path: "main.tex" }, cwd);
+  expect(rails.evaluate(event, loadedSkills).decision).toBe("deny");
+});
+test("protected globs: a large command stays cheap to scan", () => {
+  const rails = createGuardrails("claude");
+  const json = JSON.stringify(Array.from({ length: 2000 }, (_, id) => ({ id, kind: "x" })));
+  const started = performance.now();
+  rails.evaluate({ tool: "bash", command: `echo '${json}'`, cwd }, loadedSkills);
+  expect(performance.now() - started).toBeLessThan(5000);
+});
+test("protected globs: a link to a protected file counts as naming it", () => {
+  const real = join(fixture, "linked.tex");
+  const link = join(fixture, "link.txt");
+  writeFileSync(real, "x");
+  symlinkSync(real, link);
+  const rails = createGuardrails("claude");
+  const decide = (command: string) => `${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`;
+  expect(decide(`echo z >> ${link}`)).toBe(`echo z >> ${link}: deny`);
+  expect(decide(`sed -i --follow-symlinks s/o/z/ ${link}`)).toBe(`sed -i --follow-symlinks s/o/z/ ${link}: deny`);
+  expect(decide(`cat ${link}`)).toBe(`cat ${link}: allow`);
+});
+
 for (const { command, expected, note } of TABLE) {
   test(`${label(expected)}: ${command}${note ? ` (${note})` : ""}`, () => {
     for (const agent of AGENTS) {

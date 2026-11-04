@@ -46,6 +46,14 @@
   "protected_write_globs": [
     "**/*.tex"
   ],
+  "_protected_glob_readers_comment": "A Bash command naming a protected_write_globs match is refused unless it is a plain read: every step one of these commands, with no redirect, variable, loop or substitution. A tool earns a place here by having no option that writes or runs something, or an option check in core.ts that closes it (TeX engines take an allowlist of flags there). Tools with an output option (sort, uniq, chktex, texcount, biber) and ones that evaluate their arguments (printf, test, [[) stay out. A TeX document can still write when compiled, because nothing here reads the document.",
+  "protected_glob_readers": [
+    "cat", "cd", "cmp", "cut", "diff", "echo", "egrep", "fgrep", "find", "git", "grep", "head", "latex",
+    "latexmk", "ls", "lualatex", "pdflatex", "rg", "sed", "stat", "tail", "tr", "wc", "xelatex"
+  ],
+  "protected_glob_git_readers": [
+    "add", "blame", "cat-file", "commit", "diff", "log", "ls-files", "ls-tree", "rev-parse", "show", "status"
+  ],
   "machinery_enabled": {
     "claude": true,
     "pi": true
