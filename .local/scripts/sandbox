@@ -409,6 +409,12 @@ elif [ "$in_worktree" -eq 0 ] && covered_by_readonly "$rw_unit"; then
 	printf '         Run inside a git repository for a writable checkout.\n' >&2
 	[ ${#RW[@]} -gt 0 ] || die 'nothing writable — refusing to run'
 else
+	# The check on profile binds ran before this one existed, and a repository can
+	# be rooted at $HOME itself.
+	rd=$(readlink -f "$rw_unit")
+	if [ "$rd" = "/" ] || is_home_or_ancestor "$rd"; then
+		die "refusing to bind '$rw_unit' — it re-exposes all of \$HOME or /"
+	fi
 	RW+=("$rw_unit")
 	# A linked worktree keeps its real git directory in the MAIN repository,
 	# which may sit under a read-only bind — bind it too or nothing commits.

@@ -441,6 +441,24 @@ fi
 
 printf 'sandbox profiles: bwrap root reconstructs resolv.conf and passwd\n'
 
+# The writable repository is added after the profile, and it can be $HOME itself.
+homerepo="$tmp/home-repo"
+mkdir -p "$homerepo/sub"
+git init -q "$homerepo"
+if (
+	cd "$homerepo/sub" || exit 1
+	HOME="$homerepo" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+		"$repo/.local/scripts/sandbox" --dry-run -- /bin/true
+) >"$tmp/stdout" 2>"$tmp/stderr"; then
+	printf 'sandbox bound a repository rooted at HOME read-write\n' >&2
+	exit 1
+fi
+if ! grep -q 're-exposes all of \$HOME or /' "$tmp/stderr"; then
+	printf 'sandbox rejected the HOME repository for an unexpected reason\n' >&2
+	exit 1
+fi
+printf 'sandbox profiles: a repository rooted at HOME is refused\n'
+
 # --- the environment allowlist, exercised for real ----------------------------
 # Every assertion above uses --dry-run, which returns before the environment is
 # ever touched. That is exactly why a leak here went unnoticed: the allowlist is
