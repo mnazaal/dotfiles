@@ -14,10 +14,13 @@ PREFIX="${AGENT_BRANCH_PREFIX:-}"
 # kernel fact: an agent can unset a variable, it cannot make a read-only bind
 # writable. Measured on both sides 2026-09-14.
 #
+# The marker is the tracked file, not ~/.claude/settings.json: make link deploys
+# that one read-only on the host too, so it cannot tell the two sides apart.
+#
 # The marker must EXIST to count. A machine that has no such file is not
 # confined, so this stays portable and degrades to the variable alone rather
 # than refusing everyone's commits.
-CONFINED_MARKER="$HOME/.claude/settings.json"
+CONFINED_MARKER="$HOME/dotfiles/.claude/settings.json"
 CONFINED=0
 if [[ -n "$PREFIX" ]]; then CONFINED=1; fi
 if [[ -e "$CONFINED_MARKER" && ! -w "$CONFINED_MARKER" ]]; then CONFINED=1; fi

@@ -261,6 +261,13 @@ if command -v bun >/dev/null 2>&1; then
 else
 	fail "bun missing — Claude agent guard hook denies every tool call"
 fi
+# ~/.claude/settings.json is a copy make link deploys, so an edit to the tracked
+# file, deny rules included, does nothing until link reruns.
+if cmp -s "$repo/.claude/settings.json" "$HOME/.claude/settings.json"; then
+	ok "Claude settings deployed"
+else
+	fail "Claude settings stale or missing; run make link"
+fi
 # Read-only pins whose source lives outside the repository: the sandbox binds a
 # path only if it exists, so a relocated toolchain turns a pin into nothing at
 # all. Nothing else notices — the profile still lists it and the tests still

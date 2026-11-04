@@ -6,5 +6,6 @@
 Makefile
 PLAN\.md
 .claude/settings.local.json
+.claude/settings\.json
 ^tests$
 ^/\.editorconfig$

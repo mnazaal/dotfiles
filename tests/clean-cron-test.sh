@@ -3,7 +3,8 @@ set -euo pipefail
 
 repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+# chmod first: make link deploys a read-only directory into the fixture home.
+trap 'chmod -R u+w "$tmp"; rm -rf "$tmp"' EXIT
 home="$tmp/home"
 mkdir -p "$tmp/bin" "$home/.cache"
 # The fixture home stands in for the login home, so cron and clean reach the

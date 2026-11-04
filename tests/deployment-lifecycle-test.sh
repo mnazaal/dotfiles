@@ -3,7 +3,8 @@ set -euo pipefail
 
 repo=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+# chmod first: a home that was linked and not cleaned holds a read-only directory.
+trap 'chmod -R u+w "$tmp"; rm -rf "$tmp"' EXIT
 
 # Copy the checkout the way `cp -a` would, minus device/socket/fifo nodes.
 # Run from inside a sandboxed agent session, the repo contains ~18 paths that the
@@ -42,6 +43,26 @@ for path in \
 	}
 done
 
+# Claude Code must be unable to save into the deployed settings, and the copy
+# must be the tracked content.
+deployed="$home/.config/claude-settings/settings.json"
+[ "$(readlink "$home/.claude/settings.json")" = "$deployed" ] || {
+	printf 'make link did not point Claude settings at the deployed copy\n' >&2
+	exit 1
+}
+cmp -s "$repo/.claude/settings.json" "$deployed" || {
+	printf 'make link deployed different Claude settings\n' >&2
+	exit 1
+}
+[ "$(stat -c '%a' "$deployed" "${deployed%/*}" | tr '\n' ' ')" = '444 555 ' ] || {
+	printf 'make link left the Claude settings copy writable\n' >&2
+	exit 1
+}
+make --no-print-directory -C "$repo" link HOME="$home" >/dev/null || {
+	printf 'make link could not redeploy over its own read-only copy\n' >&2
+	exit 1
+}
+
 clean_output=$(make --no-print-directory -C "$repo" clean HOME="$home")
 [ -z "$clean_output" ] || {
 	printf 'make clean printed normal cleanup output:\n%s\n' "$clean_output" >&2
@@ -57,6 +78,11 @@ for path in \
 		exit 1
 	}
 done
+
+[ ! -e "$home/.claude/settings.json" ] && [ ! -e "$home/.config/claude-settings" ] || {
+	printf 'make clean left the Claude settings copy behind\n' >&2
+	exit 1
+}
 
 [ -L "$home/unrelated" ] || {
 	printf 'make clean removed an unrelated symlink\n' >&2

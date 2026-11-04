@@ -9,7 +9,7 @@ PREFIX="${AGENT_BRANCH_PREFIX:-}"
 # variable: an agent can unset AGENT_BRANCH_PREFIX, but it cannot make a
 # read-only bind writable. The marker must exist to count, so a machine without
 # it degrades to the variable alone.
-CONFINED_MARKER="$HOME/.claude/settings.json"
+CONFINED_MARKER="$HOME/dotfiles/.claude/settings.json"
 CONFINED=0
 if [[ -n "$PREFIX" ]]; then CONFINED=1; fi
 if [[ -e "$CONFINED_MARKER" && ! -w "$CONFINED_MARKER" ]]; then CONFINED=1; fi

@@ -82,7 +82,8 @@ Both harnesses keep their host process outside the Bash boundary.
 - **`claude` and `claude-agent-acp`** use the `sandbox` block in
   `~/.claude/settings.json` for Bash subprocesses, with `permissions.deny`
   covering file tools. The `Edit()` deny rules there and `machinery-ro.profile`
-  here must name the same persistence pins.
+  here must name the same persistence pins. That path is a read-only copy of
+  the tracked file, so edits need `make link`, and `/model` picks last one session.
 - **`pi` and `pi-acp`** use `~/.local/scripts/pi` to launch the real host
   process without exporting the ASTA MCP key; Pi resolves it from `pass` only
   when connecting to ASTA. Pi's native `shellPath` points model

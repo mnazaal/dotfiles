@@ -28,12 +28,12 @@ check() { # name expected actual
 
 # A marker we control: writable = "outside", chmod 444 = "confined".
 MARKER_HOME="$WORK/home"
-mkdir -p "$MARKER_HOME/.claude"
-printf '{}' >"$MARKER_HOME/.claude/settings.json"
+mkdir -p "$MARKER_HOME/dotfiles/.claude"
+printf '{}' >"$MARKER_HOME/dotfiles/.claude/settings.json"
 
 run_ref_txn() { # env_prefix marker_mode branch -> "allow"|"refuse"
 	local prefix="$1" mode="$2" branch="$3"
-	chmod "$mode" "$MARKER_HOME/.claude/settings.json"
+	chmod "$mode" "$MARKER_HOME/dotfiles/.claude/settings.json"
 	local _out
 	# Always pass the variable, empty when "unset". The session running this
 	# test exports AGENT_BRANCH_PREFIX itself, so a conditional assignment let
@@ -42,7 +42,7 @@ run_ref_txn() { # env_prefix marker_mode branch -> "allow"|"refuse"
 		bash "$HOOKS/reference-transaction" prepared \
 		<<<"0000 1111 refs/heads/$branch" 2>&1)
 	local rc=$?
-	chmod 644 "$MARKER_HOME/.claude/settings.json"
+	chmod 644 "$MARKER_HOME/dotfiles/.claude/settings.json"
 	[ $rc -eq 0 ] && echo allow || echo refuse
 }
 
@@ -63,8 +63,14 @@ echo "== confined AND prefix set: ordinary agent work still flows =="
 check "claude/topic allowed" allow "$(run_ref_txn "claude" 444 claude/topic)"
 check "main refused" refuse "$(run_ref_txn "claude" 444 main)"
 
+echo "== human: a read-only deployed copy is not confinement =="
+mkdir -p "$MARKER_HOME/.claude"
+printf '{}' >"$MARKER_HOME/.claude/settings.json"
+chmod 444 "$MARKER_HOME/.claude/settings.json"
+check "read-only ~/.claude/settings.json: main allowed" allow "$(run_ref_txn "" 644 main)"
+
 echo "== portability: no marker at all => variable alone, as before =="
-rm -f "$MARKER_HOME/.claude/settings.json"
+rm -f "$MARKER_HOME/dotfiles/.claude/settings.json"
 # Output is captured only to keep it off the test's stdout; the verdict is rc.
 _out=$(cd "$WORK" && HOME="$MARKER_HOME" AGENT_BRANCH_PREFIX='' \
 	bash "$HOOKS/reference-transaction" prepared \

@@ -2,7 +2,7 @@
 
 help:
 	@printf '%s\n' \
-		'link   - stow repository files' \
+		'link   - stow repository files and deploy the read-only Claude settings' \
 		'cron   - link, then install .local/cron as the whole live crontab (per host, once)' \
 		'clean  - remove owned links and the crontab cron installed; refuse if the crontab was edited by hand (DEEP=1 sweeps stale links)' \
 		'test   - run isolated repository behavior tests' \
@@ -11,8 +11,21 @@ help:
 		'pi-packages - install pi packages that settings.json declares but are missing' \
 		'audit-skills - skill firing audit over the session transcripts (minutes; not part of check)'
 
+# Claude Code saves /model and /effort picks into ~/.claude/settings.json, and
+# when it cannot write there they last for the session. So that path gets a
+# read-only copy of the tracked file, and an edit reaches it by rerunning link.
+# The rename-based writer replaces a read-only file, so the directory is
+# read-only too. ~/.config, unlike ~/.local/share, is read-only in every sandbox.
+CLAUDE_SETTINGS_DIR = $(HOME)/.config/claude-settings
 link:
 	stow --target="$(HOME)" --no-folding .
+	@link="$(HOME)/.claude/settings.json"; \
+	[ -L "$$link" ] || [ ! -e "$$link" ] || { echo "link: $$link is a real file; move it first" >&2; exit 1; }; \
+	mkdir -p "$(CLAUDE_SETTINGS_DIR)"; \
+	chmod u+w "$(CLAUDE_SETTINGS_DIR)"; \
+	install -m 444 .claude/settings.json "$(CLAUDE_SETTINGS_DIR)/settings.json"; \
+	chmod 555 "$(CLAUDE_SETTINGS_DIR)"; \
+	ln -sfn "$(CLAUDE_SETTINGS_DIR)/settings.json" "$$link"
 
 # Installing the schedule is a per-host decision, so it is its own target rather
 # than part of link: a crontab says what this machine runs, and the same link on
@@ -33,6 +46,8 @@ cron: link
 # knows about.
 clean: clean-cron
 	@stow --target="$(HOME)" --no-folding -D .
+	@if [ "$$(readlink "$(HOME)/.claude/settings.json")" = "$(CLAUDE_SETTINGS_DIR)/settings.json" ]; then rm "$(HOME)/.claude/settings.json"; fi
+	@if [ -d "$(CLAUDE_SETTINGS_DIR)" ]; then chmod u+w "$(CLAUDE_SETTINGS_DIR)" && rm -rf "$(CLAUDE_SETTINGS_DIR)"; fi
 	@cd "$(CURDIR)" && find . -mindepth 1 -depth -type d | sed 's|^\./||' | \
 		while IFS= read -r dir; do rmdir "$(HOME)/$$dir" 2>/dev/null || true; done
 	@if [ -n "$(DEEP)" ]; then \
