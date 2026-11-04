@@ -162,6 +162,10 @@ run_bwrap() {
 			done
 			;;
 		esac
+	else
+		# A dangling symlink still resolves to a path, and opening it below would stop
+		# every launch. Without a resolv.conf the sandbox only loses name resolution.
+		resolv=""
 	fi
 	p+=(--tmpfs /tmp)
 	# Everything under $HOME is invisible unless the allowlist binds it back.

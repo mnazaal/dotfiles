@@ -129,9 +129,6 @@ if [ "${1:-}" = "--one" ]; then
 fi
 
 # ------------------------------------------------------------------ driver --
-mkdir -p "$TMP" "$BACKUP"
-touch "$LOG"
-
 snapshot() { find "$ROOT" -type f -iname '*.pdf' -printf '%s\t%p\n'; }
 
 # Loaded with getline rather than the NR==FNR idiom: when the manifest is empty
@@ -148,6 +145,7 @@ scan)
 	pending
 	;;
 init)
+	mkdir -p "$STATE"
 	snapshot >"$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
 	printf 'recorded %s file(s) as settled\n' "$(wc -l <"$MANIFEST")"
 	;;
@@ -160,6 +158,8 @@ run)
 		echo "pdf-recompress: no manifest at $MANIFEST; run 'pdf-recompress init' first" >&2
 		exit 1
 	}
+	mkdir -p "$TMP" "$BACKUP"
+	touch "$LOG"
 	# Hold the OneDrive lock so the 15-minute cron skips rather than syncing
 	# mid-rewrite. Bounded, so a stuck sync cannot stack runs forever.
 	exec 9>"$ONEDRIVE_LOCK"

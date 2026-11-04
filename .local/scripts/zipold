@@ -88,7 +88,7 @@ if [ "$GZIP" = 1 ]; then
 	ext=tar.gz
 	topt=czf
 fi
-packed=0 freed=0
+packed=0 freed=0 failed=0
 for d in */; do
 	[ -e "$d" ] || continue # no subfolders: the glob stayed literal
 	d=${d%/}
@@ -113,11 +113,13 @@ for d in */; do
 	if [ "$APPLY" = 0 ]; then
 		echo "would pack $d ($n entries)"
 	else
-		tar "$topt" "$d.$ext" "$d"
-		m=$(tar tf "$d.$ext" | wc -l | tr -d ' ')
-		if [ "$m" != "$n" ]; then
-			echo "FAIL $d: archive lists $m entries, folder has $n; folder kept" >&2
+		# Any failure removes the archive, because a later run skips a folder that
+		# has one.
+		m=""
+		if ! { tar "$topt" "$d.$ext" "$d" && m=$(tar tf "$d.$ext" | wc -l | tr -d ' ') && [ "$m" = "$n" ]; }; then
+			echo "FAIL $d: archive lists ${m:-no} entries, folder has $n; folder kept" >&2
 			rm -f "$d.$ext"
+			failed=1
 			continue
 		fi
 		rm -rf "$d"
@@ -128,3 +130,4 @@ for d in */; do
 done
 if [ "$APPLY" = 1 ]; then verb="packed"; else verb="would pack"; fi
 echo "$verb $packed folders; files and folders freed: $freed"
+exit "$failed"
