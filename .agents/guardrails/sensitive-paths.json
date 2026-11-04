@@ -18,6 +18,7 @@
     "~/.local/share/password-store",
     "~/.zsh_history",
     "~/.local/share/zsh",
+    "~/.local/state/zsh",
     "~/.viminfo",
     "~/.lesshst",
     "~/Dropbox/.dropbox",

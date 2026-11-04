@@ -83,4 +83,5 @@ MASK+=(
 	"$H/.local/share/keyrings"
 	"$H/.local/share/mail"
 	"$H/.local/share/zsh"
+	"$H/.local/state/zsh"
 )

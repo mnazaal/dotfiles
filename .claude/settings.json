@@ -44,6 +44,7 @@
       "Read(~/.local/share/password-store/**)",
       "Read(~/.zsh_history/**)",
       "Read(~/.local/share/zsh/**)",
+      "Read(~/.local/state/zsh/**)",
       "Read(~/.viminfo/**)",
       "Read(~/.lesshst/**)",
       "Read(~/Dropbox/.dropbox/**)",

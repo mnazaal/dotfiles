@@ -21,7 +21,7 @@ mkdir -p \
 	"$home/.local/share/claude" "$home/.local/share/bun/bin" \
 	"$home/.local/share/gnupg" "$home/.local/share/pass" \
 	"$home/.local/share/password-store" "$home/.local/share/keyrings" \
-	"$home/.local/share/mail" "$home/.local/share/zsh" \
+	"$home/.local/share/mail" "$home/.local/share/zsh" "$home/.local/state/zsh" \
 	"$home/.cache/git/credential" "$home/.local/state/headroom" "$home/.local/state/nvim" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
@@ -358,9 +358,9 @@ case "$output" in
 	exit 1
 	;;
 esac
-for store in gnupg pass password-store keyrings mail zsh; do
+for store in share/gnupg share/pass share/password-store share/keyrings share/mail share/zsh state/zsh; do
 	case "$output" in
-	*"--perms 0000 --tmpfs $home/.local/share/$store"*) ;;
+	*"--perms 0000 --tmpfs $home/.local/$store"*) ;;
 	*)
 		printf 'bwrap: %s is not masked with mode 0000\n' "$store" >&2
 		exit 1
