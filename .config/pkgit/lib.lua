@@ -182,6 +182,15 @@ function M.make_prefix(opts)
   return M.target(t)
 end
 
+--- Move to a pinned ref. An existing checkout has not fetched a newer pin, and
+--- the source update skips a detached HEAD, so raising a pin needs a fetch here.
+function M.checkout_pin(ref)
+  local commit = M.q(ref .. "^{commit}")
+  local code = M.sh("git rev-parse --verify --quiet " .. commit .. " >/dev/null || git fetch --tags origin")
+  if code ~= 0 then return code end
+  return M.sh("git checkout --detach " .. M.q(ref))
+end
+
 function M.meson(opts)
   opts = opts or {}
   -- Export the local pkgconfig for the whole command — meson setup, ninja, and
@@ -213,7 +222,7 @@ function M.meson(opts)
     -- a no-op. Runs after git_update_source_only has ff-merged the default
     -- branch on the very first (fresh-clone) build.
     if opts.checkout then
-      local code = M.sh("git checkout --detach " .. M.q(opts.checkout))
+      local code = M.checkout_pin(opts.checkout)
       if code ~= 0 then return code end
       -- The pin moves HEAD after M.target already synced submodules, so sync
       -- again to land them on what the pinned commit records.
