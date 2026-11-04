@@ -31,7 +31,7 @@
 #   .log   combined stdout+stderr of <command>
 #   .pid   pid of the backgrounded process
 #   .exit  written once `timeout` returns (exit code) -- absence means still
-#          running (or never started); this is the full completion signal,
+#          running, never started, or the driver was killed; this is the full completion signal,
 #          there's no pane to peek at instead.
 # <command> itself runs under `timeout $HPC_TIMEOUT` so .exit is guaranteed to
 # eventually be written even for a hung command.
@@ -108,6 +108,7 @@ remote_override=""
 dir_override=""
 runs_dir_override=""
 name_override=""
+usage='usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] [--] <command...>'
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--dirty)
@@ -158,11 +159,21 @@ while [[ $# -gt 0 ]]; do
 		shift
 		break
 		;;
+	-h | --help)
+		echo "$usage"
+		exit 0
+		;;
+	-*)
+		# Falling through would push the branch and run the mistyped flag as a
+		# command on the cluster. A command that does start with a dash goes after --.
+		printf 'hpc: unknown option %s\n%s\n' "$1" "$usage" >&2
+		exit 1
+		;;
 	*) break ;;
 	esac
 done
 if [[ $# -eq 0 ]]; then
-	echo "usage: hpc [--dirty] [--host <alias>] [--remote <name>] [--dir <path>] [--runs-dir <path>] [--name <name>] <command...>" >&2
+	echo "$usage" >&2
 	exit 1
 fi
 
@@ -222,9 +233,15 @@ case "$dir" in
   *) target="$HOME/$dir" ;;
 esac
 
+# Before the mkdir below, which would create $target for a relative runs directory.
+cd "$target" 2>/dev/null || {
+  echo "hpc: $target does not exist on $(hostname) -- clone the repo there first (git clone <origin-url> $target)." >&2
+  exit 1
+}
+
 case "$runs_dir" in
   /*) runs="$runs_dir" ;;
-  ~/*) runs="$HOME/${runs_dir#~/}" ;;
+  \~ | \~/*) runs="$HOME${runs_dir#\~}" ;;
   *) runs="$target/$runs_dir" ;;
 esac
 mkdir -p "$runs"
@@ -237,15 +254,12 @@ fi
 # A finished run under this name would be erased: the log is truncated below and the
 # exit file removed, and nothing in results/<tag>/ would say that two launches wrote it
 # (causal-benchmark LOG 2026-10-29: a relaunch appended into the morning launch's files).
-if [[ -e "$exitfile" ]]; then
-  echo "hpc: run '$name' already finished (exit $(cat "$exitfile"), log $logfile) -- pick a different --name; the output directory the command writes to must change too." >&2
+# A killed driver writes no exit file, so its pid file counts too: a driver live
+# on this node already returned above.
+if [[ -e "$exitfile" || -e "$pidfile" ]]; then
+  echo "hpc: run '$name' already finished (exit $(cat "$exitfile" 2>/dev/null || echo "unknown: no live driver on this node, so it was killed or runs on another"), log $logfile) -- pick a different --name; the output directory the command writes to must change too." >&2
   exit 1
 fi
-
-cd "$target" 2>/dev/null || {
-  echo "hpc: $target does not exist on $(hostname) -- clone the repo there first (git clone <origin-url> $target)." >&2
-  exit 1
-}
 
 git fetch origin
 
@@ -288,7 +302,7 @@ fi
 cur_sha=$(git rev-parse HEAD)
 if [[ "$cur_sha" != "$want_sha" ]]; then
   for p in "$runs"/*.pid; do
-    [[ -e "${p%.pid}.exit" ]] && continue
+    [[ -e "$p" && ! -e "${p%.pid}.exit" ]] || continue
     if kill -0 "$(cat "$p")" 2>/dev/null; then
       echo "hpc: run '$(basename "$p" .pid)' is still running here (pid $(cat "$p")), and this launch would move $target from $cur_sha to $want_sha underneath it." >&2
       echo "hpc: wait for it to finish, or launch into a separate working copy with --dir." >&2
@@ -336,7 +350,7 @@ squeue --me --format='%.12i %.9P %.24j %.2t %.10M %.6D %R' 2>/dev/null || echo "
 REMOTE
 
 case "$runs_dir" in
-/* | ~/*) display_runs="$runs_dir" ;;
+/* | \~ | \~/*) display_runs="$runs_dir" ;;
 *) display_runs="$disp_dir/$runs_dir" ;;
 esac
 echo "hpc: log    : ssh $host tail -f $display_runs/$name.log"
