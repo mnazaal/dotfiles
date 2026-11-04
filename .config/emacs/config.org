@@ -133,7 +133,7 @@ need separate review; changing the policy does not remove them.
       "/\\.config/onedrive/"
       "/\\.netrc\\'"
       "/\\.npmrc\\'"
-      "^/\\(?:ssh\\|su\\|sudo\\)?:")
+      "^/\\(?:sshx?\\|su\\|sudo\\)?:")
     "Regexps for files excluded from history, previews, backups and autosaves.")
   (setq backup-enable-predicate
         (lambda (name)
@@ -1535,7 +1535,6 @@ would retire this whole paragraph. Until then, pin.
         (json       . ("https://github.com/tree-sitter/tree-sitter-json.git" "v0.24.8"))
         ;; No tags in this repo, so pin the commit.
         (make       . ("https://github.com/alemuller/tree-sitter-make.git" "a4b9187417d6be349ee5fd4b6e77b4172c6827dd"))
-        (markdown   . ("https://github.com/ikatyang/tree-sitter-markdown.git" "v0.7.1"))
         (python     . ("https://github.com/tree-sitter/tree-sitter-python.git" "v0.23.6"))
         (toml       . ("https://github.com/tree-sitter/tree-sitter-toml.git" "v0.5.1"))
         (tsx        . ("https://github.com/tree-sitter/tree-sitter-typescript.git" "v0.23.2" "tsx/src"))
@@ -1635,7 +1634,8 @@ Apparently =eglot= works better with =TRAMP= compared to =lsp-mode=, however doe
 
 # TODO: Find a way to ignore certain directories. For example, many log files in the project directory can make functions like =evil-goto-definition= slow. [2025-04-08 Tue] This is probably a language-server-specific issue, so it may be better to see how Pyright handles it.
 
-=harper-ls= handles prose in Markdown, Org and LaTeX buffers. Its spell checker
+=harper-ls= handles prose in Markdown, Org and LaTeX buffers once started with
+=M-x eglot=; no hook starts it. Its spell checker
 is switched off here because [[*jinx][jinx]] already checks spelling in every =text-mode=
 buffer, and running both gives two sets of underlines with two separate
 dictionaries and two different ways to accept a word. The split is: jinx owns
@@ -1647,7 +1647,7 @@ so =:json-false= is required — plain =nil= would serialise as an empty object.
 (use-package eglot
   :hook
   (prog-mode . (lambda () (setq-local eldoc-echo-area-use-multiline-p nil)))
-  (sh-mode . eglot-ensure)
+  (sh-base-mode . eglot-ensure)
   :config
   (add-to-list 'eglot-server-programs
                '((python-mode python-ts-mode) . ("pyright-langserver" "--stdio")))
@@ -1675,16 +1675,11 @@ so =:json-false= is required — plain =nil= would serialise as an empty object.
 ** apheleia                                                          :coding:
 # TODO: Make this depend on project configurations when they exist.
 
-=LaTeX-mode= is hooked separately because it derives from =text-mode=, not
-=prog-mode=. It needs no =apheleia-mode-alist= entry: apheleia already ships a
-=latexindent= formatter and already maps =latex-mode= / =LaTeX-mode= to it, so
-adding one here would only restate the default.
+Nothing turns this on: run =M-x apheleia-mode= to format a buffer on save.
 
 #+begin_src emacs-lisp
 (use-package apheleia
-  ;; :hook
-  ;; (prog-mode . apheleia-mode)
-  ;; (LaTeX-mode . apheleia-mode)
+  :defer t
   :config
   (setf (alist-get 'python-mode    apheleia-mode-alist) '(ruff-isort ruff))
   (setf (alist-get 'python-ts-mode apheleia-mode-alist) '(ruff-isort ruff))
@@ -1700,7 +1695,7 @@ Python debugger via Debug Adapter Protocol. Requires =debugpy=.
 
 #+begin_src emacs-lisp
 (use-package dape
-  :after eglot
+  :bind-keymap ("C-c d" . dape-global-map)
   :custom
   ;; Put dape's command map under C-c d (matches the old dap-mode prefix).
   (dape-key-prefix (kbd "C-c d"))
@@ -1807,6 +1802,8 @@ conflicts (so the =e= then =A=/=B= merge workflow above still applies).
 #+begin_src emacs-lisp
 (use-package vdiff-magit
   :after magit
+  ;; Its :config rewrites magit-dispatch, which runs ediff until this has loaded.
+  :demand t
   :bind (:map magit-mode-map
               ("e" . vdiff-magit-dwim)
               ("E" . vdiff-magit)

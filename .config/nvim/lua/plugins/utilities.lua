@@ -42,8 +42,6 @@ local function which_key_options()
     },
     win = {
       border = "single",
-      position = "bottom",
-      margin = { 1, 0, 1, 0 },
       padding = { 1, 2, 1, 2 },
     },
     layout = {
