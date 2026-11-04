@@ -666,6 +666,34 @@ test("env files: denied for the typed tools, and only where they should be", () 
   }
 });
 
+test("typed writes cover the deployed crontab, unit directory and settings copy", () => {
+  const rails = createGuardrails("claude");
+  const home = process.env.HOME;
+  for (const path of [
+    `${home}/dotfiles/.local/cron`,
+    `${home}/.local/cron`,
+    `${home}/.config/systemd/user/x.service.d/x.conf`,
+    `${home}/.config/claude-settings/settings.json`,
+  ]) {
+    const r = rails.evaluate({ tool: "Write", paths: [path], cwd, operation: "write" }, loadedSkills);
+    expect(`${path}: ${r.decision}`).toBe(`${path}: deny`);
+  }
+});
+
+test("Pi's machinery is protected under its ~/.pi spelling from host Bash", () => {
+  const rails = createGuardrails("pi", { inSandbox: false });
+  for (const command of ["sed -i s/a/b/ ~/.pi/agent/settings.json", "rm ~/.pi/agent/extensions/guardrails.ts"]) {
+    expect(`${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`).toBe(`${command}: deny`);
+  }
+});
+
+test("shell history is protected where zsh writes it", () => {
+  const rails = createGuardrails("claude");
+  const path = `${process.env.HOME}/.local/state/zsh/history`;
+  const r = rails.evaluate({ tool: "Read", paths: [path], cwd, operation: "read" }, loadedSkills);
+  expect(r.decision).toBe("deny");
+});
+
 for (const { command, expected, note } of TABLE) {
   test(`${label(expected)}: ${command}${note ? ` (${note})` : ""}`, () => {
     for (const agent of AGENTS) {

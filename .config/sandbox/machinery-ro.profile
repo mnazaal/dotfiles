@@ -60,6 +60,8 @@ RO_LAST+=(
 	"$H/dotfiles/.config/git/config"
 	"$H/dotfiles/.config/systemd"
 	"$H/dotfiles/.config/pi/agent/mcp.json"
+	# crontab-sync installs this file unsandboxed every 15 minutes.
+	"$H/dotfiles/.local/cron"
 )
 
 # Git credential-cache normally opens $XDG_CACHE_HOME/git/credential/socket.
