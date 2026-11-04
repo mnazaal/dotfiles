@@ -76,12 +76,20 @@ if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
 else
 	BASE="$(git hash-object -t tree /dev/null)"
 fi
+# Only a file crossing the limit is refused: an edit to one already over it is
+# routine, and refusing it would leave a large tracked file uneditable. A rename
+# compares against its old path, which -z prints before the new one.
 bad=()
-while IFS= read -r -d '' f; do
+while IFS= read -r -d '' status; do
+	old_path=""
+	[[ "$status" == R* ]] && IFS= read -r -d '' old_path
+	IFS= read -r -d '' f
 	s="$(git cat-file -s ":$f" 2>/dev/null || printf '0')"
 	[[ "$s" =~ ^[0-9]+$ ]] || s=0
-	((s > THRESHOLD)) && bad+=("$f")
-done < <(git diff --cached --name-only -z --diff-filter=A "$BASE" --)
+	before="$(git cat-file -s "$BASE:${old_path:-$f}" 2>/dev/null || printf '0')"
+	[[ "$before" =~ ^[0-9]+$ ]] || before=0
+	if ((s > THRESHOLD && before <= THRESHOLD)); then bad+=("$f"); fi
+done < <(git diff --cached --name-status -z --diff-filter=AMRT "$BASE" --)
 ((${#bad[@]} == 0)) && exit 0
 echo "$ERROR_PREFIX Refusing commit - large file(s) staged (>${THRESHOLD_MB}MB):" >&2
 for f in "${bad[@]}"; do

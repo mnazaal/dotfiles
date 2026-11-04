@@ -10,6 +10,7 @@
 *.p12
 *.pfx
 .ssh/known_hosts
+.ssh/config.local
 id_rsa
 id_rsa.pub
 id_ed25519

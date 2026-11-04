@@ -42,7 +42,7 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu select
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
     '[ -n "$realpath" ] || exit 0; [ -d "$realpath" ] && { eza --tree --color=always -- "$realpath" 2>/dev/null || ls -la --color=always -- "$realpath"; } || { bat --color=always -- "$realpath" 2>/dev/null || cat -- "$realpath"; }'
-zstyle ':fzf-tab:complete:ssh:*' fzf-preview 'grep -A5 -- "Host $_" "$HOME/.ssh/config"'
+zstyle ':fzf-tab:complete:ssh:*' fzf-preview 'grep -hA5 -- "Host $_" "$HOME/.ssh/config" "$HOME/.ssh/config.local" 2>/dev/null'
 
 # Ref candidates carry no $realpath, so the file preview above is inert for
 # them. Show what the ref actually points at instead. Listed per subcommand:

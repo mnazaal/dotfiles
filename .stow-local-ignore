@@ -9,3 +9,6 @@ PLAN\.md
 .claude/settings\.json
 ^tests$
 ^/\.editorconfig$
+.*\.log
+^/wip\.org$
+^/notes$
