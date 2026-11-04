@@ -71,7 +71,7 @@
     "-exec",
     "-execdir",
     "-delete",
-    "-fprintf",
+    "-fprintf", "-fprint", "-fprint0", "-fls",
     "-ok",
     "-okdir"
   ],

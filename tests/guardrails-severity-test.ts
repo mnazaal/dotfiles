@@ -19,7 +19,7 @@ import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createGuardrails } from "../.agents/guardrails/core.ts";
+import { createGuardrails, toolEventFromInput } from "../.agents/guardrails/core.ts";
 
 const cwd = "/tmp/project";
 
@@ -732,6 +732,67 @@ test("a link into machinery stays runnable from Bash", () => {
   const rails = createGuardrails("claude", { inSandbox: false });
   expect(rails.evaluate({ tool: "bash", command: `${python} run.py`, cwd }, loadedSkills).decision).toBe("allow");
   expect(rails.evaluate({ tool: "Write", paths: [`${fixture}/venv-python`], cwd, operation: "write" }, loadedSkills).decision).toBe("deny");
+});
+
+test("option forms do not hide a rule", () => {
+  const rails = createGuardrails("claude");
+  const decide = (command: string) => `${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`;
+  for (const command of [
+    "git commit -n -m x", "git commit -nm x", "git commit -anm x", "git commit --no-ver -m x", "git am -n",
+    "git commit -mtest -n", "git commit -mfact -n", "env --uns FOO sudo id", "env --chd /tmp sudo id", "env --spl='sudo id'",
+    "env -a x sudo id", "env --block-signal=INT sudo id",
+    "git branch -M x y", "git branch -C x y", "git branch --del x", "git branch --format --sort -D x",
+    "git push --forc origin x", "git push --del origin x",
+    "git config --global --edit", "git config --global -e",
+    "env -S 'sudo id'", "env -Ssudo", "env --split-string='sudo id'", "env -iS 'sudo id'", "env -vS 'sudo id'",
+    "env -uFOO sudo id", "env -CDIR sudo id", "env -i sudo id", "exec -ca x sudo id",
+    "xargs -i sudo id", "xargs -l sudo id", "stdbuf -o L sudo id", "time -f x sudo id", "exec -a x sudo id",
+  ]) expect(decide(command)).toBe(`${command}: deny`);
+  // Near misses: the same letters in forms that skip nothing.
+  for (const command of [
+    "git commit -m n", "git commit -mn", "git commit -am n", "git commit -C abc", "git push -n origin claude/x",
+    "git commit -m '-n flag'", "git commit -m '-nightly fix'", "git commit -am '-n flag'",
+    "git branch --sort -committerdate", "git log --n", "git log --grep --no", "env --unset=FOO ls",
+    "git push -u origin claude/x", "git log -n 5", "git merge -n claude/x", "git branch -m x y", "git branch -c x y",
+    "git branch -vv", "git branch -a", "git branch -uorigin/dev", "git branch --show-current",
+    "git config --global --get user.name", "env FOO=1 ls", "env -i ls", "env -u FOO ls",
+    "xargs -n 1 ls", "xargs -i ls {}", "stdbuf -oL ls", "time -f x ls",
+  ]) expect(decide(command)).toBe(`${command}: allow`);
+});
+
+// The scanner has no comment handling, on purpose. Telling a comment from a `#` the
+// shell runs past needs a shell parser: these all execute the command after the `#`.
+// The price is a known hole, older than this test: `echo hi # don't<newline>sudo id`
+// is allowed, because the apostrophe opens a quote that hides the second line.
+test("a # never hides a real command from the scanner", () => {
+  const rails = createGuardrails("claude");
+  for (const command of [
+    "n=\"$(grep -c \" #\" f.txt)\"; git push --force origin main",
+    "cat <<EOF\n# $(sudo id)\nEOF",
+    "echo ${x:- #}; sudo id",
+    "echo a\\\n#b; sudo id",
+    "echo \\ #b; sudo id",
+    "echo `echo a #b`; sudo id",
+  ]) expect(`${command}: ${rails.evaluate({ tool: "bash", command, cwd }, loadedSkills).decision}`).toBe(`${command}: deny`);
+});
+
+test("find's file-writing primaries all count as writes", () => {
+  const rails = createGuardrails("pi");
+  for (const primary of ["-fprintf /tmp/x %p", "-fprint /tmp/x", "-fprint0 /tmp/x", "-fls /tmp/x"]) {
+    expect(rails.evaluate({ tool: "bash", command: `find . ${primary}`, cwd }, loadedSkills).decision).toBe("ask");
+  }
+});
+
+test("every Asta tool and fetch form reaches the research-protocol gate", () => {
+  const rails = createGuardrails("pi");
+  const decide = (tool: string, input: Record<string, unknown>) => rails.evaluate(toolEventFromInput(tool, input, cwd), new Set()).decision;
+  expect(decide("mcp__asta-mcp__snippet_search", { query: "x" })).toBe("deny");
+  expect(decide("fetch_content", { urls: ["https://arxiv.org/abs/1"] })).toBe("deny");
+  expect(decide("fetch_content", { urls: ["https://example.com/", "https://arxiv.org/abs/1"] })).toBe("deny");
+  expect(decide("fetch_content", { urls: ["https://example.com/"] })).toBe("allow");
+  // Near misses: a code snippet is not a paper.
+  expect(decide("mcp__context7__get_code_snippet", { id: "x" })).toBe("allow");
+  expect(decide("code_snippets", { id: "x" })).toBe("allow");
 });
 
 for (const { command, expected, note } of TABLE) {

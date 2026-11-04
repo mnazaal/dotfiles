@@ -342,10 +342,26 @@ function skipEnvArgs(toks: string[], i: number): number {
   while (i < toks.length) {
     const a = toks[i];
     if (a === "--") return i + 1;
-    if (a === "-u" || a === "--unset") { i += 2; continue; }
-    if (a === "-C" || a === "--chdir" || a === "-S" || a === "--split-string") { i += 2; continue; }
-    if (a === "-i" || a === "-0" || a === "--ignore-environment" || a === "--null") { i++; continue; }
-    if (a.startsWith("--unset=") || a.startsWith("--chdir=") || a.startsWith("--split-string=")) { i++; continue; }
+    // A short cluster ends in its one value option: -iS, -uFOO, -CDIR.
+    const short = /^-[i0v]*([uCSa])(.*)$/.exec(a);
+    if (short) {
+      const attached = short[2] !== "";
+      // -S carries a command line in one word; open it up so the walk reads it.
+      if (short[1] === "S") toks.splice(i, attached ? 1 : 2, ...tokenize(attached ? short[2] : toks[i + 1] ?? ""));
+      else i += attached ? 1 : 2;
+      continue;
+    }
+    if (a.startsWith("--")) {
+      // Long options take a unique abbreviation, and a value by `=` or in the next word.
+      const eq = a.indexOf("=");
+      const name = eq === -1 ? a : a.slice(0, eq);
+      const value = eq === -1 ? undefined : a.slice(eq + 1);
+      const spells = (option: string) => name.length > 2 && option.startsWith(name);
+      if (spells("--split-string")) { toks.splice(i, value === undefined ? 2 : 1, ...tokenize(value ?? toks[i + 1] ?? "")); continue; }
+      i += value === undefined && ["--unset", "--chdir", "--argv0"].some(spells) ? 2 : 1;
+      continue;
+    }
+    if (/^-[i0v]+$/.test(a)) { i++; continue; }
     if (isAssignment(a)) { i++; continue; }
     return i;
   }
@@ -380,9 +396,11 @@ function skipNiceArgs(toks: string[], i: number): number {
 function skipXargsArgs(toks: string[], i: number): number {
   // Value-taking options, so `xargs -n 1 rm -rf` does not read `1` as the
   // command. Attached forms (-I{}, -n1) and flags (-0, -r, -t) fall through.
+  // Not -i, -l, --replace or --max-lines: their value is optional and attached
+  // only, so the next word is the command.
   const valueOpts = new Set([
-    "-a", "--arg-file", "-d", "--delimiter", "-E", "-I", "--replace", "-i",
-    "-L", "--max-lines", "-l", "-n", "--max-args", "-P", "--max-procs",
+    "-a", "--arg-file", "-d", "--delimiter", "-E", "-I",
+    "-L", "-n", "--max-args", "-P", "--max-procs",
     "-s", "--max-chars",
   ]);
   while (i < toks.length) {
@@ -395,12 +413,21 @@ function skipXargsArgs(toks: string[], i: number): number {
   return i;
 }
 
+/** Separate-word option values for wrappers with no parser of their own above. */
+const WRAPPER_VALUE_OPTS: Record<string, Set<string>> = {
+  stdbuf: new Set(["-i", "-o", "-e", "--input", "--output", "--error"]),
+  time: new Set(["-f", "--format", "-o", "--output"]),
+  exec: new Set(["-a", "-ca", "-la", "-cla", "-lca"]),
+};
+
 function skipWrapperArgs(wrapper: string, toks: string[], i: number): number {
   if (wrapper === "env") return skipEnvArgs(toks, i);
   if (wrapper === "timeout") return skipTimeoutArgs(toks, i);
   if (wrapper === "nice") return skipNiceArgs(toks, i);
   if (wrapper === "xargs") return skipXargsArgs(toks, i);
-  while (i < toks.length && toks[i].startsWith("-") && toks[i] !== "--") i++;
+  while (i < toks.length && toks[i].startsWith("-") && toks[i] !== "--") {
+    i += WRAPPER_VALUE_OPTS[wrapper]?.has(toks[i]) ? 2 : 1;
+  }
   if (toks[i] === "--") i++;
   while (i < toks.length && isAssignment(toks[i])) i++;
   return i;
@@ -856,7 +883,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
     if (subcommandOf(args, GIT_VALUE_OPTS) !== "config") return undefined;
     if (!args.some(a => a === "--global" || a === "--system")) return undefined;
     const READS = new Set(["--get", "--get-all", "--get-regexp", "--get-urlmatch",
-      "--list", "-l", "--name-only", "--show-origin", "--show-scope", "-e", "--edit"]);
+      "--list", "-l", "--name-only", "--show-origin", "--show-scope"]);
     if (args.some(a => READS.has(a))) return undefined;
     return "writes the global git config (stow-deployed machinery)";
   }
@@ -895,9 +922,19 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
         if (!readForm) return `direct git ref op (git ${sub})`;
       }
       if (sub === "config" && rest.some(t => gitConfigKey(t) === "core.hookspath")) return "git hooks bypass (git config core.hooksPath)";
-      if (rest.includes("--no-verify")) return "git hook skip (--no-verify)";
-      if (sub === "branch" && rest.some(t => t === "-f" || t === "--force" || t === "-D" || t === "-d" || t === "--delete")) return "forced/deleted git branch";
-      if (sub === "push" && rest.some(t => t === "-f" || t === "--force" || t === "--delete" || t === "-d" || t.startsWith("--force"))) return "force/delete git push";
+      // Git accepts a unique abbreviation of a long option.
+      const abbreviates = (t: string, name: string) => t.length > 2 && name.startsWith(t);
+      if (rest.some(t => t.startsWith("--no-v") && "--no-verify".startsWith(t))) return "git hook skip (--no-verify)";
+      // -n is --no-verify on these two only: `git push -n` is a dry run. The letters
+      // excluded take a value, so `-mn` is the message "n". A bare one takes the next
+      // word instead, which may itself begin with -n; `-mtest` has already got its.
+      const takesValue = /^(-[^-mFCct]*[mFCct]|--(message|file|reuse-message|reedit-message|template|fixup|squash|author|date))$/;
+      if ((sub === "commit" || sub === "am") && rest.some((t, at) => /^-[^-mFCctSu]*n/.test(t) && !takesValue.test(rest[at - 1] ?? ""))) return "git hook skip (-n)";
+      // Bundled short flags such as `-fu` are not parsed: telling them from a value
+      // like `--sort -committerdate` kept going wrong. The pre-push hook refuses a
+      // forced push or remote delete, and the reference-transaction hook guards main.
+      if (sub === "branch" && rest.some(t => ["-f", "-D", "-d", "-M", "-C"].includes(t) || abbreviates(t, "--force") || abbreviates(t, "--delete"))) return "forced/deleted git branch";
+      if (sub === "push" && rest.some(t => t === "-f" || t === "-d" || abbreviates(t, "--force") || abbreviates(t, "--delete") || t.startsWith("--force"))) return "force/delete git push";
       // Refspec forms: `+dst` forces, `:dst` deletes. `src:dst` is an ordinary push.
       if (sub === "push" && rest.some(t => t.startsWith("+") || (t.startsWith(":") && t.length > 1))) return "force/delete git push (refspec)";
       return undefined;
@@ -1330,7 +1367,8 @@ export function createSkillGate() {
   function capabilitiesOf(input: ToolEvent): Set<string> {
     const capabilities = new Set<string>();
     const toolTokens = (input.tool ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-    if (toolTokens.some((token) => ["paper", "papers", "citation", "citations", "author", "authors", "bibliography", "bibliographic"].includes(token))) {
+    if (toolTokens.some((token) => ["paper", "papers", "citation", "citations", "author", "authors", "bibliography", "bibliographic"].includes(token)) ||
+        (toolTokens.includes("snippet") && toolTokens.includes("search"))) {
       capabilities.add("academic-source");
     }
     // Delegation is a tool call, not a command or a path, so it is keyed on the
@@ -1424,7 +1462,8 @@ export function toolEventFromInput(tool: string | undefined, input: Record<strin
     cwd,
     command: commandFromToolInput(tool, input),
     paths: pathsFromToolInput(tool, input),
-    urls: stringValues(input, ["url"]).filter((s) => /^https?:/i.test(s)),
+    urls: [...stringValues(input, ["url"]), ...(Array.isArray(input?.urls) ? input.urls.filter((u): u is string => typeof u === "string") : [])]
+      .filter((s) => /^https?:/i.test(s)),
   };
   event.operation = inferOperation(tool, event);
   return event;
