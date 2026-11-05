@@ -61,7 +61,7 @@ need separate review; changing the policy does not remove them.
   (help-window-select t)
   (ring-bell-function 'ignore)
   (warning-minimum-level :warning)
-  ;; Compile errors in third-party packages stay in *Compile-Log* without popping up.
+  ;; No byte-compile warning pops up, this config's own included; they stay in *Compile-Log*.
   (warning-suppress-types '((bytecomp)))
   (trash-directory "~/.local/share/Trash/") ;; TODO Figure out how to make deletions via Tramp not be sent to local trash directory
   (delete-by-moving-to-trash t)
