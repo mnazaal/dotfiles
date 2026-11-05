@@ -135,6 +135,13 @@ the re-seed lands. A long-lived one is pure bookkeeping.
   advances the ancestry, and run straight after a push it changes no file. Wire
   it into the push target. Pull again before you start editing, not before you
   push.
+- **The pull needs `ALLOW_MERGE_COMMIT=1`.** A hook keeping history linear refuses
+  its merge commit and leaves the merge in progress, so write the recipe as
+  `ALLOW_MERGE_COMMIT=1 git subtree pull …`. A conflicted pull needs the same
+  variable on the `git commit` that finishes it. A rebase cannot replace this
+  merge, because the merge commit is the ancestry. A target written without the
+  variable runs as `ALLOW_MERGE_COMMIT=1 make <host>-pull`, and a push target
+  that pulls needs it too.
 - **A conflicted pull is usually that replay.** Before resolving, diff the host
   tree against the local commit whose subject matches the host's last one:
   `git diff <commit>:<dir> MERGE_HEAD`. Empty means the host holds nothing of

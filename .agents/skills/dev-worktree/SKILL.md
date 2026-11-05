@@ -33,7 +33,7 @@ has the order.
 - A worktree's own `.venv` does not change shell PATH: bare `pytest`/`python` invocations can silently resolve to a sibling checkout's venv, importing a different package install.
 - Before trusting a bare tool invocation, check that `which <tool>` resolves inside this worktree; if it does not, activate this worktree's environment (or use the project-configured runner) so the bare command resolves here, rather than invoking another checkout's path.
 - Treat a `ModuleNotFoundError`, or an `ImportError: cannot import name X from Y` for a symbol you just added/changed, as a PATH/venv-resolution symptom first, not necessarily a real missing-dependency or circular-import bug.
-- An isolated worktree `.venv` resolves dependencies independently: a wave of same-subsystem failures often means unpinned-dependency drift (a newer release broke an API, e.g. `AttributeError: ... has no attribute X`), and a `ModuleNotFoundError` there can be a genuinely missing optional dep — check installed versions against the project's pins, and re-run with your changes stashed, before suspecting your code.
+- An isolated worktree `.venv` resolves dependencies independently: a wave of same-subsystem failures often means unpinned-dependency drift (a newer release broke an API, e.g. `AttributeError: ... has no attribute X`), and a `ModuleNotFoundError` there can be a genuinely missing optional dep — check installed versions against the project's pins, and run a clean checkout of the base under this worktree's `.venv`, before suspecting your code.
 
 ## Cleanup
 

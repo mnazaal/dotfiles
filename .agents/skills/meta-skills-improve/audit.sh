@@ -13,10 +13,11 @@
 #   ./audit.sh ~/.config/foo/logs   # another harness's transcripts
 #
 # Assumes one session per transcript file, and that each skill load appears in
-# the text as "skill":"<name>". Three things are harness-specific: MARKER, the
-# transcript directory (argument 1), and the skills directory (argument 2);
-# the defaults below suit one harness, so for another pass both directories
-# and edit MARKER.
+# the text as "skill":"<name>". Five things are harness-specific: MARKER, the
+# transcript directory (argument 1), the skills directory (argument 2), the tool
+# names in the section 4 gates, and the records sections 6-8 parse. The defaults
+# below suit one harness. For another, pass both directories, edit MARKER and the
+# gates, and expect sections 6-8 to find nothing.
 #
 # Sections 1-5 are grep/awk over the raw text and need nothing installed.
 # Sections 6-8 read per-record JSON, so they need python3; without it they say
@@ -24,8 +25,8 @@
 
 set -uo pipefail
 
-# Where a harness keeps its session transcripts. Add yours here; this list is the
-# only place a harness is named, and the first existing entry wins. Override with
+# Where a harness keeps its session transcripts. Add yours here; the first existing
+# entry wins. Override with
 # argument 1 or AGENT_TRANSCRIPT_DIR to avoid touching this file at all.
 CANDIDATE_DIRS=(
 	"$HOME/.claude/projects"
@@ -33,7 +34,7 @@ CANDIDATE_DIRS=(
 )
 
 # Default is the deployed Claude skills path. If the skills dir is missing,
-# sections 2 and 3 emit `ls: cannot access` and report every skill as "fired
+# sections 2 and 3 emit `cd:` errors and report every skill as "fired
 # but no directory" — a broken audit that still prints plausibly (observed
 # 2026-08-18 when the previous ~/.agents/skills default was transiently absent;
 # both paths resolve to the repo tree when deployed).
@@ -121,7 +122,10 @@ check_gate 'git rebase' '"command":"[^"]*git rebase' dev-git-rescue
 # meaning. Anchor on the tool call that PERFORMS the event, not the topic.
 check_gate 'git worktree add' '"command":"[^"]*git worktree add' dev-worktree
 check_gate 'arxiv fetch' '"name":"WebFetch","input":\{"url":"[^"]*arxiv\.org' research-protocol
-check_gate 'handoff written' 'session-handoff:begin' session-handoff
+# The marker also sits in skill text and in any file an agent reads, so the bare
+# string matched 703 sessions where 187 wrote it (2026-11-05). A "content" field
+# will not do: a file read's result has one too.
+check_gate 'handoff written' '"name":"(Write|Edit)","input":.*session-handoff:begin' session-handoff
 check_gate 'structured question' '"name":"AskUserQuestion"' plan-interview
 check_gate 'subagent spawn' '"name":"(Task|Agent)","input"' agent-orchestration
 # Anchored to a command the agent RAN, so this understates the real gap: the more

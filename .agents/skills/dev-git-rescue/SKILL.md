@@ -32,7 +32,7 @@ description: "Use for git history rewriting and recovery: interactive rebase, sq
 
 - Bad commit already pushed → `git revert <sha>` (new inverse commit); never rewrite pushed history without explicit user confirmation.
 - Bad commit still local → `git reset --soft HEAD~1` to redo message/split; `git reset --hard` only after `git status` confirms nothing unstaged/untracked would be lost.
-- Lost commit or branch (bad reset, deleted branch, botched rebase) → `git reflog` to find the sha, then `git branch rescue/<name> <sha>`; reflog retains ~90 days.
+- Lost commit or branch (bad reset, deleted branch, botched rebase) → `git reflog` to find the sha, then `git branch rescue/<name> <sha>`; a reflog entry for a commit no branch reaches expires after ~30 days.
 - Dropped stash → `git fsck --unreachable | grep commit`, inspect candidates with `git show`.
 - Regression of unknown origin → `git bisect` between last known-good and bad, driven by the repro loop from `debug-root-cause`.
 - Atomic, focused commits are what make all of the above cheap: one concern per commit means revert and bisect touch exactly the concern in question. Split before committing, not after.

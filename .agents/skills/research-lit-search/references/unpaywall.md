@@ -12,7 +12,7 @@ https://api.unpaywall.org/v2
 
 ## Authentication
 
-No API key. You must include your **email address** as a query parameter: `?email=you@example.com`
+No API key. You must include your **email address** as a query parameter: `?email={email}`
 
 **Important:** Use a real email address. Unpaywall rejects placeholder emails like `test@example.com` with HTTP 422.
 
@@ -25,18 +25,18 @@ No API key. You must include your **email address** as a query parameter: `?emai
 ### 1. DOI Lookup
 
 ```
-GET /v2/{doi}?email=you@example.com
+GET /v2/{doi}?email={email}
 ```
 
 **Example:**
 ```
-https://api.unpaywall.org/v2/10.1038/nature12373?email=you@example.com
+https://api.unpaywall.org/v2/10.1038/nature12373?email={email}
 ```
 
 ### 2. Search (unreliable)
 
 ```
-GET /v2/search?query={text}&email=you@example.com
+GET /v2/search?query={text}&email={email}
 ```
 
 **Warning:** The search endpoint has been returning HTTP 500 errors as of March 2026. It may be deprecated or intermittently broken. Use DOI lookups instead -- find papers via PubMed/OpenAlex/Semantic Scholar first, then check OA status per-DOI.

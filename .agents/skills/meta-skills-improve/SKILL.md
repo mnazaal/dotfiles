@@ -110,11 +110,13 @@ changed anything.
 
 **Run `audit.sh` in this skill's own directory** — do not retype its queries from
 memory or summarise them. It reports counts per skill, never-fired, fired-but-no-
-directory, gate compliance, and where in the session each skill fires. It takes
+directory, gate compliance, where in the session each skill fires, cost, what you
+asked for, and where the agent struggled. It takes
 the harness's session-transcript directory as its first argument and the
 deployed skills directory as its second; pass both when auditing a harness
 other than the one its defaults name, and check that the load marker at the
-top of the file matches how that harness records a skill load.
+top of the file and the tool names in its gates match how that harness records
+them.
 
 What the sections are for:
 
