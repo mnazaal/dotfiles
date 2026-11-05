@@ -51,8 +51,8 @@ by a tmpfs before the allowlist is bound back.
 Binds apply in argv order and a repeated destination lets the LAST one win.
 That is the whole mechanism behind `RO_LAST`, and why no dedupe pass exists.
 The emitter sets `SANDBOX_ENGINE=bwrap` inside, since bubblewrap creates
-neither `/run/.containerenv` nor `/.dockerenv`; the pi shim reads it to
-recognise that it is already sandboxed and step aside rather than nest.
+neither `/run/.containerenv` nor `/.dockerenv`; `dotfiles-doctor` reads it to
+recognise that it is inside a sandbox and skip the checks a mask would fail.
 
 ## Profiles
 

@@ -43,7 +43,7 @@ run clean || fail 'make clean failed after link'
 # cron installs the tracked file as the whole crontab; clean removes it.
 run cron || fail 'make cron failed'
 cmp "$repo/.local/cron" "$MOCK_LIVE"
-run clean || fail 'make clean refused the crontab link installed'
+run clean || fail 'make clean refused the crontab make cron installed'
 [ ! -e "$MOCK_LIVE" ] || fail 'make clean left the crontab installed'
 [ ! -L "$home/.local/cron" ] || fail 'make clean left the links behind'
 

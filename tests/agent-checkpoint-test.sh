@@ -127,7 +127,7 @@ r=$(new_repo unwritable)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod -R a-w "$r/.git"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
 chmod -R u+w "$r/.git"
 [ "$rc" -ne 0 ] || fail "a checkpoint that captured nothing must exit non-zero"
 printf '%s' "$out" | grep -q 'NOT recoverable' ||
@@ -150,21 +150,6 @@ git -C "$r" ls-tree -r --name-only "$ref" | grep -qx 'new.txt' ||
 	fail "checkpoint omitted the only file in a repo with no commits"
 [ "$(git -C "$r" rev-list --count "$ref")" = "1" ] ||
 	fail "checkpoint on an unborn HEAD should be parentless"
-
-# --- 10. A failed snapshot says so on stderr ---------------------------------
-# Exit 0 is required (behavior 8) but must not mean silence: the guardrail
-# `allow` tier for world-writable and recursive-force-rm is earned by this
-# script working. A checkpoint that silently stops leaves that premise false
-# with no signal, so the failure has to reach the transcript.
-r=$(new_repo loudfail)
-printf 'MODIFIED\n' >"$r/tracked.txt"
-chmod -R a-w "$r/.git"
-err=$(cd "$r" && "$script" 2>&1 >/dev/null) || true
-chmod -R u+w "$r/.git"
-case $err in
-*'NOT recoverable'*) ;;
-*) fail "a failed checkpoint must warn on stderr; got: ${err:-<silence>}" ;;
-esac
 
 # --- 11. The legitimate no-ops stay silent -----------------------------------
 # Only failure is loud. A clean tree is not a failure, and warning on every
@@ -276,7 +261,7 @@ r=$(new_repo danglingref)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod -R a-w "$r/.git/refs"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
 chmod -R u+w "$r/.git/refs"
 [ "$rc" -eq 0 ] ||
 	fail "a snapshot that exists must exit 0 even when its ref could not be written"
@@ -293,7 +278,7 @@ r=$(new_repo statusfail)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod 000 "$r/.git/index"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
 chmod 644 "$r/.git/index"
 [ "$rc" -ne 0 ] || fail "a working tree that cannot be read must not report success"
 printf '%s' "$out" | grep -q 'git status failed' ||
@@ -308,7 +293,7 @@ r=$(new_repo addfail)
 printf 'MODIFIED\n' >"$r/tracked.txt"
 chmod 000 "$r/tracked.txt"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1 >/dev/null)) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1 >/dev/null) ) || rc=$?
 chmod 644 "$r/tracked.txt"
 [ "$rc" -ne 0 ] ||
 	fail "a snapshot holding nothing new must not report success (got: $out)"
@@ -342,7 +327,7 @@ r=$(new_repo maskonly)
 rm "$r/tracked.txt"
 mkfifo "$r/tracked.txt"
 rc=0
-out=$( (cd "$r" && "$script" 2>&1)) || rc=$?
+out=$( (cd "$r" && "$script" 2>&1) ) || rc=$?
 [ "$rc" -eq 0 ] || fail "a tree dirty only with masks must exit 0, got: $out"
 [ -z "$out" ] || fail "a tree dirty only with masks must stay silent, got: $out"
 [ -z "$(refs_of "$r")" ] || fail "a tree dirty only with masks should not create a ref"

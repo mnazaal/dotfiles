@@ -29,7 +29,7 @@ has_skill() { # file skill label
 
 # --- claude: keyed by sha256 of the transcript path --------------------------
 emit ".claude/hooks/guardrails.ts" \
-	"$(printf '{"tool_name":"Skill","tool_input":{"name":"dev-git"},"cwd":"%s","transcript_path":"%s"}' "$repo" "$transcript")"
+	"$(printf '{"tool_name":"Skill","tool_input":{"skill":"dev-git"},"cwd":"%s","transcript_path":"%s"}' "$repo" "$transcript")"
 
 digest=$(printf '%s' "$transcript" | sha256sum | cut -d' ' -f1)
 claude_file="$state/claude/guardrails/$digest.json"
@@ -39,7 +39,8 @@ claude_file="$state/claude/guardrails/$digest.json"
 }
 has_skill "$claude_file" dev-git claude
 
-# A later call in the same session accumulates rather than replacing.
+# A later call in the same session accumulates rather than replacing. It uses
+# name, the other spelling the receipt code accepts; Claude sends skill.
 emit ".claude/hooks/guardrails.ts" \
 	"$(printf '{"tool_name":"Skill","tool_input":{"name":"dev-python"},"cwd":"%s","transcript_path":"%s"}' "$repo" "$transcript")"
 has_skill "$claude_file" dev-git "claude after second call"
@@ -47,7 +48,7 @@ has_skill "$claude_file" dev-python "claude after second call"
 
 # A different transcript is a different session and must not inherit receipts.
 emit ".claude/hooks/guardrails.ts" \
-	"$(printf '{"tool_name":"Skill","tool_input":{"name":"dev-viz"},"cwd":"%s","transcript_path":"%s"}' "$repo" "$tmp/other.jsonl")"
+	"$(printf '{"tool_name":"Skill","tool_input":{"skill":"dev-viz"},"cwd":"%s","transcript_path":"%s"}' "$repo" "$tmp/other.jsonl")"
 grep -q '"dev-viz"' "$claude_file" && {
 	printf 'claude: a second session wrote into the first session receipt\n' >&2
 	exit 1
@@ -55,6 +56,6 @@ grep -q '"dev-viz"' "$claude_file" && {
 
 # No transcript path means no persistence, and must not crash the hook.
 emit ".claude/hooks/guardrails.ts" \
-	"$(printf '{"tool_name":"Skill","tool_input":{"name":"dev-git"},"cwd":"%s"}' "$repo")"
+	"$(printf '{"tool_name":"Skill","tool_input":{"skill":"dev-git"},"cwd":"%s"}' "$repo")"
 
 printf 'guardrails skill state: all behaviors pass\n'

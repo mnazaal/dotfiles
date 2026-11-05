@@ -22,10 +22,4 @@ real="$BUN_INSTALL/bin/$self"
 # Never forward a caller-provided MCP key to Pi or its extensions.
 unset ASTA_MCP_API_KEY
 
-# A Pi invoked from a sandboxed Bash command inherits that boundary. Do not nest
-# bubblewrap, and do not try to read the password store hidden inside it.
-if [ -n "${SANDBOX_ENGINE:-}" ] || [ -n "${SANDBOX_RUNTIME:-}" ]; then
-	exec "$real" "$@"
-fi
-
 exec "$real" "$@"

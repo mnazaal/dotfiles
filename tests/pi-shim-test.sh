@@ -108,14 +108,16 @@ run_shim --version >/dev/null || fail 'launcher still depends on pass'
 refuses 'when the real binary is missing' env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME \
 	-u ASTA_MCP_API_KEY PATH="$bin:$PATH" BUN_INSTALL="$tmp/absent" "$shim" --version
 
-# A nested Pi launched by a sandboxed Bash command must not try to read the
-# masked password store. It inherits the existing boundary and runs directly.
-rm -f "$capture"
-out=$(env -u SANDBOX_RUNTIME -u ASTA_MCP_API_KEY SANDBOX_ENGINE=bwrap \
-	PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" --version)
-expect 'runs directly when already sandboxed' "$out" 'real-pi-ran --version'
-args=$(<"$capture")
-[ "${args%%$'\n'*}" = 'asta=' ] || fail 'nested Pi received an ambient MCP key'
+# A nested Pi launched by a sandboxed Bash command inherits that boundary, runs
+# directly, and still drops an ambient key.
+for marker in SANDBOX_ENGINE=bwrap SANDBOX_RUNTIME=1; do
+	rm -f "$capture"
+	out=$(env -u SANDBOX_ENGINE -u SANDBOX_RUNTIME ASTA_MCP_API_KEY=fake-ambient "$marker" \
+		PATH="$bin:$PATH" BUN_INSTALL="$bun" "$shim" --version)
+	expect "runs directly under $marker" "$out" 'real-pi-ran --version'
+	args=$(<"$capture")
+	[ "${args%%$'\n'*}" = 'asta=' ] || fail "nested Pi under $marker received an ambient MCP key"
+done
 
 # Both deployed names keep the same host-process policy while selecting their
 # corresponding real executable.

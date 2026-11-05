@@ -94,4 +94,4 @@ assert_profile_env() { # profile allowlisted names... -- excluded names...
 # stays on the host; only its Bash process enters this shared agent profile.
 assert_profile_env agent -- ASTA_MCP_API_KEY PI_CODING_AGENT_DIR OPENROUTER_API_KEY UNRELATED_SECRET
 
-printf 'sandbox env: the per-profile allowlist holds and no value enters argv\n'
+printf 'sandbox env: the agent profile strips the listed variables and no value enters argv\n'

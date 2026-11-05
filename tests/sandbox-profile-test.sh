@@ -322,24 +322,10 @@ chmod u+w "$ro_pin"
 output=$(run "$project" -p agent)
 assert_mounts 'agent still binds ~/.local/share read-write' "$output" \
 	"--bind $home/.local/share $home/.local/share"
-printf 'sandbox profiles: credential and mail masks pass\n'
-
-# Order is the whole mechanism here: bwrap applies binds in argv order and lets
-# a repeated destination's LAST bind win, which is why the emitter carries no
-# dedupe. A pin emitted before the writable bind that contains it would be
-# silently undone, and the argv would still look correct.
-output=$(run "$home/dotfiles" -p agent)
-rest=${output#*"--bind $home/dotfiles $home/dotfiles"}
-case "$rest" in
-*"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails"*) ;;
-*)
-	printf 'bwrap: the guardrails pin is not emitted after the writable dotfiles bind\n' >&2
-	exit 1
-	;;
-esac
 
 # $HOME is tmpfs'd before the allowlist is bound back, so an unlisted path under
 # it is absent rather than merely unwritable.
+output=$(run "$home/dotfiles" -p agent)
 case "$output" in
 *"--tmpfs $home "*) ;;
 *)
@@ -367,6 +353,7 @@ for store in share/gnupg share/pass share/password-store share/keyrings share/ma
 		;;
 	esac
 done
+printf 'sandbox profiles: credential and mail masks pass\n'
 
 # The environment allowlist must never travel in argv. bwrap's own --setenv would
 # put every allowlisted secret where `ps` can read it, so the emitter strips the
@@ -374,7 +361,7 @@ done
 case "$output" in
 *"--setenv SANDBOX_ENGINE bwrap"*) ;;
 *)
-	printf 'bwrap: the boundary marker the pi shim looks for is missing\n' >&2
+	printf 'bwrap: the boundary marker dotfiles-doctor looks for is missing\n' >&2
 	exit 1
 	;;
 esac

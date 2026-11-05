@@ -233,8 +233,8 @@ run_bwrap() {
 
 	p+=(--chdir "$PWD")
 	# Non-secret, and the only marker of this boundary: bwrap creates neither
-	# /run/.containerenv nor /.dockerenv, so the pi shim tests this instead to
-	# recognise that it is already inside a sandbox.
+	# /run/.containerenv nor /.dockerenv, so dotfiles-doctor tests this instead to
+	# recognise that it is inside a sandbox.
 	p+=(--setenv SANDBOX_ENGINE bwrap)
 
 	# Only allowlisted names cross. bwrap inherits the environment wholesale, so

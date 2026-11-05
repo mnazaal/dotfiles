@@ -18,7 +18,7 @@ chmod +x "$tmp/bin/git"
 export GIT_TRACE="$tmp/git-trace" XDG_DATA_HOME="$tmp/data" REPO="$repo"
 
 # Sourcing shell startup on a fresh, offline machine must never fetch code.
-if ! PATH="$tmp/bin:$PATH" zsh -f -c 'source "${PLUGIN_SOURCE:-$REPO/.config/zsh/plugins.zsh}"' >"$tmp/out" 2>"$tmp/err"; then
+if ! PATH="$tmp/bin:$PATH" zsh -f -c 'source "$REPO/.config/zsh/plugins.zsh"' >"$tmp/out" 2>"$tmp/err"; then
 	printf 'offline zsh plugin startup failed:\n' >&2
 	cat "$tmp/err" >&2
 	exit 1
@@ -33,11 +33,11 @@ fi
 plugin_dir="$tmp/data/zsh/plugins/fzf-tab"
 mkdir -p "$plugin_dir"
 printf 'export ZPLUGIN_TEST_LOADED=1\n' >"$plugin_dir/fzf-tab.plugin.zsh"
-PATH="$tmp/bin:$PATH" zsh -f -c 'source "${PLUGIN_SOURCE:-$REPO/.config/zsh/plugins.zsh}"; [[ $ZPLUGIN_TEST_LOADED == 1 ]]'
+PATH="$tmp/bin:$PATH" zsh -f -c 'source "$REPO/.config/zsh/plugins.zsh"; [[ $ZPLUGIN_TEST_LOADED == 1 ]]'
 [ ! -s "$GIT_TRACE" ]
 
 # Fetching is possible only via the explicit install function.
-PATH="$tmp/bin:$PATH" zsh -f -c 'source "${PLUGIN_SOURCE:-$REPO/.config/zsh/plugins.zsh}"; zplugin-install; [[ $ZPLUGIN_TEST_LOADED == 1 ]]' >"$tmp/out" 2>"$tmp/err" || {
+PATH="$tmp/bin:$PATH" zsh -f -c 'source "$REPO/.config/zsh/plugins.zsh"; zplugin-install; [[ $ZPLUGIN_TEST_LOADED == 1 ]]' >"$tmp/out" 2>"$tmp/err" || {
 	cat "$tmp/err" >&2
 	exit 1
 }
