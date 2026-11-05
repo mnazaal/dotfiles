@@ -46,7 +46,8 @@ description: "Use for minimal software solutions: YAGNI, simplest correct code, 
 - **One adapter is a hypothetical seam, two is a real one.** A single
   implementation behind an interface is a guess about a second that has not
   arrived; write the interface when the second implementation exists, not
-  before.
+  before. A seam a skill mandates, such as the tracker seam in `dev-ml-infra`, is
+  exempt.
 
 ## What decays
 
