@@ -47,7 +47,7 @@ download instead (`curl -sL -o <file> <url>`) and read from the file.
 ## Boundary
 
 - This skill analyzes research content.
-- Use `context-pdf` for PDF mechanics: OCR, page extraction, merging, splitting, forms, encryption, or artifact transforms.
+- Use `context-pdf` for PDF mechanics: triage, OCR and page extraction.
 - Keep research citation/verification rules here via `research-protocol`.
 
 ## Related Skills
