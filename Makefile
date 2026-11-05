@@ -154,7 +154,8 @@ check-agent-role-sync:
 # Drift check between the shared policy (what the hook enforces for BOTH agents)
 # and Claude's own permission layers. Bidirectional: a path missing from
 # settings.json leaves claude's typed tools uncovered, and a path settings.json
-# denies but the policy omits leaves PI uncovered, since pi has no native layer.
+# denies but the policy omits leaves PI uncovered, since pi's permission package
+# keeps its own list.
 check-guardrails-native-sync:
 	@python3 .agents/guardrails/check-native-sync.py "$(CURDIR)"
 

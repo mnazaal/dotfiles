@@ -100,9 +100,9 @@ typeset -U PATH
 # highlighted lines neovim": the full harness took 85.5s, and the session record
 # showed a 5288-token prompt for a one-line question. Skills and AGENTS.md are
 # what fill it -- they cost nothing at startup, so only the token count shows
-# them. Extension discovery loads the nine packages in pi's settings.json, seven
-# of which only serve the TUI that -p never draws, and costs ~7s of an ~8.8s
-# startup. Dropping all of it, plus the tools, gives 1.8-3.3s.
+# them. Extension discovery loads the packages in pi's settings.json, nine at the
+# time, most of which only serve the TUI that -p never draws, and costs ~7s of an
+# ~8.8s startup. Dropping all of it, plus the tools, gives 1.8-3.3s.
 #
 # --no-tools is what makes the rest safe to drop: with no tools there is nothing
 # for the guardrails extension to gate, which is why neither helper loads it.

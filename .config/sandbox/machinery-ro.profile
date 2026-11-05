@@ -1,7 +1,7 @@
 # machinery-ro — OS-level protection the sandbox applies for every harness.
 # Two tiers, both enforced by the kernel rather than by any harness's hook:
 # RO_LAST pins the agent enforcement stack against writes, and MASK hides host
-# credential stores from reads entirely. Compose from EVERY agent-* profile.
+# credential stores from reads entirely. agent.profile composes this.
 #
 # RO_LAST binds are emitted after every RW bind, including the auto-bound
 # read-write $PWD. The plain read-only binds on $H/.agents and $H/.config do

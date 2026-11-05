@@ -8,11 +8,9 @@ local function options()
     acp_providers = {
       [default_provider] = {
         -- ~/.local/scripts/pi-acp, the shim that shadows the real binary on
-        -- PATH: it resolves secrets outside the boundary and execs the adapter
-        -- under the sandbox profile. Naming the real binary here would run it
-        -- unconfined, and the branch prefix pi's guardrails extension sets
-        -- would still be absent, so the git hooks would read the session as a
-        -- human and let it commit to main.
+        -- PATH: it drops a caller's MCP key and execs the adapter. Nothing here
+        -- confines the adapter's host process: only its Bash commands are
+        -- sandboxed, through pi's shellPath.
         command = "pi-acp",
         args = {},
       },

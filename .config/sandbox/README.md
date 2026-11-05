@@ -4,10 +4,13 @@ Run **any** command confined to an allowlist of directories. One profile front
 end over bubblewrap; the coding-agent profiles are just one set of them.
 
 ```sh
-sandbox -- ./configure && make     # confined to the current repository
-sandbox -p dev -- npm test         # + dev toolchains (node/bun/git) read-only
-sandbox -n -p dev -- make          # dry-run: print the bwrap command
+sandbox -- sh -c './configure && make'  # confined to the current repository
+sandbox -p dev -- npm test              # + dev toolchains (node/bun/git) read-only
+sandbox -n -p dev -- make               # dry-run: print the bwrap command
 ```
+
+The shell splits an unquoted `&&` before `sandbox` runs, so what follows it runs
+outside the sandbox. Wrap a compound command in `sh -c`.
 
 ## Model
 

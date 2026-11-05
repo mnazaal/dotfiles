@@ -2,10 +2,9 @@
 # agent-checkpoint — snapshot the working tree to
 # refs/agent-checkpoint/<prefix>/<epoch>.
 #
-# Harness-agnostic: invoked by whatever per-turn hook each agent provides. It
-# exists so the shared guardrail `ask` tier can be empty — allow-all rests on
-# "git makes writes recoverable", but git only protects COMMITTED work. This
-# captures uncommitted and untracked work too.
+# Harness-agnostic: invoked by whatever per-turn hook each agent provides. Git
+# only protects COMMITTED work, and this captures uncommitted and untracked work
+# too, so a bad turn can be undone.
 #
 # Refs are namespaced by AGENT_BRANCH_PREFIX, the convention the shared git
 # hooks already use, so two agents in one repo never collide.
@@ -27,12 +26,12 @@
 # answer.
 set -uo pipefail
 
-# The guardrail `allow` tier for world-writable and recursive-force-rm is earned
-# by this script working, so a checkpoint that stops working must say so where
-# the turn can see it. Two severities, because they are not the same event:
+# A bad turn can be undone only while this script works, so a checkpoint that
+# stops working must say so where the turn can see it. Two severities, because
+# they are not the same event:
 #
 #   fatal — nothing was captured. Exit 1, and a gating caller should refuse the
-#           turn: allow-all rests on a snapshot that does not exist.
+#           turn: there is no snapshot to recover from.
 #   note  — the snapshot EXISTS but something about filing it is off. Exit 0:
 #           the work is recoverable, so wedging the session buys nothing.
 fatal() {

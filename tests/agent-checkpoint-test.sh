@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Contract for `agent-checkpoint`: snapshot the working tree into a git ref so
-# that emptying the guardrail `ask` tier does not make destructive commands
-# unrecoverable. Allow-all rests on "git makes writes recoverable", but git only
-# protects COMMITTED work; this is what makes the premise true for uncommitted
-# and untracked work.
+# that a bad turn can be undone. Git only protects COMMITTED work; this covers
+# uncommitted and untracked work too.
 #
 # Harness-agnostic by design, like the rest of ~/.agents: one script, invoked by
 # whatever per-turn hook each harness provides. Refs are namespaced by
@@ -119,8 +117,8 @@ run_in "$r" || fail "non-zero exit in side-effect check"
 
 # --- 8. Exit status separates "captured nothing" from "captured, filed oddly" -
 # This is what the per-Bash hook gates on, so the two cases must not share an
-# exit code. An unwritable .git captures NOTHING; allow-all rests on a snapshot
-# existing, so that turn must stop. The converse -- a snapshot that exists but
+# exit code. An unwritable .git captures NOTHING, so there is no snapshot to
+# recover from and that turn must stop. The converse -- a snapshot that exists but
 # whose ref could not be written -- is case 17 and exits 0, because wedging the
 # session buys nothing when the work is already recoverable.
 r=$(new_repo unwritable)

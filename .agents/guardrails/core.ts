@@ -583,8 +583,8 @@ function isTopLevelRmTarget(target: string, base: string, origin: string): boole
   // `.git` itself, or anything inside it. Deleting it destroys the history and
   // the agent-checkpoint refs together -- the refs live at
   // refs/agent-checkpoint/<prefix>/*, INSIDE the .git being removed -- so the
-  // recovery that earns the allow tier goes with the thing it was meant to
-  // recover. Nothing else backstops this: measured inside the sandbox, .git,
+  // recovery goes with the thing it was meant to recover. Nothing else
+  // backstops this: measured inside the sandbox, .git,
   // .git/refs and .git/objects are all writable (only .git/hooks is pinned).
   if (isInsideGitDir(resolved)) return true;
   // A directory holding .git is a repository root wherever it sits -- projects
@@ -693,11 +693,12 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
    * because agent-checkpoint cannot recover the target; for a scratch tree that
    * is what the directory is FOR, so the prompt buys nothing. The root itself is
    * never exempt -- another session's in-flight work lives directly under it.
+   * Where the guard runs with TMPDIR=/tmp, that makes everything below /tmp scratch:
+   * see _scratch_roots in dangerous-commands.json.
    */
   function isScratchTarget(resolved: string): boolean {
-    // A root is never its own scratch: $TMPDIR sits below /tmp, so without this
-    // `rm -rf $TMPDIR` was exempt via the wider root and would have taken every
-    // other session's in-flight work with it.
+    // A root is never its own scratch: `rm -rf` of it would take every other
+    // session's in-flight work with it.
     if (SCRATCH_ROOTS.includes(resolved)) return false;
     return SCRATCH_ROOTS.some(root => resolved.startsWith(root + "/"));
   }
@@ -932,7 +933,8 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
   /**
    * Moving a branch the agent may not own. Mirrors the reference-transaction git
    * hook rather than inventing a second policy: same prefix, same worktree-
-   * allowance, silent when no prefix is set because that is a human.
+   * allowance. Silent when no prefix is set: a human has none, and for a confined
+   * session with none the hook refuses every branch write.
    *
    * It exists because the hook was NOT consulted for `git reset --hard`
    * (observed 2026-09-08: driven directly the hook rejects a main ref move, the
@@ -1137,7 +1139,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
    *
    * This returned on first match until 2026-09-08, which let any allow-tier
    * command hide every deny-tier one behind it: `rm -rf /tmp/x` is
-   * recursive-force-rm, which is `allow` for claude, so the scan stopped there
+   * recursive-force-rm, which was `allow` for claude, so the scan stopped there
    * and `rm -rf /tmp/x; sudo …` was permitted. Measured at the time, that
    * prefix flipped privilege escalation, `rm -rf ~`, force-push, mkfs, host
    * shutdown, pipe-to-shell, reflog/gc pruning and the git-hooks bypass from

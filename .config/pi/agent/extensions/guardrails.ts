@@ -21,9 +21,8 @@ const CHECKPOINT = `${process.env.HOME}/.local/scripts/agent-checkpoint`;
 // execCommand: that lives in dist/core/exec.d.ts and is NOT in the exports map
 // (only "." and "./hooks" are), so a deep import would be refused at runtime.
 //
-// Returns the script's exit status. Nonzero means the work is NOT captured,
-// which is the premise the allow tier rests on. A missing or non-executable
-// script rejects with ENOENT/EACCES and is also "not captured" -- that is the
+// Returns the script's exit status. Nonzero means the work is NOT captured. A
+// missing or non-executable script rejects with ENOENT/EACCES and is also "not captured" -- that is the
 // case a bare `[ -x "$f" ] || exit 0` silently swallowed on the Claude side.
 async function checkpoint(cwd: string): Promise<number> {
   try {
@@ -54,9 +53,9 @@ export default function (pi: ExtensionAPI) {
     const cwd = ctx.cwd ?? process.cwd();
 
     // Before a Bash call, snapshot and refuse if nothing was captured. This is
-    // pi's analogue of Claude Code's PreToolUse Bash hook: the allow tier for
-    // destructive verbs is earned by the snapshot existing, so a failed
-    // snapshot blocks rather than warns.
+    // pi's analogue of Claude Code's PreToolUse Bash hook: a command the guard
+    // allows can still destroy uncommitted work, and the snapshot is what
+    // recovers it, so a failed snapshot blocks rather than warns.
     if (event.toolName === "bash" && (await checkpoint(cwd)) !== 0)
       return { block: true, reason: "agent-checkpoint failed: uncommitted work is not recoverable" };
 

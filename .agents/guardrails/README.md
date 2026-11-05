@@ -117,6 +117,7 @@ Learned from other people's configurations as much as from this one.
   `find_policy`. An unlisted category falls back to `ask`, so the map is
   fail-safe. Never-legitimate categories (`escalation`, `confinement`,
   `disk-destructive`, `git-guard-bypass`, `recursive-force-rm-toplevel`,
+  `host-control`, `remote-code`, `git-recovery-prune`,
   `git-clean-ignored` — ignored trees are outside the checkpoint's reach) deny
   for everyone. Scratch-only categories such as `recursive-force-rm-scratch`
   and `world-writable-scratch` allow for every agent, because their targets are
@@ -133,15 +134,15 @@ credential file in the same pass as its config, or keep the path in
 
 ## Native permission layers
 
-Beyond the shared hook, Claude also enforces the credential list at its own
-permission layer:
+Beyond the shared hook, Claude also enforces the credential list for reads and
+the machinery list for writes at its own permission layer:
 
 | Agent  | Native layer                                | Status |
 |--------|---------------------------------------------|--------|
 | Claude | `.claude/settings.json` `permissions.deny`  | permanent — typed Read/Edit tool calls expose structured paths to match |
 | pi     | `@zackify/pi-claude-permissions` package    | NOT synced: its own hard-coded protected-path and catastrophic-command lists, applied even in bypass mode; it reads `~/.pi/agent/settings.json`, so its `piClaudePermissions` block works only through the untracked `~/.pi` symlink. The `tool_call` extension remains the enforcement point for this policy |
 
-Claude's credential denies are drift-checked against `sensitive-paths.json` by
+Claude's Read and Edit denies are drift-checked against `sensitive-paths.json` by
 `make check-guardrails-native-sync`; pi's package is not. The hook stays primary for everything a
 path list cannot express: dangerous commands, skill gates, ref-rewrite
 protection, and the `ask` tier.

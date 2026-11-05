@@ -1,4 +1,4 @@
-# Every job needs the relocated pass/gnupg homes exported: cron's bare /bin/sh
+# Every job using pass or gpg needs the relocated homes exported: cron's bare /bin/sh
 # never reads ~/.config/zsh/.zshenv, so without these `pass` looks in the empty
 # default ~/.password-store ("<entry> is not in the password store") and gpg in
 # ~/.gnupg (pinentry "Inappropriate ioctl for device").

@@ -20,14 +20,13 @@ drifts into a different fault:
 
 Checks each LAYER, not merely that the path is mentioned somewhere. An earlier
 version matched the whole file as a substring and passed while an Edit rule was
-deleted, because the same path still appeared under denyWrite — a check that
+deleted, because the same path still appeared in another list — a check that
 cannot see the loss it exists for is worse than none, since it reads as
 assurance.
 
-Deliberately NOT required: a denyWrite entry per machinery path. Twelve of them
-are stow symlinks (~/.bashrc, ~/.config/zsh, …) whose targets under ~/dotfiles
-are pinned; a write through the link lands on the pinned source, so demanding
-both forms would fail on correct configuration.
+Deliberately NOT required: a sandbox.filesystem.denyWrite list. settings.json
+has none, because Claude Code adds the paths of its Edit() deny rules to the
+sandbox's denyWrite.
 """
 import json
 import sys

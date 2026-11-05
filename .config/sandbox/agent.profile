@@ -17,10 +17,11 @@ RW+=(
 	"$H/.cache"                 # tool caches (bun, uv, pip, …)
 	"$H/.local/share"           # uv python installs, bun packages, …
 	"$H/.local/state/nvim"      # Neovim LSP logs/state for in-agent editors
-	"$H/.local/state/headroom"  # Headroom MCP logs/state for in-agent editors
+	"$H/.local/state/headroom"  # Headroom proxy logs/state
 	"$H/org/agents"             # shared agent wiki (read-write)
 )
 
-# The branch prefix the harness sets on its host process: shared git hooks read
-# an empty one as a HUMAN commit, so without it an agent's Bash can move main.
+# The branch prefix the harness sets on its host process. Under this profile's
+# read-only marker the shared git hooks refuse every branch write when it is
+# empty, so without it an agent's Bash cannot commit at all.
 SANDBOX_ENV+=("AGENT_BRANCH_PREFIX")

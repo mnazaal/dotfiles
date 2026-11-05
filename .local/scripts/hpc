@@ -52,8 +52,9 @@
 # brand-new session with no controlling terminal, so when the ssh connection
 # drops there's no session for sshd to deliver SIGHUP to -- that's what makes
 # the job survive closing your laptop or killing the local ssh client, not the
-# redirect. The redirect (< /dev/null > log 2>&1) is what makes the *local*
-# `ssh` invocation return promptly instead of hanging: a backgrounded child
+# redirect. The redirect (< /dev/null > log 2>&1) is what lets the *local*
+# `ssh` invocation end with the remote script, after its queue check, instead of
+# hanging for the whole run: a backgrounded child
 # keeps its own copy of the parent shell's stdout/stderr fd (fork() duplicates
 # fds), so that pipe never reaches EOF -- and ssh waits for EOF, not just for
 # the top-level remote command to exit -- until every process holding a copy
@@ -91,9 +92,9 @@
 #                and ~/ paths are resolved as remote user paths.
 #   --name <name> / HPC_NAME   run name, used for the log/pid/exit filenames
 #                (default: <reponame>-<timestamp>, unique per invocation so
-#                concurrent runs of the same repo never collide -- reuse a
-#                fixed name deliberately if you want the "already running"
-#                guard to refuse a second concurrent launch under it).
+#                concurrent runs of the same repo never collide). A name works
+#                once per runs dir: hpc refuses it while that run is live and
+#                after it has ended.
 #   HPC_TIMEOUT  hard ceiling on <command> itself, passed to `timeout` on the
 #                remote (default: 7d) -- bump this per-invocation for jobs you
 #                know will run longer than a week; a Slurm --time limit on the
@@ -257,7 +258,7 @@ fi
 # A killed driver writes no exit file, so its pid file counts too: a driver live
 # on this node already returned above.
 if [[ -e "$exitfile" || -e "$pidfile" ]]; then
-  echo "hpc: run '$name' already finished (exit $(cat "$exitfile" 2>/dev/null || echo "unknown: no live driver on this node, so it was killed or runs on another"), log $logfile) -- pick a different --name; the output directory the command writes to must change too." >&2
+  echo "hpc: run '$name' already finished (exit $(cat "$exitfile" 2>/dev/null || echo "unknown: no live driver on this node, so it was killed or runs on another"), log $logfile) -- pick a different --name, and a different output directory if that run wrote one." >&2
   exit 1
 fi
 
@@ -342,10 +343,11 @@ nohup setsid bash -c "timeout $timeout_dur $cmd; echo \$? > '$exitfile'" \
 echo $! > "$pidfile"
 disown
 echo "hpc: launched (pid $(cat "$pidfile"))."
-# Prove the driver reached the scheduler: show the queue once. A driver that dies before
-# sbatch, or an array that never queues, is otherwise found a day later from the log.
+# A hint that the driver reached the scheduler: show the queue once, every job of this
+# user. A driver that dies before sbatch, or an array that never queues, is otherwise
+# found a day later from the log.
 sleep 45
-echo "hpc: queue after 45 s (empty = nothing submitted yet, or already failed: read $logfile):"
+echo "hpc: your whole queue after 45 s, not only this run (empty = nothing submitted yet, or already failed: read $logfile):"
 squeue --me --format='%.12i %.9P %.24j %.2t %.10M %.6D %R' 2>/dev/null || echo "hpc: squeue unavailable on $(hostname)"
 REMOTE
 

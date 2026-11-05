@@ -6,7 +6,7 @@ ERROR_PREFIX="GIT PRE-COMMIT HOOK ERROR:"
 # Coding-agent branch namespacing: agents may only touch <prefix>/* branches.
 # Prefix comes from AGENT_BRANCH_PREFIX: claude sets it in settings.json's
 # `env` block, pi in its guardrails extension.
-# Empty => human.
+# Empty => human, unless the marker below says the session is confined.
 PREFIX="${AGENT_BRANCH_PREFIX:-}"
 
 # See reference-transaction for why this is a kernel fact and not just the

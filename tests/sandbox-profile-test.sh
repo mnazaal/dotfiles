@@ -177,8 +177,8 @@ assert_mounts 'a subdirectory launch binds the repository root' "$output" \
 # too, or nothing commits: its own .git is a file pointing at
 # <main>/.git/worktrees/<name>, and the objects and refs a commit writes live
 # under the main repo. Binding only the worktree gives an agent files it can
-# edit and never commit -- allow-all with no recovery, since the checkpoint
-# writes refs there as well. The launcher resolves --git-common-dir for exactly
+# edit and never commit, with no recovery, since the checkpoint writes refs
+# there as well. The launcher resolves --git-common-dir for exactly
 # this; without an assertion the resolution was free to rot.
 output=$(run "$linked" -p agent)
 assert_mounts 'a linked worktree binds its own directory' "$output" \

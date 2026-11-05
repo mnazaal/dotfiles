@@ -2,7 +2,7 @@ Basic dotfiles.
 
 * Deployment
 
-Canonical deployment from repository root - creates symlinks in relevant directories:
+Canonical deployment from repository root - creates symlinks in relevant directories and installs a read-only copy of =.claude/settings.json= under =~/.config/claude-settings=:
 #+begin_src bash
 make link
 #+end_src
@@ -33,7 +33,7 @@ managed links created by =make link=. It warns when
 the intentionally untracked =~/org/agenda= is absent; require it explicitly
 with =dotfiles-doctor --strict=.
 
-Remove only links owned by this repository with:
+Remove the links owned by this repository, that settings copy with its whole directory, and the crontab with the command below. If the jobs in the live crontab differ from the tracked file, it refuses and removes nothing:
 #+begin_src bash
 make clean
 #+end_src
@@ -95,7 +95,7 @@ Manual fix: copy terminfo with =infocmp= and install it on the server with =tic=
   package's source tree from under themselves
 - no agent takes a prefix. =claude= and =claude-agent-acp= sandbox their Bash
   subprocesses through their own settings.json. =pi= and =pi-acp= use
-  =.local/scripts/pi= to resolve the MCP key and launch the host process, while
+  =.local/scripts/pi= to drop a caller's MCP key and launch the host process, while
   Pi's =shellPath= sends model Bash and user =!=/=!!= commands through
   =.local/scripts/pi-bash= and the shared =agent= sandbox profile. See
   =.config/sandbox/README.md=

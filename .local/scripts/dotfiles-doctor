@@ -30,31 +30,32 @@ CHECKS:
   - Neovim vim.pack availability when nvim is installed
   - Claude agent guard hook is present and loads (settings.json denies every
     tool call if it cannot run, so a broken hook locks the session out)
+  - Claude settings are deployed and current
+  - Sandbox pins have a source to bind
+  - Guardrail assets exist
   - ~/org/agenda exists and is writable (--strict only; warning otherwise)
+  - Screenshot dependencies are installed
   - Optional shellcheck and shfmt availability
   - Waybar bluetooth module is listed when configured
+  - Live crontab matches the tracked file
+  - Desktop session runs through mango-session
+  - mango accepts its config
 EOF
 }
 
-# Inside the container sandbox only an allowlist of paths is mounted, so $HOME
-# itself is absent and the deployment checks below cannot be answered there: a
-# path that was deliberately never bound is not a broken deployment. Report
+# Inside a sandbox paths are absent or masked, so the deployment checks below
+# cannot be answered there: a path that was deliberately hidden is not a broken
+# deployment, and a mask is indistinguishable from a missing file. Report
 # those as skipped rather than failed, so `make check` is runnable from inside
 # and reports everything it genuinely can measure. Binding the handful of files
 # instead would verify three deployed paths while the rest stayed invisible —
 # a partial gate that reads as a complete one.
-# SANDBOX_ENGINE is set by the launcher for its own boundary. The container
+# SANDBOX_ENGINE is set by the launcher for its own boundary, and Claude Code's
+# native sandbox sets SANDBOX_RUNTIME in the Bash commands it wraps. The container
 # markers are kept for a foreign container, not for ours: no engine this
 # repository drives creates either one any more.
-#
-# KNOWN GAP, stated rather than papered over: the harness-native boundary
-# (bare `claude`, and the editor's ACP door) sets no marker at all and is not
-# detectable from inside, so `make check` run there still reports masked paths
-# as deployment failures. Run it outside the boundary to get a real answer --
-# which is the standing rule for deployment questions anyway, since a mask is
-# indistinguishable from a missing file from in here.
 sandboxed=0
-if [[ -n ${SANDBOX_ENGINE:-} || -e /run/.containerenv || -e /.dockerenv ]]; then
+if [[ -n ${SANDBOX_ENGINE:-} || -n ${SANDBOX_RUNTIME:-} || -e /run/.containerenv || -e /.dockerenv ]]; then
 	sandboxed=1
 fi
 skip() { printf 'skip: %s (%s)\n' "$1" "${2:-not verifiable inside the sandbox}"; }
@@ -290,7 +291,7 @@ else
 	warn "machinery-ro profile unreadable: $pins_profile"
 fi
 
-for asset in core.ts sensitive-paths.json dangerous-commands.json; do
+for asset in core.ts sensitive-paths.json dangerous-commands.json skill-gates.json; do
 	if [[ -f "$HOME/.agents/guardrails/$asset" ]]; then
 		ok "guardrail asset present: $asset"
 	else
@@ -338,7 +339,7 @@ if [[ -f "$waybar_config" ]]; then
 fi
 
 # cron never reads the repository copy, so the live crontab and the tracked
-# file can drift in silence; crontab-sync (run by `make link` and every 15
+# file can drift in silence; crontab-sync (run by `make cron` and every 15
 # minutes) repairs it, and this reports drift it has not repaired yet. That is how the OneDrive sync came to be commented out in the live
 # crontab and absent from the tracked one, running nowhere and recorded nowhere.
 cron_file="$repo/.local/cron"

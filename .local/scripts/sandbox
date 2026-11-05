@@ -31,7 +31,8 @@ OPTIONS
 DESCRIPTION
   Only an allowlist is visible: the git repository containing the current
   directory is read-write (not $PWD alone -- a subdirectory launch still binds
-  the repository root, or nothing at all outside a repository),
+  the repository root; outside a repository $PWD itself is bound, unless it is
+  $HOME or above or the profile already has it read-only),
   system dirs and whatever profiles add are read-only, everything else under
   $HOME (ssh, gnupg, pass, other projects) is invisible. Environment
   variables are dropped unless the SANDBOX_ENV allowlist names them.
@@ -84,8 +85,7 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 # so the path can be created inside and persist to the host. Emitting a read-only bind is a
 # request; this is the only place the kernel's answer is read. `test -w` reports
 # false on a read-only bind for both files and directories, so no mountinfo
-# parsing is needed. Shared verbatim by both emitters, since it runs inside the
-# boundary and knows nothing about which one built it.
+# parsing is needed.
 #
 # Two counts, because a pin that VANISHED and a pin that is WRITABLE are
 # different failures. Passing only the surviving count would let a missing pin
@@ -93,7 +93,7 @@ load_profile_arg() { # -p value: a path (has '/') or a name on the search path
 # which is the fail-open this whole check exists to remove.
 PREFLIGHT='declared=$1; n=$2; shift 2
 if [ "$n" -ne "$declared" ]; then
-	printf "sandbox: %s of %s machinery pins are missing from the container and are unprotected\n" \
+	printf "sandbox: %s of %s machinery pins are missing from the sandbox and are unprotected\n" \
 		"$((declared - n))" "$declared" >&2
 	printf "sandbox: continuing — a declared pin whose file does not exist cannot be enforced\n" >&2
 fi
@@ -112,15 +112,12 @@ run_bwrap() {
 	command -v bwrap >/dev/null 2>&1 || die 'bwrap not found in PATH' 127
 	local d target
 	local p=(--unshare-user --unshare-ipc --unshare-pid --unshare-uts --die-with-parent)
-	# The network is shared. Egress is not this boundary's job (PLAN, Open
-	# risks: exfiltration is accepted, not mitigated), and nothing asked for
-	# an opt-out.
+	# The network is shared. Egress is not this boundary's job (exfiltration is
+	# accepted, not mitigated), and nothing asked for an opt-out.
 
-	# No image supplies a root filesystem here, so build one. This is the one
-	# place the two engines genuinely differ in WHAT is bound rather than how:
-	# podman took /etc from the ubuntu image and added only /etc/ssl from the
-	# host, while bwrap has no image, so /etc comes read-only from the host and
-	# carries resolv.conf, hosts, passwd and the CA bundle in one bind.
+	# No image supplies a root filesystem here, so build one: /etc comes read-only
+	# from the host and carries resolv.conf, hosts, passwd and the CA bundle in
+	# one bind.
 	p+=(--proc /proc --dev /dev)
 	for d in /usr /opt /etc; do
 		if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi
@@ -177,9 +174,9 @@ run_bwrap() {
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(--bind "$d" "$d"); fi; done
 	# Emitted last so a pin nested inside a writable bind stays read-only. The
 	# manual guarantees binds are "applied in the order they are given as
-	# arguments", and PLAN's A2 measured that this holds for a REPEATED
-	# DESTINATION too: the later bind wins rather than erroring, which is why the
-	# no dedupe pass is needed, or wanted.
+	# arguments", and this was measured to hold for a REPEATED DESTINATION too:
+	# the later bind wins rather than erroring, so no dedupe pass is needed, or
+	# wanted.
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi; done
 	# A mask makes the path ABSENT rather than merely unwritable. bwrap's --tmpfs
 	# has no copy-up, so podman's load-bearing notmpcopyup has nothing to
@@ -239,7 +236,7 @@ run_bwrap() {
 
 	# Only allowlisted names cross. bwrap inherits the environment wholesale, so
 	# everything else is dropped with --unsetenv, which takes a NAME and never a
-	# value -- the same reason the podman path passes a bare `--env NAME`. Do NOT
+	# value, so no value enters argv. Do NOT
 	# do this by unsetting in the launcher instead: `unset -v "$name"` inside a
 	# function unsets the nearest enclosing LOCAL of that name, so an exported
 	# `keep` or `allowed` survived while an exported `p` destroyed this very argv
@@ -309,7 +306,7 @@ run_bwrap() {
 
 # --- run ---------------------------------------------------------------------
 
-# accumulators — profiles and flags append to these
+# accumulators — profiles append to these
 # RO_LAST is emitted AFTER every RW bind, so a read-only path nested inside a
 # writable one stays read-only. Plain RO is emitted first, where an overlapping
 # RW bind wins — which is why the read-only $H/.agents bind does not protect

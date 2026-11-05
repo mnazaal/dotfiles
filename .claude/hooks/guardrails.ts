@@ -19,8 +19,9 @@ const ti = data.tool_input ?? {};
 
 /**
  * The core relaxes the machinery-in-bash rule only when told the call is
- * sandboxed (opts.inSandbox). Claude Code's sandbox is bubblewrap and leaves
- * no marker, yet its denyWrite list pins the same paths at the kernel for every
+ * sandboxed (opts.inSandbox). Claude Code's sandbox is bubblewrap and marks only
+ * the Bash commands inside it (SANDBOX_RUNTIME=1), not this hook, which runs
+ * first, yet its denyWrite list pins the same paths at the kernel for every
  * Bash call -- so the rule fired where it protected nothing and denied honest
  * reads. The decision is read from settings.json, which is machinery-pinned
  * and so not agent-forgeable; a project-local override that disables the

@@ -4,8 +4,7 @@
  * Every danger category resolves through the per-agent severity map in
  * dangerous-commands.json (core.ts severityOf): `deny` (never legitimate,
  * silent), `ask` (prompt where the harness can prompt, hard block where it
- * cannot), or `allow` (already contained by the sandbox and recoverable via
- * agent-checkpoint).
+ * cannot), or `allow` (targets strictly below a scratch root).
  *
  * This table pins the whole map so that reclassification cannot happen
  * silently: changing behavior must show up as an edit to an expectation here,
@@ -64,10 +63,10 @@ symlinkSync(outsideScratch, scratchSymlinkToOutside);
 // off-table failing for one agent but not another means the data has drifted.
 const AGENTS = ["claude", "pi"] as const;
 
-// Treat every gated skill as already loaded. Command severity short-circuits
-// before skill gates, so the `ask` rows are unaffected either way — but a
-// control row like `git push` would otherwise report the dev-git gate's deny
-// instead of its command severity, which is not what this table is about.
+// Treat every gated skill as already loaded. A missing skill's gate denies, and
+// that outranks a row's `ask` or `allow`, so a control row like `git push` would
+// otherwise report the dev-git gate's deny instead of its command severity,
+// which is not what this table is about.
 const gatesPath = join(import.meta.dir, "../.agents/guardrails/skill-gates.json");
 const gates = JSON.parse(readFileSync(gatesPath, "utf8"));
 const loadedSkills = new Set<string>(
@@ -82,9 +81,7 @@ type Agent = (typeof AGENTS)[number];
 type Severity = "deny" | "ask" | "allow";
 
 // A row expects either one severity for every harness, or a per-agent split.
-// The split is not cosmetic: rows that rely on agent-checkpoint for their
-// safety stay `ask` wherever no checkpoint is wired -- which means pi until its
-// own per-turn snapshot is registered.
+// find_policy is what splits today: off for claude, -exec/-delete only for pi.
 type Expected = Severity | ({ default: Severity } & Partial<Record<Agent, Severity>>);
 
 const expectedFor = (e: Expected, agent: Agent): Severity =>
@@ -177,7 +174,7 @@ const TABLE: Row[] = [
   // --- an earlier allow-tier hit must not hide a later deny --------------------
   // Until 2026-09-08 the scan returned the FIRST danger it found and resolved
   // that one's severity, so any allow-tier command used as a prefix smuggled
-  // anything behind it: `rm -rf /tmp/x` is recursive-force-rm, which is allow
+  // anything behind it: `rm -rf /tmp/x` is recursive-force-rm, which was allow
   // for claude, and the rest of the line was never examined. One row per rule
   // that was measurably masked, because a single example would not have caught
   // a partial repair.
@@ -185,8 +182,8 @@ const TABLE: Row[] = [
   // --- a throwaway directory needs no prompt, its root still does -------------
   // The ask tier on recursive rm exists because the checkpoint cannot recover
   // the target. Below a scratch root that is what the directory is FOR, so the
-  // prompt buys nothing. The roots THEMSELVES stay ask: $TMPDIR sits below /tmp,
-  // and removing it takes every other session's in-flight work.
+  // prompt buys nothing. The roots THEMSELVES stay ask: removing one takes every
+  // other session's in-flight work.
   { command: `rm -rf ${scratch}/teststate`, expected: "allow", note: "strictly below the scratch root" },
   { command: `rm -rf ${scratch}/a/b/c`, expected: "allow", note: "any depth below it" },
   { command: `rm -rf ${scratch}`, expected: "ask", note: "the root itself is never exempt" },
@@ -358,15 +355,13 @@ const TABLE: Row[] = [
   { command: "git branch -a", expected: "allow", note: "listing must stay allowed" },
   { command: "git update-ref refs/heads/main HEAD", expected: "deny" },
 
-  // --- disk-destructive: no block devices in the container, never legitimate ---
+  // --- disk-destructive: never legitimate --------------------------------------
   { command: "dd if=/dev/zero of=/dev/sda", expected: "deny" },
   { command: "mkfs.ext4 /dev/sdb1", expected: "deny" },
   { command: "shred -u secrets.bin", expected: "deny" },
 
-  // --- candidates for allow: the sandbox already contains these -----------------
-  // Recursive force rm inside the project is recoverable via agent-checkpoint,
-  // which claude has wired -- hence the per-agent split. The split tracks which
-  // agents snapshot per turn, not which harness is trusted.
+  // --- recursive force rm inside the project: ask for every agent ---------------
+  // A checkpoint never captures gitignored trees, so it cannot recover these.
   {
     command: "rm -rf build",
     expected: "ask",
@@ -396,8 +391,8 @@ const TABLE: Row[] = [
   { command: `cd ${fixture} && rm -rf repo`, expected: "deny", note: "same, relative after cd" },
   { command: `rm -rf ${fixture}/plain`, expected: "allow", note: "no .git, and the fixture sits under the scratch root; the repo/plain contrast still holds against the deny row above" },
   // Deleting a .git takes the history AND the agent-checkpoint refs that live
-  // inside it, so the recovery earning the allow tier dies with what it would
-  // have recovered. The kernel does not backstop it: .git, .git/refs and
+  // inside it, so the recovery dies with what it would have recovered. The
+  // kernel does not backstop it: .git, .git/refs and
   // .git/objects are writable inside the sandbox.
   { command: "rm -rf .git", expected: "deny", note: "the repo's own history and its checkpoint refs" },
   { command: "rm -rf ~/dotfiles/.git", expected: "deny", note: "same, named absolutely" },
@@ -525,12 +520,12 @@ const TABLE: Row[] = [
   {
     command: "find . -name '*.pyc' -exec rm {} ;",
     expected: { claude: "allow", default: "ask" },
-    note: "find_policy off for the checkpointed agents; a nudge the sandbox already contains",
+    note: "find_policy is off for claude; a nudge the sandbox already contains",
   },
 
   // --- read vs write forms of the ref subcommands ------------------------------
   // symbolic-ref and replace are in git_ref_write_subcmds but have read forms.
-  // .config/git/hooks/pre-commit:12 runs `git symbolic-ref --quiet --short HEAD`,
+  // .config/git/hooks/pre-commit runs `git symbolic-ref --quiet --short HEAD`,
   // so denying the read form would break committing entirely.
   {
     command: "git symbolic-ref --short HEAD",
@@ -562,8 +557,8 @@ const TABLE: Row[] = [
   { command: "git push origin claude/topic", expected: "allow" },
   { command: "find . -name '*.py'", expected: "allow", note: "no -exec primary" },
   // The protected-segment rule (.git, node_modules) exists for the typed write
-  // tools; applied to every bash token it denied routine work while the
-  // kernel pin and the checkpoint already cover .git.
+  // tools; applied to every bash token it denied routine work. Deleting a .git
+  // is denied by the rm and find rows above.
   { command: "rm -rf node_modules && npm install", expected: "ask", note: "routine; in-project recursive rm" },
   { command: "du -sh node_modules", expected: "allow" },
   { command: "cat .git/HEAD", expected: "allow", note: "a read of the repo's own state" },

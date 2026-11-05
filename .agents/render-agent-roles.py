@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render platform agent files from canonical role bodies, headers, and prompts."""
+"""Render platform agent files from canonical role bodies and headers."""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROLES = "build docs-verify eval-review idea-critic writer-critic".split()
 PLATFORMS = {
     "claude": (ROOT / ".claude/agents", ROLES),
-    # pi's agents/ is a subagent roster only; `build` is the one primary-mode role.
+    # pi has no `build` role header.
     "pi": (ROOT / ".config/pi/agent/agents", [role for role in ROLES if role not in {"build"}]),
 }
 def rendered(platform: str, role: str) -> str:
