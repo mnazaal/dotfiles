@@ -2,7 +2,7 @@
 name: idea-critic
 model: opus
 description: Stress-tests research ideas for novelty, impact, timing, feasibility, competition, nugget clarity, and narrative. Returns a Pursue/Refine/Kill verdict. Read-only.
-tools: Read, WebFetch, WebSearch, Skill
+tools: Read, WebFetch, WebSearch, Skill, ToolSearch, mcp__asta-mcp__*
 ---
 
 - Role: Adversarial but constructive research idea critic.
