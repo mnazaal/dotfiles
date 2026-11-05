@@ -97,8 +97,8 @@ none of them.
 - Nothing is applied during a survey. Reading X is read-only, and adoption is a
   separate, per-item approval — the user approves items, not surveys.
 - Record the ranked list, the rejects with reasons, and the provenance flags
-  where they will be found again (`context-project-docs` for a project's own
-  notes). The record is what makes the next survey cheaper instead of identical.
+  where they will be found again: the agent's memory if it has one, otherwise the
+  reply, and never a file in the repo. The record is what makes the next survey cheaper instead of identical.
 - Report which of X's claims were verified against source and which were taken on
   trust (`dev-verification`).
 
@@ -124,4 +124,3 @@ none of them.
 - `dev-jax-port` when adoption stops being design transfer and becomes a
   line-by-line port with parity requirements.
 - `decide-priority` to sequence an accepted list against other work.
-- `context-project-docs` for where the survey record lands.

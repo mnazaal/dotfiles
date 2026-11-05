@@ -44,6 +44,7 @@ project-name/
   results/
     README.md
     runs/
+    <tag>/
     mlruns/
     outputs/
     multirun/
@@ -71,6 +72,8 @@ project-name/
   on the cluster (`dev-hpc`).
 - `results/runs/<run_id>/` is the canonical human-readable per-run record:
   resolved config, git commit, seed, metrics, logs, and artifacts.
+- A tag names one sweep. `results/<tag>/` holds its per-task files and the table
+  its collect step writes (Output Size).
 - Make each run's output path unique by its FULL sweep key — every varied
   parameter — not a partial key plus a wall-clock timestamp. A second-resolution
   timestamp collides for runs launched in the same second, and an omitted sweep

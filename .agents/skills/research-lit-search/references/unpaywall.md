@@ -39,7 +39,7 @@ https://api.unpaywall.org/v2/10.1038/nature12373?email={email}
 GET /v2/search?query={text}&email={email}
 ```
 
-**Warning:** The search endpoint has been returning HTTP 500 errors as of March 2026. It may be deprecated or intermittently broken. Use DOI lookups instead -- find papers via PubMed/OpenAlex/Semantic Scholar first, then check OA status per-DOI.
+**Warning:** The search endpoint has been returning HTTP 500 errors as of March 2026. It may be deprecated or intermittently broken. Use DOI lookups instead -- find papers via OpenAlex/Semantic Scholar first, then check OA status per-DOI.
 
 | Parameter | Description |
 |-----------|-------------|
@@ -122,7 +122,7 @@ GET /v2/search?query={text}&email={email}
 
 ## Typical Workflow
 
-1. You have a DOI from PubMed, Crossref, or another source
+1. You have a DOI from Crossref or another source
 2. Call Unpaywall with the DOI
 3. Check `is_oa` -- if true, use `best_oa_location.url_for_pdf` for the free PDF
 4. Check `oa_status` to understand what kind of OA it is

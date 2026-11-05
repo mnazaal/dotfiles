@@ -7,10 +7,9 @@ need an openly licensed citation edge, a count you can cite, or an Open Citation
 Identifier (OCI). It is not a paper search and it does not return titles on the Index
 endpoints.
 
-For a literature search use PubMed, OpenAlex, or Semantic Scholar. For a citation
-*graph with titles and abstracts*, start with Semantic Scholar or OpenAlex and treat
-OpenCitations as the open-data check. Europe PMC `/citations` is the biomedical
-alternative when you already have a `{source}/{id}` pair.
+For a literature search use OpenAlex or Semantic Scholar. For a citation
+*graph with titles and abstracts*, start with Semantic Scholar and treat
+OpenCitations as the open-data check.
 
 All figures below verified 2026-09-10.
 

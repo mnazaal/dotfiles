@@ -201,7 +201,7 @@ does not. Check both when a skill's step names an end state.
 2. Separate general workflow from one-off project context.
 3. Inspect relevant skills in `~/.agents/skills`.
 4. Choose the narrowest existing skill that fits, or justify a new skill.
-5. Check invocation, distinct triggers, completion criteria (Two Budgets below), duplication, no-op advice, routing conflicts, related-skill overlap, and sediment in the target skill's existing content.
+5. Check invocation, distinct triggers, completion criteria (Two Budgets above), duplication, no-op advice, routing conflicts, related-skill overlap, and sediment in the target skill's existing content.
 6. Draft minimal markdown changes in the existing skill style.
 7. Present affected files, proposed patch, risks, and recommendation.
 8. Apply only with explicit user approval.

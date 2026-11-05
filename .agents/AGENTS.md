@@ -67,7 +67,7 @@ This file is global routing and behavior policy. Keep it small.
   note reads in light and dark. MathJax itself loads from a CDN, so a note shows
   raw TeX with no network; that is the accepted trade, and vendoring the library
   into every note is not. Not Markdown; keep them in the project's `notes/`
-  directory, named per `context-project-docs`. (Standing docs — PLAN/LOG/README
+  directory, named per `context-project-docs`. (Standing docs — PLAN/LOG/CONTEXT/README
   — and the reserved `notes/claims.md` stay Markdown.)
 
 ## Shell Output Capture

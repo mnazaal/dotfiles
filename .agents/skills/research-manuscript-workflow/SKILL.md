@@ -183,6 +183,7 @@ For research projects with code, experiments, notes, and results, prefer a
 ```text
 project/
   docs/
+  notes/
   results/
   scripts/
   src/
@@ -325,8 +326,8 @@ Prefer `latexmk` over direct `pdflatex`/`lualatex` calls.
 Recommended user-facing commands:
 
 ```text
-make figures
-make tables
+make manuscript-figures
+make manuscript-tables
 make paper
 make live
 make arxiv
@@ -392,7 +393,7 @@ copy-edited.
 ## Prose and Narrative Review
 
 What a draft review checks, beyond sentence-level style — `AGENTS.md` already
-owns register, concision and the AI-tell list, and this does not restate them.
+owns register and concision, and this does not restate them.
 Each rule below carries the shape its violation takes, because the failure is
 what a reviewer can actually look for.
 

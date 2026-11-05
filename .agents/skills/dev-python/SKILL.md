@@ -40,7 +40,6 @@ description: "Use for Python code/projects: pyproject.toml, virtual environments
 uv sync                 # project + dev group, from the lockfile
 uv add <package>        # adds to pyproject.toml + lockfile
 uv lock                 # re-resolve after a MANUAL pyproject edit (uv add/remove do this for you)
-uv sync                 # restore from lockfile
 
 # Tests — use the project-configured runner; in a worktree, confirm the bare command resolves to this checkout first (dev-worktree)
 pytest                          # full suite

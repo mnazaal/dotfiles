@@ -64,7 +64,7 @@ was captured, not that nothing is pending.
 
 ## Output Shape
 
-```markdown
+````markdown
 ## Morning Brief
 
 ### Agenda / Fixed Commitments
@@ -100,7 +100,7 @@ SCHEDULED: <YYYY-MM-DD day>
 
 ### If Deep Work Window
 ...
-```
+````
 
 ## Routing
 

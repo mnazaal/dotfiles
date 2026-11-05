@@ -55,7 +55,7 @@ Use when evaluating a research idea, direction, or hunch ("should we try X", "is
    `agent-orchestration` to spawn a read-only subagent for an unanchored pass.
 4. Stress-test via `critique-argument` (assumptions, threats, baselines, failure modes); for a deep fresh-context pass, use `agent-orchestration` to spawn a constrained critique subagent.
 5. Propose cheap evidence: lit check, toy experiment, data audit, or proof sketch.
-6. Decide: pursue, refine, park, or kill — score via `decide-priority` criteria; this skill owns only the research-specific tests above. Name the lens the
+6. Decide: pursue, refine, park, or kill. Name the lens the
    decision actually turns on — triage, comparative advantage, field timing,
    opportunity cost, or scooping risk — and say which evidence would flip it.
 
@@ -95,9 +95,8 @@ framing + decisions to the plan via `research-plan`.
 - `plan-day` for day-level planning rather than research-thread orientation.
 
 - `research-protocol` before any citation/literature content this produces.
-- `critique-argument` for the stress-test in idea triage (step 3) and framing.
+- `critique-argument` for the stress-test in idea triage (step 4) and framing.
 - `research-plan` to persist a settled framing into PLAN.md.
-- `decide-priority` for scoring pursue/refine/park/kill.
 - `research-lit-search` / `research-paper` / `research-run` as routed targets.
 - `research-audit` for a full independent review of an existing project rather
   than framing or triage.

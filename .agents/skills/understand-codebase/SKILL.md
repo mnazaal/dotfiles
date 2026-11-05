@@ -74,8 +74,7 @@ Route each; do not fix silently.
   README's claims live.
 - An abstraction with a single caller and no stated reason → `dev-ponytail`.
 - A seam carrying an unenforced invariant and no test → `dev-tdd`.
-- A README or docstring claim the code does not honor → `context-project-docs`,
-  which treats doc/code mismatch as a top-tier gap.
+- A README or docstring claim the code does not honor → `context-project-docs`.
 - Vendored or ported code with no recorded reference version or parity evidence
   → `dev-jax-port`.
 - Code implementing a paper equation that has drifted from it → `research-map`.

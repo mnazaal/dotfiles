@@ -91,6 +91,6 @@ rejected-commit round-trip.
 
 - `dev-verification` before committing non-trivial changes or making completion claims.
 - `dev-git-rescue` for history rewriting and recovery.
-- `critique-argument` for a fresh-perspective review before integration.
+- `code-review` for a fresh-perspective review before integration.
 - `dev-worktree` when a suspected pre-existing failure needs cross-venv verification, not just a stash.
 - `dev-tdd` for what earns a characterization test before you touch it.

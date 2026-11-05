@@ -17,7 +17,7 @@ and the Checklist can only ask whether they happened.
 
 1. State the hypothesis as a mechanism, not as "try tuning something".
 2. Pre-register the prediction, the decision rule, the falsifier, the analysis
-   path and the search bounds (Pre-Registration).
+   path, the rival explanations and the search bounds (Pre-Registration).
 3. Settle the design: the comparison of interest, Δ, seeds sized from pilot
    variance, pairing, a regime where the axis still bites, and the oracle
    (Before Launching).

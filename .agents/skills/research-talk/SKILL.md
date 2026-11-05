@@ -91,4 +91,3 @@ seconds before deciding to stay.
 - `dev-viz` for the exhibits themselves and the shared style module.
 - `research-manuscript-workflow` for the claims and numbers a talk restates.
 - `research-protocol` for anything cited on a slide.
-- `context-project-docs` for where a talk's planning notes live.

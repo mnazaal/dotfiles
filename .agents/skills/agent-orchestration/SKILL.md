@@ -131,6 +131,6 @@ are available. Take them in this order; the first that fits wins.
 ## Related Skills
 
 - `dev-scout` for read-only codebase exploration.
-- `critique-argument` for fresh-perspective review.
+- `critique-argument` for fresh-perspective review of a claim, `code-review` for a diff.
 - `research-protocol` for literature/citation checks.
 - `dev-verification` before trusting delegated completion claims.
