@@ -1,5 +1,4 @@
 local augroup = vim.api.nvim_create_augroup("UserConfig", {})
-local agentic_filetypes = { "AgenticInput", "AgenticChat", "AgenticFiles", "AgenticDiff" }
 
 -- Return to the last edit position when opening files.
 vim.api.nvim_create_autocmd("BufReadPost", {
@@ -29,14 +28,5 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     if vim.fn.isdirectory(dir) == 0 then
       vim.fn.mkdir(dir, "p")
     end
-  end,
-})
-
--- Ensure window navigation works in agentic terminal buffers.
-vim.api.nvim_create_autocmd("FileType", {
-  group = augroup,
-  pattern = agentic_filetypes,
-  callback = function(ev)
-    vim.keymap.set("t", "<C-w>", "<C-\\><C-n><C-w>", { buffer = ev.buf, silent = true })
   end,
 })

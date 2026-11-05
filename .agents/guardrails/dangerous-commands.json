@@ -88,7 +88,7 @@
     "--work-tree",
     "--namespace"
   ],
-  "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'always' = gate any find; 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
+  "_find_policy": "per-agent find handling (gate severity is 'ask'; each adapter maps that to a prompt or a block): 'exec' = gate only when an -exec/-delete primary is present; 'off' = ignore.",
   "find_policy": {
     "claude": "off",
     "pi": "exec"

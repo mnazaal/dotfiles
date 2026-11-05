@@ -172,7 +172,7 @@ local repos = {
   pixman = { url = "https://gitlab.freedesktop.org/pixman/pixman.git", targets = meson },
   pwvucontrol = {
     url = "https://github.com/saivert/pwvucontrol.git",
-    targets = lib.meson({ pkg_config_path = local_pkg_config, flags = { "--pkg-config-path=" .. local_pkg_config } }),
+    targets = lib.meson({ pkg_config_path = local_pkg_config }),
   },
   qpdf = { url = "https://github.com/qpdf/qpdf.git", targets = cc },
   rdfind = { url = "https://github.com/pauldreik/rdfind.git", targets = lib.autotools({ autoreconf = true }) },

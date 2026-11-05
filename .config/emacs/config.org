@@ -162,11 +162,7 @@ Desiderata:
                          ("melpa"  . "https://melpa.org/packages/")))
 (package-initialize)
 
-(unless (require 'use-package nil t)
-  (unless package-archive-contents
-    (package-refresh-contents))
-  (package-install 'use-package)
-  (require 'use-package))
+(require 'use-package)
 
 (setq use-package-always-ensure t)
 #+end_src
@@ -875,7 +871,7 @@ Save different locations within buffers for easy navigation.
   :ensure nil
   :custom
   (bookmark-save-flag t)
-  (bookmark-set-fringe-mark nil)
+  (bookmark-fringe-mark nil)
   (bookmark-default-file (expand-file-name "bookmarks" org-directory)))
 #+end_src
 
@@ -1872,7 +1868,7 @@ Manage multiple =vterm= buffers.
   :hook
   (vterm-mode . (lambda () (display-line-numbers-mode -1)))
   :bind
-  ("C-c t" . (lambda () (interactive) (multi-vterm) (popper-toggle-latest)))
+  ("C-c t" . (lambda () (interactive) (multi-vterm) (popper-toggle)))
   ([remap project-shell] . multi-vterm-project)
   (:map vterm-mode-map ;; To allow popper-cycle
         ("M-`" . nil)))

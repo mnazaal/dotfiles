@@ -39,7 +39,7 @@ export type ToolEvent = {
   cwd?: string;
   operation?: Operation;
 };
-export type GuardrailDecision = Decision & { skill?: string; skills?: string[] };
+export type GuardrailDecision = Decision & { skills?: string[] };
 
 // --- shared JSON loading ----------------------------------------------------
 // Prefer the policy beside this module, so a checkout's tests and adapters
@@ -433,7 +433,6 @@ function skipWrapperArgs(wrapper: string, toks: string[], i: number): number {
   return i;
 }
 
-/** Leading command + args of one segment, skipping assignments and known wrappers. */
 /**
  * Shell words that precede a command without being one. A segment can open with
  * a keyword (`then` after `if …;`), a grouping token, or a redirection, and the
@@ -470,6 +469,7 @@ function isBareRedirectionOperator(tok: string): boolean {
   return /^[0-9]*[<>&]?[<>]+$/.test(tok);
 }
 
+/** Leading command + args of one segment, skipping assignments and known wrappers. */
 function commandAndArgs(seg: string, wrappers: Set<string>): { command: string; args: string[] } | undefined {
   const toks = tokenize(seg);
   let i = 0;
@@ -1282,9 +1282,7 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
           if (record({ reason: "find -delete/-exec over a .git (history and checkpoint refs)", category: TOPLEVEL })) return worst;
           continue;
         }
-        if (findPolicy === "always") {
-          if (record({ reason: "find — prefer read tools", category: "find" })) return worst;
-        } else if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) {
+        if (findPolicy === "exec" && args.some(a => FIND_EXEC.has(a))) {
           if (record({ reason: "find with -exec/-delete", category: "find" })) return worst;
         }
       }
@@ -1309,10 +1307,10 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 
 
   // unified entry point ------------------------------------------------------
-  function evaluate(input: { command?: string; path?: string; paths?: string[]; cwd: string; operation?: Operation }): Decision {
+  function evaluate(input: { command?: string; paths?: string[]; cwd: string; operation?: Operation }): Decision {
     const cwd = input.cwd || HOME;
     const operation = input.operation ?? (input.command ? "bash" : "unknown");
-    for (const path of [...(input.path ? [input.path] : []), ...(input.paths ?? [])]) {
+    for (const path of input.paths ?? []) {
       const target = resolveAny(path, cwd);
       const real = resolvedThroughLinks(target);
       const r = blocked(target, operation) ?? blocked(real, operation);
@@ -1471,9 +1469,9 @@ export function createSkillGate() {
       capabilities.add("academic-source");
     }
     // Delegation is a tool call, not a command or a path, so it is keyed on the
-    // tool name: Task/Agent (Claude), pi's subagents package.
-    // Exact names rather than tokens -- a tool called TaskOutput must not trip it.
-    if (["task", "agent", "subagent", "delegate"].includes((input.tool ?? "").toLowerCase()) || toolTokens.includes("subagent")) {
+    // tool name: Agent (Claude), pi's subagent tool.
+    // An exact name rather than a token -- a tool called AgentOutput must not trip it.
+    if ((input.tool ?? "").toLowerCase() === "agent" || toolTokens.includes("subagent")) {
       capabilities.add("subagent-spawn");
     }
     if (input.command) {
@@ -1547,11 +1545,11 @@ export function inferOperation(tool: string | undefined, event: Pick<ToolEvent, 
   const t = (tool ?? "").toLowerCase();
   if (event.urls?.length || t.includes("fetch")) return "fetch";
   if (t.includes("write") || t.includes("edit")) return "write";
-  if (["read", "list", "get", "context", "toc", "outline", "search", "refs", "diff", "glob", "grep"].some((s) => t.includes(s))) return "read";
+  if (["read", "list", "get", "search", "diff", "glob", "grep"].some((s) => t.includes(s))) return "read";
   return "unknown";
 }
 
-export function commandFromToolInput(tool: string | undefined, input: Record<string, unknown> | undefined): string | undefined {
+export function commandFromToolInput(input: Record<string, unknown> | undefined): string | undefined {
   return typeof input?.command === "string" ? input.command : undefined;
 }
 
@@ -1559,7 +1557,7 @@ export function toolEventFromInput(tool: string | undefined, input: Record<strin
   const event: ToolEvent = {
     tool,
     cwd,
-    command: commandFromToolInput(tool, input),
+    command: commandFromToolInput(input),
     paths: pathsFromToolInput(tool, input),
     urls: [...stringValues(input, ["url"]), ...(Array.isArray(input?.urls) ? input.urls.filter((u): u is string => typeof u === "string") : [])]
       .filter((s) => /^https?:/i.test(s)),
@@ -1601,7 +1599,6 @@ export function createGuardrails(agent: string, opts: GuardOptions = {}) {
       return {
         decision: "deny",
         reason: missingSkillReason(missing, relevantMessages),
-        skill: missing[0],
         skills: missing,
       };
     }
@@ -1635,7 +1632,7 @@ export function skillReceipts(tool: string | undefined, input: Record<string, un
       if (typeof value === "string" && /^[a-z0-9][a-z0-9-]*$/.test(value)) receipts.add(value);
     }
   }
-  const command = commandFromToolInput(tool, input);
+  const command = commandFromToolInput(input);
   if (command) {
     for (const token of pathTokenize(command)) {
       const match = token.replace(/\\/g, "/").match(SKILL_FILE_RE);

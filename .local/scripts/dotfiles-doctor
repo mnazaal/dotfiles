@@ -134,7 +134,6 @@ fi
 for file in \
 	"$HOME/.zshenv" \
 	"$HOME/.config/zsh/.zshenv" \
-	"$HOME/.config/zsh/.zprofile" \
 	"$HOME/.config/zsh/.zshrc" \
 	"$HOME/.config/zsh/plugins.zsh"; do
 	if [[ -r "$file" ]]; then

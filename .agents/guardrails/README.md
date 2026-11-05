@@ -110,7 +110,7 @@ Learned from other people's configurations as much as from this one.
 - **`machinery_enabled`** (per agent) — protect the guardrail and sandbox files
   themselves from rewrite or bash access while still allowing normal read tools.
   Set an agent `false` only while bootstrapping.
-- **`find_policy`** (per agent) — `always` (gate any find) / `exec` (only when an
+- **`find_policy`** (per agent) — `exec` (gate a find only when an
   `-exec`/`-delete` primary is present) / `off`.
 - **`severity`** (per category, optionally per agent) — the decision a command
   rule produces. A string applies to every agent; an object keys by agent like

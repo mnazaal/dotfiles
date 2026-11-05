@@ -165,19 +165,11 @@ function M.clean_unwritable_meson_log()
   return M.sh("if [ -f build/meson-logs/install-log.txt ] && [ ! -w build/meson-logs/install-log.txt ]; then rm -rf build; fi")
 end
 
-function M.make_prefix(opts)
-  opts = opts or {}
-  -- Extra `VAR=value` make args, for Makefiles that hardcode a system dir
-  -- (e.g. BASHCOMPDIR=/etc/bash_completion.d) which must be pointed at a
-  -- user-writable path for a ~/.local install.
-  local extra = ""
-  for name, value in M.sorted_pairs(opts.vars) do
-    extra = extra .. " " .. name .. "=" .. M.q(value)
-  end
+function M.make_prefix()
   local t = {}
-  t.build = function() return M.sh("make PREFIX=" .. M.q(prefix) .. extra) end
-  t.install = function() return M.sh("make PREFIX=" .. M.q(prefix) .. extra .. " install") end
-  t.uninstall = function() return M.sh("make PREFIX=" .. M.q(prefix) .. extra .. " uninstall") end
+  t.build = function() return M.sh("make PREFIX=" .. M.q(prefix)) end
+  t.install = function() return M.sh("make PREFIX=" .. M.q(prefix) .. " install") end
+  t.uninstall = function() return M.sh("make PREFIX=" .. M.q(prefix) .. " uninstall") end
   return M.target(t)
 end
 
