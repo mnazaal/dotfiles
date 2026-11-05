@@ -35,7 +35,7 @@
 #
 #      Do not run `systemctl --user enable` on this unit — Quadlet-generated
 #      units are transient/generated, and `enable` fails on them with "Unit
-#      ... is transient or generated". The [Install] section above is
+#      ... is transient or generated". The [Install] section below is
 #      processed by Quadlet itself at daemon-reload time, so the unit is
 #      already wired to start whenever default.target is reached (e.g. next
 #      login) with no separate enable step.
@@ -47,8 +47,6 @@
 # time, not a container env var — unlike compose.yml's CEMENTIC_DB_PORT, it
 # is not overridable via environment. Edit PublishPort= directly here and
 # re-run `systemctl --user daemon-reload` if you need a non-default port.
-#
-# See README.md, "Running Postgres as a persistent service".
 
 [Unit]
 Description=cementic Postgres (pgvector + vectorscale)

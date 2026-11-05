@@ -325,7 +325,7 @@ See also [[https://github.com/jwiegley/emacs-async][README]] for more ways to of
 
 Current workflow:
 - TODO items go to a single =inbox.org=.
-- TODO items that may not be done (INACTIVE and CANCELLED) go to =backlog.org=.
+- A non-repeating item marked DONE or CANCELLED is archived on the spot, under =~/org/archive/=.
 - Follow the Eisenhower matrix:
   - TODO #A: Very important and very urgent. Tasks with deadlines/consequences.
   - TODO: Important and urgent. Tasks with unclear deadline but need to be done as soon as possible.
@@ -448,8 +448,8 @@ the entry is still in the kill ring, so it is recoverable with =C-y=.
   (org-refile-allow-creating-parent-nodes 'confirm)
   (org-id-link-to-org-use-id t)
   :config
-  ;; Archive-on-DONE, the TODO under org-agenda below. org-archive-location is
-  ;; already ~/org/archive/%s_archive, so this only decides WHEN.
+  ;; Archive-on-DONE. org-archive-location is already ~/org/archive/%s_archive,
+  ;; so this only decides WHEN.
   (defun my/org-archive-when-done ()
     "Archive the entry at point once it reaches a terminal TODO state.
 Terminal here means DONE or CANCELLED, the two right-hand states of
@@ -533,7 +533,6 @@ To add multiple tags, add =:= after current tag.
 - =C-c C-x C-i=    : Clock in for org-heading task.
 - =C-c C-x C-o=    : Clock out of currently clocked in task.
 
-# TODO: Send tasks to an archive whenever a task is marked DONE or CANCELLED in an org-agenda file.
 # TODO: Create an agenda view without personal tasks, or an easy way to toggle them.
 
 #+begin_src emacs-lisp
@@ -1094,7 +1093,7 @@ Important note, the fontifying org-cite links takes a lot of time, so manually r
 #+end_src
 
 ** citeproc                                            :reference_management:
-Add CSL citations for org exports, which can be set by via =#+cite_export:=, as mentioned [[https://orgmode.org/manual/Citation-export-processors.html][here]].
+Add CSL citations for org exports, which can be set via =#+cite_export:=, as mentioned [[https://orgmode.org/manual/Citation-export-processors.html][here]].
 
 #+begin_src emacs-lisp
 (use-package citeproc
@@ -1125,7 +1124,7 @@ Keybindings are based on suggestions from the =consult= documentation.
   ([remap switch-to-buffer]     . consult-buffer)         ;; C-x b
   ([remap bookmark-bmenu-list]  . consult-bookmark)       ;; C-x r l
   ([remap goto-line]            . consult-goto-line)      ;; M-g g
-  ([remap project-list-buffers] . consult-project-buffer) ;; C-c s p
+  ([remap project-list-buffers] . consult-project-buffer) ;; C-x p C-b
   ("M-y"   . consult-yank-pop)
   ("M-s r" . consult-ripgrep)
   ("M-s d" . consult-fd)
@@ -1253,7 +1252,7 @@ See also [[https://github.com/oantolin/orderless#style-dispatchers][style dispat
 
 ** embark                                                           :utility:
 Perform actions on targets in a context-specific manner.
-For e.g. if the target if a region of text, we can use embark to convert all of it into upper case.
+For e.g. if the target is a region of text, we can use embark to convert all of it into upper case.
 If the target is a file suggestion in the minibuffer, we can use embark to delete the file etc.
 
 #+begin_src emacs-lisp
@@ -1279,7 +1278,7 @@ If the target is a file suggestion in the minibuffer, we can use embark to delet
 (use-package nerd-icons)
 #+end_src
 
-** nerd-icons-completions                                            :visual:
+** nerd-icons-completion                                             :visual:
 Icons for completions e.g. within =vertico=.
 
 #+begin_src emacs-lisp
@@ -1510,9 +1509,9 @@ an unpinned master gives ABI 15 and Emacs refuses it:
 
 Check a candidate tag before pinning it -- the version number says nothing:
 =curl -sS https://raw.githubusercontent.com/<owner>/<repo>/<tag>/src/parser.c | grep -m1 LANGUAGE_VERSION=.
-Measured 2026-09-19: python =v0.23.6= is 14, =v0.25.0= is 15; and the two pins
-already here, c =v0.24.2= and bash =v0.25.1=, are BOTH 15 and would fail the
-same way. Only json and yaml happen to be compatible at master.
+Measured 2026-09-19: python =v0.23.6= is 14, =v0.25.0= is 15; and c =v0.24.2=
+and bash =v0.25.1=, pins this list used to carry, are BOTH 15 and fail the same
+way. Only json and yaml happen to be compatible at master.
 
 The real fix is a newer =libtree-sitter= with Emacs rebuilt against it, which
 would retire this whole paragraph. Until then, pin.
@@ -1739,14 +1738,14 @@ The =magit= keybindings override some other Emacs keybindings for =goto= style a
 - Sometimes you need to apply your changes on top of some changes in a remote branch. One approach is to merge the =main= to your feature branch, however this creates an extra commit whose message is not that helpful. The other option is to do a =rebase=. This takes new commits from the branch you are pulling from, and then reapplies your own commits on top of the commits from the remote branch. This involves changing the history (so be careful to only use it with your own branches). To do the rebasing, first press =P=, then press =r= to turn on rebasing. Now, choosing the remote repository will do a rebase instead of a merge - it will show any conflicts if they exist. If at this point you want to undo everything, press =r a= (=a= for =abort=), or if everything is fine, finish the rebase with =r r=. After this, you can force push to the remote branch (by turning on =- f= after going to the Push menu after pressing =P=).
 - To add files to =.gitignore=, go to the file you want to ignore in the =magit= buffer, and press =i= to show the =git ignore= menu, then press =t= for the simplest option to add the file to =.gitignore=.
 - Interactive rebasing:
-  - Good idea to backup your branch to a new branch, via =b n= (=n= for =new branch=) - this is because editing the history may delete some changes is rebasing goes wrong.
+  - Good idea to backup your branch to a new branch, via =b n= (=n= for =new branch=) - this is because editing the history may delete some changes if rebasing goes wrong.
   - Suppose you want to edit a commit message (=reword=). Use =r i= to go to the magit interactive rebase buffer, then press the key word =reword= and change the commit message.
   - Reordering commits: In the interactive =magit= buffer, use =M-j,M-k= to move the commits up and down as needed.
   - If reordering commits introduces a conflict, first fix the conflicts, then *do not commit the new changes via* =c c=, instead use =r r=.
   - If the update needs changing the commit message, do a =squash=.
   - =d= to delete commits (in the rebase menu of course).
 - Git worktrees:
-  - Use case - you checked out a branch, and need to move onto something else. Normally, you would commit everything you have or stash your changes. In the meantime you need to checkout other branches etc. Worktrees allow of multiple commits to be checked out at the same time.
+  - Use case - you checked out a branch, and need to move onto something else. Normally, you would commit everything you have or stash your changes. In the meantime you need to checkout other branches etc. Worktrees allow multiple commits to be checked out at the same time.
   - To start, use =git clone --bare xxxx=. Then checkout a worktree via =git worktree add foo=, =git worktree add bar= etc. This means you have separate checkouts in their own state. To remove them, use =git worktree remove foo=.
 
 #+begin_src emacs-lisp
@@ -2100,7 +2099,7 @@ Compile-on-save, from GNU ELPA rather than hand-rolled. =latexmk -pvc= runs in
 the background and rebuilds on every save, so there is no compile keystroke and
 no minibuffer command prompt; sioyek picks up each rebuild on its own. Unlike
 running =latexmk -pvc= in a terminal, errors come back through Flymake, so the
-existing =]d= / =[d= bindings (see [[*evil-collection][evil-collection]]) navigate LaTeX errors too.
+existing =]d= / =[d= bindings (see [[*evil][evil]]) navigate LaTeX errors too.
 
 =M-x auctex-cont-latexmk-toggle= (=C-c k=) turns it on per buffer.
 
@@ -2185,13 +2184,11 @@ A bare =use-package= with only =:vc= gives use-package no deferral trigger, so
 this block loaded at startup and dragged all of =notmuch= in with it. It has
 nothing to offer outside a notmuch buffer, so it now waits for one.
 
-This saves nothing *today*, and the reason is worth writing down because it is
-not obvious: [[*ol-notmuch][ol-notmuch]] is =:after org=, [[*org][org]] still loads at startup, and
-ol-notmuch =require='s notmuch -- so notmuch arrives anyway and this block's
-=:after= fires immediately. Measured 2026-09-19 over six interleaved paired
-runs: no improvement, within noise either way. The payoff is 231ms, and it
-appears only in a configuration where org is also deferred. Until then this is
-just an honest statement of the dependency rather than a saving.
+When this was measured, 2026-09-19 over six interleaved paired runs, it saved
+nothing, within noise either way: [[*ol-notmuch][ol-notmuch]] is =:after org=, [[*org][org]] still
+loaded at startup then, and ol-notmuch =require='s notmuch -- so notmuch arrived
+anyway and this block's =:after= fired immediately. The 231ms payoff appears only
+in a configuration where org is also deferred, which [[*org][org]] now is.
 
 #+begin_src emacs-lisp
 (use-package notmuch-maildir

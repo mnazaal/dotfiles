@@ -103,8 +103,7 @@ end
 -- never move again: nothing in the update path touches them. gimp (gimp-data),
 -- pwvucontrol, rofi (libgwater, libnkutils) and waybar all carry submodules, so
 -- without this an update advances the superproject and builds it against stale
--- submodule content. It also unsticks the dirty-worktree guard above, which a
--- lagging submodule pointer would otherwise trip on every later run.
+-- submodule content.
 function M.sync_submodules()
   return M.sh([==[
 if [ -f .gitmodules ]; then

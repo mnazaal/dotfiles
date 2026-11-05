@@ -45,7 +45,6 @@ For each package:
 
 1. Run `pkgit -i <pkgit-name>` after stowing this config.
 2. Check installed binary/library behavior under `~/.local`.
-3. Mark the package as pkgit-verified in commit notes or another tracking file.
 
 ## Commands
 

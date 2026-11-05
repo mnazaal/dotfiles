@@ -100,8 +100,8 @@ local repos = {
   --      find the prefix gegl/babl vapi. Vala GIMP plugins are niche; skip them.
   --  (2) the build runs an in-tree gimp-console that does gi.require_version('Gegl')
   --      and dlopens prefix libgegl — needs GI_TYPELIB_PATH + LD_LIBRARY_PATH (+
-  --      XDG_DATA_DIRS) at prefix. The user's normal shell exports these; mango's
-  --      session doesn't, so pin them here to make the recipe session-independent.
+  --      XDG_DATA_DIRS) at prefix. No tracked shell or session file exports these,
+  --      so pin them here to make the recipe session-independent.
   gimp = {
     url = "https://gitlab.gnome.org/GNOME/gimp.git",
     targets = lib.meson({
@@ -152,7 +152,7 @@ local repos = {
   -- ships Pango >=1.56 (then the define would clash with the real enumerator).
   mango = { url = "https://github.com/mangowm/mango.git", targets = lib.meson({ clean_root_build = true, pkg_config_path = local_pkg_config, flags = { "-Dc_args=-DPANGO_WRAP_NONE=PANGO_WRAP_WORD_CHAR" } }) },
   -- Outbound mail for rss2email (and anything else needing sendmail): the
-  -- tracked ~/.config/msmtp/config uses `eval` lines, which need msmtp >=1.8.20.
+  -- tracked ~/.config/msmtp/config uses `eval` lines, which need msmtp >=1.8.21.
   msmtp = { url = "https://git.marlam.de/git/msmtp.git", targets = lib.autotools({ autoreconf = true }) },
   -- The nautilus extension .so installs to an ABSOLUTE system dir
   -- (NAUTILUS_EXTENSION_DIR=/usr/lib/.../nautilus/extensions-4) → EACCES on a

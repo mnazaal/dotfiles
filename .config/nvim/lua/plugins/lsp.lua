@@ -216,8 +216,8 @@ local function configure_lsp_attach()
 end
 
 local function configure_diagnostic_keymaps()
-  vim.keymap.set("n", "<leader>xl", vim.diagnostic.open_float, { desc = "Diagnostic list" })
-  vim.keymap.set("n", "<leader>xq", vim.diagnostic.setloclist, { desc = "Diagnostic quickfix" })
+  vim.keymap.set("n", "<leader>xl", vim.diagnostic.open_float, { desc = "Diagnostic float" })
+  vim.keymap.set("n", "<leader>xq", vim.diagnostic.setloclist, { desc = "Diagnostic location list" })
 end
 
 function M.setup()

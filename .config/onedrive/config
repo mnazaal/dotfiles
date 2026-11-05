@@ -9,8 +9,9 @@ log_dir = "~/.local/state/onedrive/"
 # known HTTP/2 bugs. The client already downgrades itself to HTTP/1.1 on
 # detecting it; setting these two makes that explicit and demotes the warning
 # from a desktop notification on every single sync to a line in the log. It
-# silences the notification, not the underlying libcurl bug — the real fix is a
-# curl newer than 8.6.
+# silences the notification, not the underlying libcurl bug. The fix for that is
+# the newer libcurl .local/scripts/onedrive-cron loads from ~/.local/opt/curl;
+# the `curl` recipe in .config/pkgit/packages/all.lua says which releases are safe.
 force_http_11 = "true"
 ip_protocol_version = "1"
 
