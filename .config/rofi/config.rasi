@@ -2,7 +2,6 @@ configuration {
  modes: "combi,run,drun,window";
  combi-modes: "run,drun";
  combi-display-format: "{text}";
- font: "Iosevka Term 12";
  icon-theme: "Adwaita";
  show-icons: true;
  matching: "fuzzy";

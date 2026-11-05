@@ -561,8 +561,7 @@ To add multiple tags, add =:= after current tag.
   ;; instead of prompting [R]emove/[A]bort at startup.
   (org-agenda-skip-unavailable-files t)
   (org-agenda-start-with-log-mode t)
-  (org-agenda-prefix-format '((dashboard-agenda . " %i %-12:c %s ")
-                              (agenda . "○  %-12t %s")
+  (org-agenda-prefix-format '((agenda . "○  %-12t %s")
                               (todo . "○ %s")))
   (org-archive-mark-done t)
   (org-agenda-window-setup 'only-window)
@@ -1050,7 +1049,6 @@ Important note, the fontifying org-cite links takes a lot of time, so manually r
   (org-cite-follow-processor 'citar)
   (org-cite-activate-processor 'citar)
   (citar-notes-paths (list (expand-file-name "data" org-directory)))
-  (citar-symbol-separator "  ")
   (citar-org-activation-functions '(ignore))
   ;; `(list bib-file)', not `org-cite-global-bibliography': use-package stores
   ;; the EXPRESSION, and citar's defcustom evaluates it while declaring
@@ -1756,7 +1754,6 @@ The =magit= keybindings override some other Emacs keybindings for =goto= style a
   :bind
   ("C-x g" . magit-status)
   :hook
-  (magit-pre-refresh  . diff-hl-magit-pre-refresh)
   (magit-post-refresh . diff-hl-magit-post-refresh)
   :custom
   (git-commit-major-mode 'org-mode)

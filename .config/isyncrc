@@ -51,7 +51,6 @@ Near ":gmail-local:trash"
 Create Both
 SyncState *
 CopyArrivalDate yes
-ExpireUnread yes
 
 Group gmail
 Channel gmail-inbox

@@ -13,10 +13,6 @@ end
 local function oil_options()
   return {
     columns = { "icon" },
-    float_options = {
-      border = "rounded",
-      winblend = 0,
-    },
     keymaps = {
       ["g?"] = "actions.show_help",
       ["<CR>"] = "actions.select",

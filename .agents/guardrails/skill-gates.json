@@ -39,7 +39,6 @@
           "reflog",
           "bisect",
           "commit-tree",
-          "update-ref",
           "filter-branch"
         ]
       },
