@@ -132,6 +132,41 @@ Removing a harness does not remove its secrets. When one is dropped, delete its
 credential file in the same pass as its config, or keep the path in
 `credentials` until the file is gone — the guard list and the disk have to agree.
 
+## Which layer enforces what
+
+The Bash scan in `core.ts` reads command text, and a shell can spell one effect
+many ways, so the scan catches mistakes and is not a boundary. The table names
+the layer behind each protection:
+
+| Protection | Bash, Claude | Bash, pi | Typed file tools |
+|------------|--------------|----------|------------------|
+| Credentials unreadable | sandbox `denyRead`, built from the `Read()` denies | never bound, or `MASK` in `machinery-ro.profile` | this hook, and Claude's `Read()` denies |
+| Machinery unwritable | sandbox `denyWrite`, built from the `Edit()` denies | `RO_LAST` in `machinery-ro.profile` | this hook, and Claude's `Edit()` denies |
+| Agent commits stay on agent branches | the shared git hooks | the shared git hooks | not applicable |
+| Agents do not commit hand-written `.tex` | `reference-transaction` | `reference-transaction` | this hook denies typed writes to `*.tex` |
+| Dangerous commands | this scan only | this scan only | not applicable |
+
+`make check-guardrails-native-sync` and `make check-machinery-ro-sync` keep the
+two harnesses' lists in step with `sensitive-paths.json`.
+
+The git hooks run only when git runs them, in the agent's own environment.
+Bash can write `.git/` directly, and `core.hooksPath` is set only in
+`~/.config/git/config`, so each of these skips or subverts them:
+- a ref file written by hand;
+- `git config core.hooksPath`, or the same line written into `.git/config`;
+- `git symbolic-ref`, which writes no ref transaction;
+- git run with another `HOME` or `XDG_CONFIG_HOME`;
+- a variable that changes what the hook script runs, such as `GIT_EXEC_PATH`,
+  `BASH_ENV` or an exported shell function.
+
+They stop an agent's ordinary git commands, not one set on getting around them.
+
+A `.tex` file outside `generated/` can still change in the working tree through
+Bash; the commit is what `reference-transaction` refuses. `agent-checkpoint`
+snapshots the working directory's repository before each Bash call, gitignored
+files excepted, so an edit there can usually be recovered from
+`refs/agent-checkpoint/`.
+
 ## Native permission layers
 
 Beyond the shared hook, Claude also enforces the credential list for reads and
