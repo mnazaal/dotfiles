@@ -35,6 +35,13 @@ if [[ -z "$PREFIX" ]]; then
 fi
 
 while read -r old new ref; do
+	# A replace ref makes git show another commit in place of the user's, so
+	# the next checkout of main would carry the agent's edit with no branch
+	# update at all.
+	if [[ "$ref" == refs/replace/* ]]; then
+		echo "$ERROR_PREFIX $PREFIX agent may not write replace refs" >&2
+		exit 1
+	fi
 	[[ "$ref" == refs/heads/* ]] || continue
 	branch="${ref#refs/heads/}"
 	# `claude -w <name>` hardcodes worktree branches as worktree-<name> (no way
@@ -44,6 +51,44 @@ while read -r old new ref; do
 		echo "$ERROR_PREFIX $PREFIX agent may only create, delete, or modify $PREFIX/* (or worktree-$PREFIX*) branches" >&2
 		exit 1
 	fi
+
+	# Hand-written LaTeX is the user's to commit. A branch may not gain a commit
+	# that adds, changes, deletes or renames a .tex file outside a generated/
+	# directory, however it moves: commit, cherry-pick, rebase, am, or
+	# commit-tree with update-ref. A commit is new when no local branch reaches
+	# it, so rebasing onto main does not re-check the user's own commits.
+	# Remote-tracking refs do not count, because an agent can write those
+	# freely: pull main before rebasing an agent branch onto it.
+	# A merge commit is compared with each parent, so an agent cannot bring a
+	# .tex change in by merging either; the user runs those merges.
+	#
+	# Each option closes a way to hide a change from the listing: a replace ref
+	# swaps in another commit's tree, log.showRoot=false lists nothing for a
+	# root commit, log.diffMerges can narrow -m to the first parent, and
+	# diff.relative drops paths outside the working directory. There is no
+	# pathspec, because GIT_LITERAL_PATHSPECS and GIT_GLOB_PATHSPECS change
+	# what one matches, and -z leaves names unquoted. A graft file or a shallow
+	# file can cut a commit's parents, which would end the walk early. wait
+	# returns git's own exit status.
+	#
+	# An agent cannot rewrite a .tex commit the user made on an agent branch
+	# either, since the rewritten copy is new; the user rebases that branch.
+	[[ "$new" =~ ^0+$ || "$old" == "$new" ]] && continue
+	mapfile -d '' -t changed < <(
+		GIT_GRAFT_FILE=/dev/null GIT_SHALLOW_FILE=/dev/null git --no-replace-objects \
+			-c log.showRoot=true -c diff.relative=false -c advice.graftFileDeprecated=false \
+			log -z --format= --name-only --no-renames --diff-merges=separate \
+			"$new" --not --branches
+	)
+	if ! wait "$!"; then
+		echo "$ERROR_PREFIX cannot list the commits new to $ref" >&2
+		exit 1
+	fi
+	for f in "${changed[@]}"; do
+		[[ "${f,,}" == *.tex && "/$f" != */generated/* ]] || continue
+		echo "$ERROR_PREFIX agent commits may not change hand-written LaTeX ($f). Leave the change uncommitted; the user commits it." >&2
+		exit 1
+	done
 done
 
 exit 0
