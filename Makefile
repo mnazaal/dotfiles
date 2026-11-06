@@ -166,6 +166,13 @@ check-guardrails-native-sync:
 # pins have no test of their own. Only ~/dotfiles entries are checked here; the
 # pins outside it (the ~/.local/share bin directories and ~/.local/share/claude)
 # are covered by tests/sandbox-profile-test.sh, which walks the real PATH.
+#
+# The second half checks reads: every credential in sensitive-paths.json, and
+# every path under ~ that Claude's sandbox denyRead names, must be masked in the
+# agent profile wherever a bind would show it. It reads the profile arrays rather
+# than a dry run, because the launcher drops a mask whose path is absent, and a
+# credential missing on this machine still needs its mask on the next. A
+# denyRead glob can only be checked against the files it matches here.
 check-machinery-ro-sync:
 	@set -eu; \
 	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
@@ -181,7 +188,62 @@ check-machinery-ro-sync:
 		pin="$$(printf '%s' "$$p" | sed 's|^~|$$H|')"; \
 		printf '%s\n' "$$pinned" | grep -qF "\"$$pin\"" || { printf 'machinery-ro drift: %s is policy-protected but not pinned read-only in machinery-ro.profile\n' "$$p" >&2; status=1; }; \
 	done; \
+	python3 -c "$$MASK_SYNC_PY" "$(CURDIR)" || status=1; \
 	exit "$$status"
+
+# Loads the agent profile the way the launcher's `use` does and prints each
+# bind and mask path, then compares them with both policies.
+define MASK_SYNC_PY
+import glob, json, os, subprocess, sys
+root = sys.argv[1]
+home = os.path.expanduser("~")
+dump = r'''
+H=$$HOME
+declare -A _loaded
+use() {
+	[ -z "$${_loaded[$$1]:-}" ] || return 0
+	_loaded[$$1]=1
+	. "$$PROFILE_DIR/$$1.profile"
+}
+RO=() RW=() RO_LAST=() MASK=() MASK_PREPARE=() SANDBOX_ENV=()
+use agent
+printf 'bind\t%s\n' "$${RO[@]}" "$${RW[@]}" "$${RO_LAST[@]}"
+printf 'mask\t%s\n' "$${MASK[@]}" "$${MASK_PREPARE[@]}"
+'''
+out = subprocess.run(["bash", "-c", dump], env={**os.environ, "PROFILE_DIR": f"{root}/.config/sandbox"},
+                     capture_output=True, text=True)
+if out.returncode:
+    sys.exit(f"mask-sync: loading the agent profile failed: {out.stderr.strip()}")
+binds, masks = [], []
+for line in out.stdout.splitlines():
+    kind, _, path = line.partition("\t")
+    # printf prints one empty line for an empty array, and an empty mask
+    # would cover every path.
+    if path.rstrip("/"):
+        (binds if kind == "bind" else masks).append(path.rstrip("/"))
+if not binds or not masks:
+    sys.exit("mask-sync: the agent profile printed no binds or no masks")
+
+
+def covered(path, roots):
+    return any(path == r or path.startswith(r + "/") for r in roots)
+
+
+policy = json.load(open(f"{root}/.agents/guardrails/sensitive-paths.json"))
+settings = json.load(open(f"{root}/.claude/settings.json"))
+want = [home + c[1:] for c in policy["credentials"]]
+for rule in settings.get("sandbox", {}).get("filesystem", {}).get("denyRead", []):
+    if rule.startswith("~/"):
+        path = home + rule[1:]
+        want += sorted(glob.glob(path)) if "*" in path else [path]
+status = 0
+for path in want:
+    if covered(path, binds) and not covered(path, masks):
+        print(f"mask drift: {path.replace(home, '~', 1)} is hidden from Claude's Bash but bound into Pi's; add it to MASK in machinery-ro.profile", file=sys.stderr)
+        status = 1
+sys.exit(status)
+endef
+export MASK_SYNC_PY
 
 # Every skill's frontmatter must load as YAML with string values. The failure
 # this catches is silent and per-file: pi parses strictly, so one unquoted

@@ -86,3 +86,22 @@ MASK+=(
 	"$H/.local/share/zsh"
 	"$H/.local/state/zsh"
 )
+
+# Credentials under agent.profile's read-only ~/.config bind and dev.profile's
+# ~/.config/git bind. sensitive-paths.json lists them, and Claude's sandbox
+# hides them through its Read() denies; make check-machinery-ro-sync fails when
+# a listed credential is bound here and not masked.
+MASK+=(
+	"$H/.config/git/credentials"
+	"$H/.config/pi/agent/auth.json"
+	"$H/.config/pi/agent/mcp-auth.json"
+	"$H/.config/onedrive"
+	"$H/.config/google-chrome"
+	"$H/.config/Signal"
+)
+
+# The same paths as Claude's `Read(./.env)` deny and the two patterns in its
+# sandbox.filesystem.denyRead, expanded when the profile loads. A pattern that
+# matches nothing stays literal and the launcher skips it, because no such path
+# exists.
+MASK+=("$PWD/.env" "$H"/projects/*/.env "$H"/projects/*/.env.*)

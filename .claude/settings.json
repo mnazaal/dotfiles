@@ -41,6 +41,7 @@
       "Read(~/.local/share/mail/**)",
       "Read(~/.git-credentials)",
       "Read(~/.git-credential-cache/**)",
+      "Read(~/.cache/git/credential/**)",
       "Read(~/.mozilla/**)",
       "Read(~/.local/share/password-store/**)",
       "Read(~/.zsh_history)",

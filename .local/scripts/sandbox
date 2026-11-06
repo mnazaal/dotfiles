@@ -178,10 +178,18 @@ run_bwrap() {
 	# the later bind wins rather than erroring, so no dedupe pass is needed, or
 	# wanted.
 	for d in "${RO_LAST[@]}"; do if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi; done
-	# A mask makes the path ABSENT rather than merely unwritable. bwrap's --tmpfs
-	# has no copy-up, so podman's load-bearing notmpcopyup has nothing to
-	# correspond to: there is no replica to make and no creation timeout to hit.
-	for d in "${MASK[@]}"; do if [ -e "$d" ]; then p+=(--perms 0000 --tmpfs "$d"); fi; done
+	# A mask makes a directory EMPTY and unreadable rather than merely unwritable.
+	# bwrap's --tmpfs has no copy-up, so podman's load-bearing notmpcopyup has
+	# nothing to correspond to: there is no replica to make and no creation
+	# timeout to hit. A tmpfs cannot cover a file, so a file mask binds /dev/null
+	# over it, which is also how Claude's sandbox shows a hidden file.
+	for d in "${MASK[@]}"; do
+		if [ -d "$d" ]; then
+			p+=(--perms 0000 --tmpfs "$d")
+		elif [ -e "$d" ]; then
+			p+=(--ro-bind /dev/null "$d")
+		fi
+	done
 	# Required masks must not disappear when a host source is absent at launch:
 	# the credential-cache daemon could create its socket afterwards. Create a
 	# private mountpoint before bwrap binds the writable cache parent. Dry runs

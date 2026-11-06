@@ -8,6 +8,7 @@
     "~/.config/git/credentials",
     "~/.git-credentials",
     "~/.git-credential-cache",
+    "~/.cache/git/credential",
     "~/.netrc",
     "~/.npmrc",
     "~/.docker/config.json",

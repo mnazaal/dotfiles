@@ -61,7 +61,7 @@ recognise that it is inside a sandbox and skip the checks a mask would fail.
 
 A profile is a tiny `*.profile` file sourced by the launcher; it appends to the
 `RW` / `RO` / `RO_LAST` / `MASK` / `MASK_PREPARE` arrays and can `use NAME` to
-compose another. A mask shadows a path with an empty tmpfs. `MASK_PREPARE`
+compose another. A mask shadows a directory with an empty tmpfs and a file with `/dev/null`. `MASK_PREPARE`
 creates its host mountpoint privately on actual launch, even if absent on a
 fresh account, so a socket created after launch cannot escape the mask.
 `-p NAME` resolves a bare name against

@@ -25,9 +25,10 @@ mkdir -p \
 	"$home/.cache/git/credential" "$home/.local/state/headroom" "$home/.local/state/nvim" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
-	"$home/projects/demo/src" "$project"
+	"$home/projects/demo/src" "$project" "$home/.config/onedrive"
 touch "$home/.config/pi/agent/mcp-cache.json" \
-	"$home/.config/pi/agent/run-history.jsonl"
+	"$home/.config/pi/agent/run-history.jsonl" \
+	"$home/.config/pi/agent/auth.json" "$home/projects/demo/.env.local"
 
 # ~/dotfiles and the demo project are REPOSITORIES; ~/projects is the container
 # holding them. The auto-bind rule keys on exactly that difference, so a fixture
@@ -344,6 +345,18 @@ case "$output" in
 	exit 1
 	;;
 esac
+# A file cannot take a tmpfs, so its mask is /dev/null, as in Claude's sandbox.
+for masked in "--perms 0000 --tmpfs $home/.config/onedrive" \
+	"--ro-bind /dev/null $home/.config/pi/agent/auth.json" \
+	"--ro-bind /dev/null $home/projects/demo/.env.local"; do
+	case "$output" in
+	*"$masked"*) ;;
+	*)
+		printf 'bwrap: credential not masked: %s\n' "$masked" >&2
+		exit 1
+		;;
+	esac
+done
 for store in share/gnupg share/pass share/password-store share/keyrings share/mail share/zsh state/zsh; do
 	case "$output" in
 	*"--perms 0000 --tmpfs $home/.local/$store"*) ;;
@@ -529,6 +542,27 @@ if bwrap --dev-bind / / /bin/true 2>/dev/null; then
 		exit 1
 	fi
 	printf 'sandbox profiles: Git credential-cache socket is hidden\n'
+
+	# A file mask must hide the contents: a launch that cannot bind /dev/null
+	# fails, and one that skipped the mask prints the secret. bwrap mounts the
+	# bind nodev, so reading it fails rather than returning nothing.
+	printf 'canary\n' >"$home/.config/pi/agent/auth.json"
+	auth_read=$(
+		cd "$project" || exit 1
+		HOME="$home" SANDBOX_PROFILE_PATH="$repo/.config/sandbox" \
+			"$repo/.local/scripts/sandbox" -p agent -- /bin/sh -c 'cat "$1"; echo "launched"' sh "$home/.config/pi/agent/auth.json" \
+			2>"$tmp/auth-probe-stderr"
+	) || {
+		printf 'auth.json mask probe did not launch:\n' >&2
+		cat "$tmp/auth-probe-stderr" >&2
+		exit 1
+	}
+	if [ "$auth_read" != launched ]; then
+		printf 'pi auth.json is readable inside the agent sandbox: %s\n' "$auth_read" >&2
+		exit 1
+	fi
+	: >"$home/.config/pi/agent/auth.json"
+	printf 'sandbox profiles: pi auth.json contents are hidden\n'
 
 	# The mask must also be emitted when the host directory has not been created
 	# yet. Git can start its daemon after an agent sandbox launches.
