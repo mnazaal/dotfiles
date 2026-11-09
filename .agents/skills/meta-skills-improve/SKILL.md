@@ -37,6 +37,7 @@ Use when a session reveals a reusable workflow, repeated mistake, missing routin
 - Read the target section before accepting a body edit. If the guidance is already there and was skipped past, the fix is placement or wording, never a second copy.
 - If only a hook or script could enforce a lesson, record that and stop: do not write prose that will be ignored, and do not build the mechanism unasked.
 - Codify a preference only after seeing it twice. Once, and contradicted once, is noise.
+- When the default model changes, sweep model pins and premises of the form "the model tends to X". A pin set as a floor becomes a ceiling once a stronger model ships. Keep a protection unless there is direct evidence the new model no longer needs it.
 
 ## Placement decides whether a rule survives
 

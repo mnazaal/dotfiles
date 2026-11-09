@@ -101,6 +101,11 @@ Learned from other people's configurations as much as from this one.
 - **A toggle may never fail open.** If a guard cannot prompt because there is no
   UI, that is the case for refusing, not for allowing. An "auto-allow when
   headless" flag inverts the guard exactly where it is least supervised.
+- **A hook fails closed where its failure leaves an agent action
+  unprotected,** and passes where blocking would lock out the user instead of
+  the agent. The guardrail hook and the per-call Bash checkpoint deny when
+  they cannot run; the prompt-time checkpoint and the question-time skill
+  injection pass, silently when their script or `jq` is missing.
 - **Prefer a prefix or a shape to an enumeration** where the family is
   open-ended. Ten enumerated `mkfs.*` names still missed two, and the next
   filesystem would have reopened the hole with no symptom.
@@ -148,6 +153,20 @@ the layer behind each protection:
 
 `make check-guardrails-native-sync` and `make check-machinery-ro-sync` keep the
 two harnesses' lists in step with `sensitive-paths.json`.
+
+What shows each layer works. A list kept in step is not a list that is
+enforced, so the two are named apart:
+
+- Exercised by a test: the Bash scan's credential and dangerous-command rules
+  and the hook's typed Read/Edit/Write decisions, `*.tex` included
+  (`tests/guardrails-severity-test.ts`); pi's `MASK` binds
+  (`tests/sandbox-profile-test.sh`: mount strings, plus a real launch when
+  bwrap is available); the git hooks' branch and `.tex` refusals
+  (`tests/git-hooks-confinement-test.sh`).
+- Checked as argv only: pi's `RO_LAST` pins — mount-string order and the
+  preflight logic, with no write attempted inside a real launch.
+- List-synced only, no runtime test: Claude's sandbox `denyRead`/`denyWrite`
+  and its `Read()`/`Edit()` denies.
 
 The git hooks run only when git runs them, in the agent's own environment.
 Bash can write `.git/` directly, and `core.hooksPath` is set only in

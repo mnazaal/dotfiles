@@ -49,7 +49,8 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    session found PLAN.md's picture of reality stale (route the fix per step 3;
    the handoff names the correction so the next reader distrusts the right
    sections); deviations from the agreed plan, each attributed — user-directed
-   or agent-decided; and exit criteria as runnable commands — the command(s)
+   ones quoted in the user's words with the date, agent-decided ones marked as
+   such; and exit criteria as runnable commands — the command(s)
    whose output confirms the state the handoff claims.
    Read branch and ref facts (`git branch -vv`, `git rev-parse <ref>`) at write
    time; the user may have merged or moved refs since the session last looked.
@@ -114,7 +115,10 @@ Read what this skill writes BEFORE acting:
    what problem the project solves, the current thread, and where the next
    action sits in it — before the entry-point details. Resuming agent state
    without restating the frame starts the session with the user already lost.
-6. Confirm the next action with the user, then route.
+6. Confirm the next action with the user, then route. A decision the
+   handoff attributes to the user but carries only as a paraphrase — no quote
+   of the user's words — is still open: ask it again rather than act on the
+   summary's reading of it.
 
 No handoff artifact / generic "catch me up" → `research-session` Session Start.
 If the artifact reconstructs agent state but the user has lost their own grasp

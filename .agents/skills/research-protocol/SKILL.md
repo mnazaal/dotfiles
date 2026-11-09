@@ -10,6 +10,9 @@ description: "Mandatory for academic papers, literature, citations, related work
 - Do not cite papers from memory.
 - Verify papers/citations/authors with configured paper-search tools before citing.
 - Verifying an identifier is not verifying a claim. When a paper's *content* — what it assumes, proves, or requires — will change a design, a plan, or a risk entry, confirm that content against the paper itself (snippet or full-text search), not against a summary, whether yours or a subagent's. Batch metadata lookups confirm existence only.
+- Check support against the version the reference cites. A preprint, a later arXiv version and the camera-ready differ in theorems, numbers and baselines; when the cited version cannot be read, say so and ask for it rather than reading another. After a reference is swapped for its published version, re-check what it is cited for.
+- Check a sentence that cites several works one work at a time, against the part each is cited for. A work that supports half the sentence leaves the other half unsupported: name that half.
+- A DOI or arXiv ID that resolves to nothing, or to a different paper, is the fabrication signal. A title search with no hit is unresolved — neither verified nor fabricated.
 - Tool and snippet output may be lossy: some harnesses strip stopwords and numerals, so a figure read through a search tool can be silently wrong or missing entirely, and the loss looks like the source being redacted rather than the channel degrading it. Verify any number — and any quote whose force depends on a number — against fetched full text, not against snippet output.
 - Someone else's unpublished text never leaves the local context. A manuscript
   under review, a shared draft, an unpublished supplement: none of it goes into

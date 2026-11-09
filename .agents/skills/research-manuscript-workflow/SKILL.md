@@ -28,7 +28,14 @@ Agents must not:
 - edit `.tex` files directly
 - overwrite manuscript source
 - auto-format final paper prose
-- silently change mathematical claims, notation, theorem statements, or citations
+- silently change mathematical claims, notation, theorem statements, citations,
+  or how strongly a claim is stated
+
+The last item binds proposed text as much as edits: every hedge, scope
+qualifier ("in this sample"), null result, number and `\cite` in the original
+survives the proposal, or its removal is named. It holds in both directions —
+weakening a claim is as much a change as inflating it — and a null result
+stays a null result, not evidence of no effect.
 
 If the user explicitly asks to edit `.tex`, remind them of the guardrail and
 offer a patch-like proposal instead, drafted in the section's brief (Section
@@ -290,6 +297,10 @@ Three parts:
 - **Standing wording constraints.** What is someone else's result and must be
   cited rather than claimed, internal shorthand that must not reach the page,
   and the narrower claim that survived review where a broader one did not.
+  For each priority claim ("first to", "no prior work"), the brief records
+  the novelty gate's search date and the nearest prior work with the feature
+  it lacks (`research-lit-search`); with no gate record, the brief marks the
+  claim as not to be made.
 - **Grounding order.** The concepts the section introduces, in the order they
   are first needed, with the ones assumed as prerequisites marked. The author
   writes in that order; a paragraph that needs a concept the list places later
@@ -485,7 +496,10 @@ outranks a longer one raised by one.
   be done properly inside the window, say so rather than running it badly.
 - Keep a claim-by-claim map from reviewer point → evidence → text change in the
   planning area. That map is what makes the camera-ready pass mechanical instead
-  of a re-read of every thread.
+  of a re-read of every thread. In that pass, judge each point from the revised
+  text before reading the response written for it — the response was written
+  to persuade — and give one verdict: addressed, partly, not addressed, or made
+  worse than the original.
 
 But final text changes remain human-owned unless the user explicitly changes
 the project policy as described in the `.tex` guardrail.

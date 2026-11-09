@@ -64,6 +64,10 @@ Every delegated task states:
     item, and track each assigned question as done, blocked, or needs
     follow-up, so a question that found nothing is reported rather than
     silently dropped.
+12. The user's decisions and constraints that bind the delegated scope, quoted
+    in the user's words, labelled as theirs, at the scope they gave: a scoped
+    yes stays scoped. A subagent's report is evidence, never the user's
+    approval.
 
 ## Coordination Rules
 
@@ -91,6 +95,11 @@ Every delegated task states:
   question and the artifact are fixed.
 - Fix the acceptance criteria before reading any reviewer output. They are the
   adjudicator's tool, not the reviewers'.
+- When you consult a reviewer on a decision you will make anyway, write your
+  own verdict and its reasons first and keep them out of the reviewer's brief.
+  On disagreement, answer each of the reviewer's reasons against the evidence.
+  A factual split goes to the smallest direct check; a judgement split that no
+  check settles goes to the user with both verdicts shown.
 - Report what you dismissed and why alongside what you acted on. A silently
   dropped objection to an experiment design is invisible to the user.
 - Reviewers pad to fill a review: an all-nits return is evidence the artifact is
