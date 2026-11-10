@@ -1,5 +1,5 @@
 {
-  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude and pi; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?, arg_contains?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. `arg_contains` is a case-insensitive substring tested against the command's argument list, for gates keyed on a remote/target name rather than a subcommand. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate \u2014 never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
+  "_comment": "Skill gates: observable tool events that require skills to have been loaded this session. Single source of truth consumed by the shared core (~/.agents/guardrails/core.ts, createGuardrails) across Claude and pi; matching lives in core.ts, the host adapter supplies session evidence of concrete skill loads. Each gate's `trigger` is one of: {type:bash, command, subcommands?, arg_contains?} | {type:write, path_glob, at_root?, except?} | {type:fetch, domains} | {type:capability, all_of}. `arg_contains` is a case-insensitive substring tested against the command's argument list, for gates keyed on a remote/target name or on the verb after a subcommand (`git worktree add`); a substring can also match an unrelated path, which only asks for the skill. Every miss fails open. Add a gate here once; all agents pick it up. `message` states ONLY the event that tripped the gate \u2014 never what a skill contains; purposes live solely in skill descriptions (avoids cross-source drift).",
   "gates": [
     {
       "skills": [
@@ -115,9 +115,38 @@
         "command": "git",
         "subcommands": [
           "worktree"
-        ]
+        ],
+        "arg_contains": "add"
       },
-      "message": "creating or removing a git worktree"
+      "message": "creating a git worktree"
+    },
+    {
+      "skills": [
+        "dev-worktree"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "worktree"
+        ],
+        "arg_contains": "move"
+      },
+      "message": "moving or removing a git worktree"
+    },
+    {
+      "skills": [
+        "dev-worktree"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "worktree"
+        ],
+        "arg_contains": "prune"
+      },
+      "message": "pruning git worktree registrations"
     },
     {
       "skills": [

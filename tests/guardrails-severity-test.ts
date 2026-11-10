@@ -622,6 +622,19 @@ test("skill gates survive an ask-tier danger in the same call", () => {
   expect(satisfied.decision).toBe("ask");
 });
 
+// Seven friction-log sightings: a read-only `git worktree list` was refused as
+// "creating or removing a git worktree". Only the verbs that change worktrees gate.
+test("dev-worktree gate: changing a worktree, not listing one", () => {
+  const rails = createGuardrails("claude");
+  for (const command of ["git worktree list", "git worktree list --porcelain", "git status && git worktree list"]) {
+    expect(`${command}: ${rails.evaluate({ tool: "bash", command, cwd }, new Set()).decision}`).toBe(`${command}: allow`);
+  }
+  for (const command of ["git worktree add /tmp/wt-x", "git worktree remove /tmp/wt-x", "git worktree move a b", "git worktree prune", "git -C repo worktree add x"]) {
+    const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
+    expect(`${command}: ${r.decision} ${(r.skills ?? []).join()}`).toBe(`${command}: deny dev-worktree`);
+  }
+});
+
 const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
 test("machinery in bash: denied outside a sandbox", () => {
   const rails = createGuardrails("claude", { inSandbox: false });
