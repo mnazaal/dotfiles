@@ -124,6 +124,10 @@ This file is global routing and behavior policy. Keep it small.
   job finished while it is still running, and an unreaped launcher stays visible
   to `ps -p` forever so `until ! ps -p <pid>` never exits. Once a wait task is
   armed, consume its notification rather than abandoning it for manual polling.
+- The command guard reads a command's whole text, heredoc prose included: a
+  protected filename or a deletion command in a document's wording refuses
+  the call. Write documents and commit messages with the file-write tool, and
+  run a read that names a protected file as a command of its own.
 - `pkill -f <pattern>` matches the shell running it, so the command kills itself
   and reports a spurious exit code. Bracket a character — `pkill -f 'jo[b]name'`
   — or match the worker PID.

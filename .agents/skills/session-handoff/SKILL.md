@@ -39,6 +39,12 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    <!-- session-handoff:end -->
    ```
 
+   Load `context-project-docs` before the write. Then check `git diff PLAN.md`
+   and the branch list for another session's uncommitted block or handoff
+   branch; if one exists, coordinate with that session before staging. When
+   `PLAN.md` sits in a checkout another live session works in, commit from a
+   separate worktree rather than switching that checkout's branch.
+
 2. Keep it to state with no other home: current branch, uncommitted or unmerged
    work, jobs that outlive the session (cluster job IDs, services) each with
    the command that checks it, env
@@ -55,7 +61,9 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    Read branch and ref facts (`git branch -vv`, `git rev-parse <ref>`) at write
    time; the user may have merged or moved refs since the session last looked.
    It sits above the plan because a cold reader needs it first, and it stays
-   short because everything durable lives below it.
+   short because everything durable lives below it. A decision made
+   mid-session goes to the decision log when it is made, never into the
+   block, which is regenerated.
 3. Route durable content to its existing home rather than restating it: verdicts
    and load-bearing numbers → `LOG.md` (`research-run`); decisions, execution
    order, next actions → `PLAN.md` (`research-plan`); dead ends and what NOT to
@@ -63,7 +71,10 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    pending-review status and the file:line it was found at → `PLAN.md` risks
    (`dev-verification`). The handoff POINTS at these; it does not re-narrate
    them.
-4. Enumerate the scratchpad and decide each item explicitly, keep or discard.
+4. Enumerate the session scratchpad and the sandbox temp directory
+   (`$TMPDIR`), which can differ, and decide each item explicitly, keep or
+   discard. If a listing is refused, list what the session wrote there from
+   its own tool calls.
    It is session-scoped and usually gone next session, so anything not promoted
    is lost — and which artifacts the next session needs cannot be predicted,
    which is why this is a list rather than a judgement.
@@ -71,9 +82,15 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    subagents, monitors, scheduled wake-ups — dies or is orphaned when the
    session closes, and its result has nowhere to arrive; recording it saves
    nothing. For each item: wait for it and route its result, or stop it and
-   list it under next actions as not done. Only work that outlives the session
-   stays running, recorded per step 2. This step is done when no session-bound
-   work is still running.
+   list it under next actions as not done. A job writing durable shards may
+   run to its next shard first, with the rest listed beside its resume
+   command. Enumerate from each task's own end state: an agent listing omits
+   shells, and an agent shown as completed can leave a poll loop running.
+   Only work that outlives the session stays running, recorded per step 2.
+   This step is done when no session-bound work is still running. When the
+   user is leaving now, do this step and step 1, commit, and leave step 3's
+   routing to the next session from durable files outside the scratchpad;
+   the block says so.
 5. Cold-read check before finishing: re-read the block as if you had none of
    this session's context, and name what you would still have to re-derive. Fix
    those gaps. This step is explicit because the writer holds maximum context
@@ -108,9 +125,12 @@ Read what this skill writes BEFORE acting:
    `research-run` blocks" silently skips the handoff.
 3. The rest of `PLAN.md`: execution order, open risks, decision log.
 4. Verify live state before trusting any of it: `git branch --show-current`,
-   uncommitted/unmerged work, and any experiments still running (cluster jobs,
-   background tasks). If the handoff carries exit-criteria commands, run them —
-   verification is then a paste, not a judgment call.
+   uncommitted work, `git branch --no-merged <base>` for agent branches
+   already holding work, and any experiments still running (cluster jobs,
+   background tasks; a results directory's exit files beside the scheduler
+   queue). A line forbidding a re-run is re-checked with the smallest run
+   before it is repeated to the user. If the handoff carries exit-criteria
+   commands, run them — verification is then a paste, not a judgment call.
 5. Reconstruct for the user, not just yourself: open with a short frame —
    what problem the project solves, the current thread, and where the next
    action sits in it — before the entry-point details. Resuming agent state

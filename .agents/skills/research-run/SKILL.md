@@ -64,7 +64,9 @@ of which can be made honestly once the numbers exist:
   numbers exist. The same holds for a pass threshold: a "matches the reference"
   criterion set at the reference's own noise floor fails every approximate arm,
   so the rule decides nothing. Same for a null control: state its criterion in the units the
-  mechanism moves, not whichever summary is at hand.
+  mechanism moves, not whichever summary is at hand. Run every registered
+  readout command once end to end on inputs already banked, and open the
+  banked result the prediction is made against, before registering either.
 - **The rival explanations.** Which non-mechanism accounts could produce the
   predicted result, and what in the design rules each one out. Work the classes
   rather than improvising: confounding or a common cause, selection and
@@ -125,6 +127,10 @@ cost of getting them wrong is the whole sweep.
   removed it.
 - **Pick a regime where the axis still bites.** Two arms saturated at a floor or
   ceiling give an uninformative comparison however many seeds you spend on it.
+  Re-check it whenever a test moves to a changed setting (another data type,
+  budget or scale): show on banked records that each axis still acts there,
+  and that more budget leaves the method's target fixed (a schedule tied to
+  step count moves it).
 - **Hold the resource fixed when ablating a loop count.** Ablating iterations,
   refinement steps, epochs or restarts while leaving per-step cost alone makes
   "more of the loop" also mean "more compute", and the contrast then measures
@@ -145,8 +151,10 @@ cost of getting them wrong is the whole sweep.
   the floor you cannot tell an arm difference from pipeline error, and arms that
   all sit far above it are measuring the pipeline, not the method. Reading this
   off the checklist afterwards is too late; the design is already spent.
-- **Estimate per-cell wall-clock before fanning out.** `dev-hpc` owns the
-  cluster-side minimum and the batching that clears it.
+- **Estimate per-cell wall-clock before fanning out.** Time the real arm mix
+  under the real worker count; a few cheap cells or one shard give a floor,
+  and the estimate says so. `dev-hpc` owns the cluster-side minimum and the
+  batching that clears it.
 
 ## Sustained Improvement Loop
 

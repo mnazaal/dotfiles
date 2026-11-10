@@ -51,6 +51,11 @@ worktree. Both strand quietly.
 - **Remove a live worktree explicitly** rather than deleting its directory:
   `git worktree remove <path>`, adding `--force` only when you accept losing
   uncommitted changes there.
+- **Inside an agent sandbox, removal can stop halfway.** `git worktree remove`
+  deletes the directory, then fails on `.git/worktrees/<name>` with "Device or
+  resource busy", and `git worktree prune` fails the same way. The leftover
+  registration is harmless; it prunes outside the sandbox or in a later
+  session, so hand that step over.
 - **Deleting the worktree does not delete the branch**, which is the property
   worth relying on — the commits survive a cleared scratch area. Retire the
   branch as a separate, deliberate step once it is merged.

@@ -30,6 +30,10 @@ The agent count follows the task's shape, and has a ceiling: two for a two-way
 comparison, three or four for a survey, four to six when the question spans
 domains. More than that is not more coverage; it is the same sources re-read
 with citations that disagree, and an integration step the parent cannot do.
+On one machine the ceiling is on local processes as well: every agent's test
+runs share the cores and memory, so cap heavy local work across all agents
+(one shared lock, heavy jobs scheduled rather than queued behind it) and send
+integrated checks to the cluster.
 
 ## Prompt Contract
 
@@ -45,7 +49,11 @@ Every delegated task states:
    match as an incomplete task, not a result to salvage. When the findings are
    bulk, they go to a file and the final message is the path plus a one-line
    summary: the parent reads the file, and the summary is what survives a
-   later compaction.
+   later compaction. Check the agent type's tools before asking for a file: a
+   read-only reviewer has no write tool, and a harness may refuse a write
+   outside the agent's own area. Give each writing agent its own directory,
+   never a shared scratchpad, and say that a refused write means returning the
+   report inline and saying so.
 5. Verification expected, if any.
 6. Naming constraint: use descriptive task names; no opaque shorthand such as
    `P0/P1`, `T1/T2`, or `H1/H2` unless defined by the parent prompt. Subagent
@@ -57,7 +65,11 @@ Every delegated task states:
    behind are not the same thing — a correct quote can sit beside a file that
    cannot support it.
 9. Timebox: a rough cap on the run, with the contract that on expiry the agent
-   returns partial findings and stops rather than running on.
+   returns partial findings and stops rather than running on. A build lane
+   commits on its own branch after each verified step, at least hourly, and
+   keeps a running results file (one line per test batch, red files named),
+   so a stop, a compaction or an overrun leaves history and a readable state
+   rather than a dirty worktree.
 10. No resume-chaining. Directives decay across resumes, so re-issue a fresh
     agent with consolidated scope instead of resuming one whose brief changed.
 11. For search-shaped work: triage a result list by title before fetching any
@@ -67,7 +79,9 @@ Every delegated task states:
 12. The user's decisions and constraints that bind the delegated scope, quoted
     in the user's words, labelled as theirs, at the scope they gave: a scoped
     yes stays scoped. A subagent's report is evidence, never the user's
-    approval.
+    approval. The project's standing rules the task touches (verification
+    scope, how branches integrate) are copied from their latest source with
+    its date, not re-derived or restated from memory.
 
 ## Coordination Rules
 
@@ -84,7 +98,9 @@ Every delegated task states:
 - Keep one owner for integration decisions in the parent context.
 - Treat subagent output as evidence, not truth: inspect cited files, diffs, or
   artifacts before claiming completion (`dev-verification`).
-- Verify a delegated fact before it enters a commit message, a plan, or a claim.
+- Verify a delegated fact before it enters a commit message, a plan, a claim,
+  or a question to the user. A decision a subagent drafted rests on its
+  premises; check each one before the user is asked to choose.
   Propagation is where an unchecked report stops being cheap to retract.
 - If agents disagree, resolve with the smallest direct check, not a tie-break by
   confidence or verbosity.

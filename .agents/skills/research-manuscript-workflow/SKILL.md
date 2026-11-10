@@ -1,6 +1,6 @@
 ---
 name: research-manuscript-workflow
-description: "Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, double-blind anonymisation, code release, reviewer responses and rebuttals, and agent-safe manuscript collaboration."
+description: "Use for ML/scientific paper writing and syncing workflows: Overleaf git bridge, git subtree push/pull, rejected force-push or non-fast-forward, re-seeding a pre-existing subdir, LaTeX manuscript directories, paper skeletons, generated figures/tables, citation setup, arXiv/camera-ready preparation, double-blind anonymisation, code release, reviewer responses and rebuttals, and agent-safe manuscript collaboration. Also before drafting or rewriting any text meant for a paper or a named `.tex` file."
 ---
 
 # Skill: Research Manuscript Workflow
@@ -26,7 +26,8 @@ Agents may:
 Agents must not:
 
 - edit `.tex` files directly
-- overwrite manuscript source
+- overwrite manuscript source, including through a command handed to the
+  user that replaces an author's file with agent prose
 - auto-format final paper prose
 - silently change mathematical claims, notation, theorem statements, citations,
   or how strongly a claim is stated

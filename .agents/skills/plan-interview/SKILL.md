@@ -66,7 +66,11 @@ Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, o
 Every decision question — anything beyond a lone factual check — is asked in
 one fixed shape, in chat and in a structured question tool alike:
 
-1. **The decision**, in one line: what is being chosen and what it blocks.
+1. **The decision**, in one line: what is being chosen and what it blocks,
+   after one plain sentence of background for a reader who has not seen the
+   analysis — what the thing is and what goes wrong without a choice. A
+   label coined during the analysis is spelled out. A round that follows a
+   long findings message first restates the thread in plain words.
 2. **The options**, as a short lettered list — a, b, c — each letter paired
    with a name so an answer can say "(b) the soft hook" unambiguously. Each
    option gets one line of what choosing it means, and its main pro and con.

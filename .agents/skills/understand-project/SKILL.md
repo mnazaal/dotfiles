@@ -33,7 +33,9 @@ to summarize it. A summary is what already exists and is not being read.
   Prefer whichever source has content over whichever is canonical but empty.
 - Diagnose before teaching. Ask what the user believes, then teach to the
   difference. Do not grade the answer or say whether it was right — use it only
-  to locate the gap.
+  to locate the gap. An explicit request for a whole walk-through ("high level,
+  then step by step") gets the Orientation narrative first; the diagnostic
+  question follows it.
 - One diagnostic question at a time. This is teaching, not scoping —
   `plan-interview` owns batched scoping rounds.
 - Every gap has one of two causes: the user forgot, or the record is broken.
