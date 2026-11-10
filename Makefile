@@ -146,6 +146,7 @@ test:
 	@bash tests/sandbox-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
+	@bash tests/hpc-test.sh
 	@bun test ./tests/guardrails-severity-test.ts
 
 check-agent-role-sync:
