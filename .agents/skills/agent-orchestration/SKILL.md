@@ -72,7 +72,9 @@ Every delegated task states:
    commits on its own branch after each verified step, at least hourly, and
    keeps a running results file (one line per test batch, red files named),
    so a stop, a compaction or an overrun leaves history and a readable state
-   rather than a dirty worktree.
+   rather than a dirty worktree. The final message comes after the agent's
+   last background job: it stops every job it started and names any it could
+   not stop.
 10. No resume-chaining. Directives decay across resumes, so re-issue a fresh
     agent with consolidated scope instead of resuming one whose brief changed.
 11. For search-shaped work: triage a result list by title before fetching any
@@ -103,6 +105,9 @@ Every delegated task states:
 - Keep one owner for integration decisions in the parent context.
 - Treat subagent output as evidence, not truth: inspect cited files, diffs, or
   artifacts before claiming completion (`dev-verification`).
+- When an agent reports, sweep for background jobs it left running and stop
+  them before integrating its work. A finished agent with a live wait loop is
+  still listed as running, and nothing ends that loop.
 - Verify a delegated fact before it enters a commit message, a plan, a claim,
   or a question to the user. A decision a subagent drafted rests on its
   premises; check each one before the user is asked to choose.

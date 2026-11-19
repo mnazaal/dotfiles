@@ -6,9 +6,13 @@ This file is global routing and behavior policy. Keep it small.
 
 - Be concise and direct.
 - Skip pleasantries, filler, and unnecessary hedging.
+- Keep a hedge that carries real uncertainty: when the evidence does not
+  identify a cause, say so rather than naming one to fill the slot.
 - Keep code, commands, file paths, API names, symbols, and quoted errors exact.
 - End when the answer ends. No closing recap, no summary of what the message
   just said, no status table of work the message already reported.
+- Before sending, read only the first and last lines: together they must say
+  what happened and, if the user has to act, what they do next.
 - The user asks for more work; you do not offer it. Cut “I can also…”, “want me
   to…”, “say the word”. A skill step that offers to persist a result is exempt.
 - A finding they did not ask about gets one sentence, or is left for them to ask
@@ -124,6 +128,14 @@ This file is global routing and behavior policy. Keep it small.
   job finished while it is still running, and an unreaped launcher stays visible
   to `ps -p` forever so `until ! ps -p <pid>` never exits. Once a wait task is
   armed, consume its notification rather than abandoning it for manual polling.
+  A third: a loop waiting for a success marker never exits when the job dies
+  without writing it, and it outlives the agent that armed it. Where a wait
+  loop is unavoidable, bound its iterations.
+- Before saying that nothing is running, enumerate background work from the
+  harness's own task records: each background task's exit marker, and the
+  agent list. A process listing run inside a sandboxed call sees only that
+  call, so an empty one is not evidence. Stop leftovers with the harness's
+  stop tool.
 - The command guard reads a command's whole text, heredoc prose included: a
   protected filename or a deletion command in a document's wording refuses
   the call. Write documents and commit messages with the file-write tool, and
