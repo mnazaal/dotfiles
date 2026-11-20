@@ -140,7 +140,7 @@ This file is global routing and behavior policy. Keep it small.
   protected filename or a deletion command in a document's wording refuses
   the call. Write documents and commit messages with the file-write tool, and
   run a read that names a protected file as a command of its own.
-- Keep one heredoc per Bash call. A nested heredoc's closing `EOF` line also
+- Keep one heredoc per shell command. A nested heredoc's closing `EOF` line also
   closes the outer one, and the rest runs as shell with its variables unset,
   so `"$T/bin/x"` becomes `/bin/x`. Write a script that needs a heredoc with the file-write tool and
   run it by path.

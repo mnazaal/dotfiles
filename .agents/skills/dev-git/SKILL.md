@@ -9,7 +9,7 @@ description: "Use when committing work or choosing integration path: stage corre
 
 - If anything looks like a private email/user's personal directories/password/secret/API token etc, stop and notify the user immediately.
 - Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included. Inside a sandbox, `git status` can list bind-mount stubs (`.bashrc`, `.gitconfig`, settings files) as untracked; they are not real files, so record them as an env quirk rather than reporting or staging them.
-- Leave the branch of a checkout the user launches from, or another session works in, where it is. Commit from a worktree, or by plumbing: a temporary `GIT_INDEX_FILE`, `git commit-tree`, then `git branch <new> <commit>` for each new commit. Create a new branch rather than moving an existing ref; a hook refuses `git update-ref`. Re-read `git rev-parse <base>` just before writing any git fact into a plan or message.
+- Leave the branch of a checkout the user launches from, or another session works in, where it is. Commit from a worktree, or by plumbing: a temporary `GIT_INDEX_FILE`, `git commit-tree`, then `git branch <new> <commit>` for each new commit. Create a new branch rather than moving an existing ref; the command guard refuses `git update-ref`. The `git checkout` steps elsewhere in this skill apply only to a checkout nobody launches from. Re-read `git rev-parse <base>` just before writing any git fact into a plan or message.
 - AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides any harness's built-in commit template that defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
 - Staging is the user's record of what they have actually read. Stage what you are told to stage; never stage on the user's behalf to make a commit look complete.
 - Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial. Evidence must reflect the *committed* state: inspect the staged diff and ensure no relevant unstaged or untracked changes are required for the check to pass.
@@ -50,17 +50,9 @@ rejected-commit round-trip.
    - Conventional Commits prefix if the project uses them (`feat:`, `fix:`, `refactor:`, `chore:`, etc.).
    - Body (optional): *why*, not a file list.
    - Trailer block: one `Assisted-by: <tool-name> (<model-id>)` line per AI tool that substantially contributed. Use `Assisted-by:`, never `Co-Authored-By:`.
-5. Commit via heredoc to preserve formatting and trailers:
-   ```bash
-   git commit -m "$(cat <<'EOF'
-   feat: short imperative subject
-
-   Why this change exists (optional body).
-
-   Assisted-by: <tool-name> (<model-id>)
-   EOF
-   )"
-   ```
+5. Write the message to a file with the file-write tool, then `git commit -F <file>`.
+   This preserves formatting and trailers, and the command guard, which reads a
+   heredoc's prose as command text, never sees the message.
 6. `git show --stat HEAD` — confirm the commit contains *every* file you intended, not just that it looks plausible. A failed pathspec in a multi-path `git add` (e.g. a path already `git rm`'d) aborts the whole add, silently leaving the rest unstaged — a mixed `rm`+`add` refactor can commit a half-migration (broken imports) this way.
 7. Commit time is an orientation checkpoint: when presenting the commit, add
    one line at project level — what the project now has that it didn't. If a

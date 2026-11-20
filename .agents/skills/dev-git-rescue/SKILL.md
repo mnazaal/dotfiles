@@ -14,7 +14,8 @@ description: "Use for git history rewriting and recovery: interactive rebase, sq
    `GIT_SEQUENCE_EDITOR` set to a non-interactive command (e.g. `cp <todo-file>`) so the
    rebase runs unattended.
 5. For fully scripted, mechanical rewrites (bulk author/date fixes across many commits),
-   prefer `git commit-tree` + `git update-ref` — it avoids the todo-list format entirely.
+   prefer `git commit-tree`, then `git branch <new> <commit>` — it avoids the todo-list
+   format entirely. The command guard refuses `git update-ref`, so name a new branch.
 6. Apply to `main` with `git reset --hard <branch>` — not `git merge` (unrelated histories
    if `commit-tree` built a fresh chain). Under an agent branch-prefix guard this step
    updates `refs/heads/main` directly and the `reference-transaction` hook will always

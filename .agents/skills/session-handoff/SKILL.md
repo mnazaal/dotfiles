@@ -93,7 +93,7 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    list it under next actions as not done. A job writing durable shards may
    run to its next shard first, with the rest listed beside its resume
    command. Enumerate from each task's own end state: an agent listing omits
-   shells, and an agent shown as completed can leave a poll loop running.
+   shells, and an agent that has sent its final report can leave a poll loop running.
    Only work that outlives the session stays running, recorded per step 2.
    This step is done when no session-bound work is still running. When the
    user is leaving now, do this step and step 1, commit, and leave step 3's
