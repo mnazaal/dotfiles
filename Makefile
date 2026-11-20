@@ -147,6 +147,7 @@ test:
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
 	@bash tests/hpc-test.sh
+	@bash tests/hpc-frozen-code-test.sh
 	@bun test ./tests/guardrails-severity-test.ts
 
 check-agent-role-sync:

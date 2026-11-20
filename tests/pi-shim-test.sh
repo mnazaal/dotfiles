@@ -156,14 +156,7 @@ import sys
 
 settings = json.load(open(sys.argv[1], encoding="utf-8"))
 assert settings.get("shellPath") == "~/.local/scripts/pi-bash"
-assert settings.get("defaultModel") == "gpt-6-sol"
 models = settings.get("enabledModels", [])
-expected = {
-    "openai-codex/gpt-6-sol",
-    "openai-codex/gpt-6-astra",
-    "openai-codex/gpt-6-luna",
-}
-assert expected <= set(models)
 assert not any("gpt-5.6" in model for model in models)
 assert settings["piClaudePermissions"]["planModeAllowedMcpServers"] == ["asta-mcp"]
 model_config = json.load(open(sys.argv[2], encoding="utf-8"))

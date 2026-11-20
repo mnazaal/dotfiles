@@ -635,6 +635,24 @@ test("dev-worktree gate: changing a worktree, not listing one", () => {
   }
 });
 
+// code-review's trial ran from 2026-09-23 with no verdict and no gate, which is
+// the shape that ends with the skill silently unused. It gates the two moments
+// where reviewing belongs: integration and a pull-request request. Diff size is
+// NOT gateable -- a gate sees command text and paths, never a diff -- so a large
+// commit is caught by the skill's own routing, not here. `git merge-base` must
+// stay ungated: it is the dry-run check dev-git prescribes before a merge.
+test("code-review gate: integration and PR moments, not everyday git", () => {
+  const rails = createGuardrails("claude");
+  for (const command of ["git merge --ff-only main", "git merge main", "gh pr create --fill"]) {
+    const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
+    expect(`${command}: ${(r.skills ?? []).includes("code-review")}`).toBe(`${command}: true`);
+  }
+  for (const command of ["git merge-base --is-ancestor main x", "git status", "gh pr list"]) {
+    const r = rails.evaluate({ tool: "bash", command, cwd }, new Set());
+    expect(`${command}: ${r.decision}`).toBe(`${command}: allow`);
+  }
+});
+
 const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
 test("machinery in bash: denied outside a sandbox", () => {
   const rails = createGuardrails("claude", { inSandbox: false });

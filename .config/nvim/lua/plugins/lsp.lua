@@ -67,10 +67,7 @@ end
 
 local function notify_mason_install_error(package_name, result)
   vim.schedule(function()
-    vim.notify(
-      string.format("Mason failed to install %s: %s", package_name, tostring(result)),
-      vim.log.levels.ERROR
-    )
+    vim.notify(string.format("Mason failed to install %s: %s", package_name, tostring(result)), vim.log.levels.ERROR)
   end)
 end
 
@@ -185,9 +182,12 @@ end
 
 local function register_servers(servers, capabilities)
   for server, opts in pairs(servers) do
-    vim.lsp.config(server, vim.tbl_deep_extend("force", {
-      capabilities = capabilities,
-    }, opts))
+    vim.lsp.config(
+      server,
+      vim.tbl_deep_extend("force", {
+        capabilities = capabilities,
+      }, opts)
+    )
   end
 end
 

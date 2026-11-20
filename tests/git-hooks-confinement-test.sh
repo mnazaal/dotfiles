@@ -193,5 +193,23 @@ put paper/main.tex root
 g claude add paper/main.tex >/dev/null
 check "agent root commit with log.showRoot off" refuse "$(g claude -c log.showRoot=false commit -q -m root)"
 
+echo "== commit trailers: Assisted-by only, agents only =="
+g claude switch -q -c claude/t main >/dev/null
+# The orphan case above left paper/main.tex staged; a .tex refusal would pass a
+# trailer case for the wrong reason, so start from a clean index.
+g claude reset -q --hard >/dev/null
+put notes.md t1
+g claude add notes.md >/dev/null
+check "agent commit with a Co-Authored-By trailer" refuse \
+	"$(g claude commit -q -m t1 -m 'Co-Authored-By: Claude <noreply@anthropic.com>')"
+check "agent commit with a Claude-Session trailer" refuse \
+	"$(g claude commit -q -m t1 -m 'Claude-Session: https://claude.ai/chat/abc')"
+check "agent commit with Assisted-by" allow \
+	"$(g claude commit -q -m t1 -m 'Assisted-by: pi')"
+check "a body line mentioning the words is not a trailer" allow \
+	"$(g claude commit -q --allow-empty -m 'docs: explain why Co-Authored-By is banned')"
+check "the user may write any trailer" allow \
+	"$(g "" commit -q --allow-empty -m user -m 'Co-Authored-By: Someone <a@b.example>')"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

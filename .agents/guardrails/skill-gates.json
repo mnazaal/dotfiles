@@ -278,6 +278,33 @@
         "path_glob": "**/secrets.*"
       },
       "message": "editing a secrets file"
+    },
+    {
+      "skills": [
+        "code-review"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "git",
+        "subcommands": [
+          "merge"
+        ]
+      },
+      "message": "integrating a branch"
+    },
+    {
+      "skills": [
+        "code-review"
+      ],
+      "trigger": {
+        "type": "bash",
+        "command": "gh",
+        "subcommands": [
+          "pr"
+        ],
+        "arg_contains": "create"
+      },
+      "message": "opening a pull request"
     }
   ]
 }

@@ -89,6 +89,25 @@ while read -r old new ref; do
 		echo "$ERROR_PREFIX agent commits may not change hand-written LaTeX ($f). Leave the change uncommitted; the user commits it." >&2
 		exit 1
 	done
+
+	# Commit-message trailers: an agent commit ends with one `Assisted-by:` line.
+	# Claude Code's own reminder asks for Co-Authored-By, and its session URL earns
+	# nothing permanent in the history, so both are refused HERE rather than only in
+	# dev-git's text, which a gate can only ask to have been loaded. Parsed with
+	# git's trailer parser, so a body sentence that merely mentions the words is not
+	# a refusal. Agents only: CONFINED is already established above.
+	mapfile -t trailer_commits < <(git --no-replace-objects log --format=%H "$new" --not --branches)
+	for c in "${trailer_commits[@]}"; do
+		bad=$(git --no-replace-objects log -1 --format=%B "$c" |
+			git interpret-trailers --parse |
+			grep -Ei '^(co-authored-by|claude-session):' || true)
+		if [[ -n "$bad" ]]; then
+			echo "$ERROR_PREFIX agent commit ${c:0:12} carries a trailer the policy forbids:" >&2
+			printf '  %s\n' "$bad" >&2
+			echo "$ERROR_PREFIX use a single 'Assisted-by: <tool> (<model-id>)' trailer; the user commits anything else." >&2
+			exit 1
+		fi
+	done
 done
 
 exit 0
