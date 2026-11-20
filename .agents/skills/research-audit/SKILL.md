@@ -20,7 +20,10 @@ produces verdicts, not understanding.
 - Reconstruct before reading. The cold pass sees the problem statement, the
   data, and the target quantity — never PLAN.md framing, `claims.md`, the
   abstract, or LOG verdicts. A reviewer who reads the project's own account
-  first audits that account's internal consistency, not the project.
+  first audits that account's internal consistency, not the project. The
+  cold pass cites only what it opened and labels the rest unread. Injected
+  memory can carry a verdict past the brief, so run it where memory is off,
+  or disclose the leak in the audit.
 - Run each leg in a fresh context with read-only access, handed the artifacts
   (code, derivations, results, manuscript) rather than the lead's conclusions
   (`agent-orchestration`). The lead merges; it does not pre-digest.

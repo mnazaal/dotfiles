@@ -40,7 +40,10 @@ integrated checks to the cluster.
 Every delegated task states:
 
 1. Goal and non-goals.
-2. Exact scope: paths, files, repos, query terms, or artifacts.
+2. Exact scope: paths, files, repos, query terms, or artifacts. For a lane in
+   a worktree, name the base as a branch the worktree is created from, have
+   the agent check `git rev-parse HEAD` against it first, and take branch
+   names from the repo's branch guard.
 3. Whether the subagent may edit files. Default: read-only.
 4. Required output shape: findings, file:line evidence, risks, and next
    action. State it as a contract on the final message — the last message IS
@@ -81,7 +84,9 @@ Every delegated task states:
     yes stays scoped. A subagent's report is evidence, never the user's
     approval. The project's standing rules the task touches (verification
     scope, how branches integrate) are copied from their latest source with
-    its date, not re-derived or restated from memory.
+    its date, not re-derived or restated from memory. A number or rule the
+    parent adds of its own names its source — the probe that produced it, or
+    the user decision it implements — or is marked as a guess.
 
 ## Coordination Rules
 

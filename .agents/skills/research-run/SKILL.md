@@ -64,9 +64,15 @@ of which can be made honestly once the numbers exist:
   numbers exist. The same holds for a pass threshold: a "matches the reference"
   criterion set at the reference's own noise floor fails every approximate arm,
   so the rule decides nothing. Same for a null control: state its criterion in the units the
-  mechanism moves, not whichever summary is at hand. Run every registered
-  readout command once end to end on inputs already banked, and open the
-  banked result the prediction is made against, before registering either.
+  mechanism moves, not whichever summary is at hand. Name the resampling unit:
+  cells that share a seed (sizes or budgets on one draw) resample by seed
+  cluster, after checking how often a seed's cells give identical outputs.
+  Fix the coordinate system any "nearest" test lives in. Evaluate a relative
+  tolerance at exact-zero references, and check an oracle's precision covers
+  the tail the grid reaches. Run every registered readout command once end to
+  end on inputs already banked, and on the smoke tag's rows when the new tag
+  adds config keys, and open the banked result the prediction is made
+  against, before registering either.
 - **The rival explanations.** Which non-mechanism accounts could produce the
   predicted result, and what in the design rules each one out. Work the classes
   rather than improvising: confounding or a common cause, selection and
@@ -76,7 +82,8 @@ of which can be made honestly once the numbers exist:
   the mechanism, and that is cheapest to notice before the run.
 - **The search bounds.** The hyperparameter ranges to be swept, as part of the
   hypothesis rather than a detail. An unbounded search is where the forking
-  paths are.
+  paths are. Register the edge contingency with the grid: if the best value
+  lands on an edge, widen once by a named step.
 
 Split it in two, because ML iterates and one up-front commitment does not
 survive that: fix the question, metric with its threshold, data, transforms,

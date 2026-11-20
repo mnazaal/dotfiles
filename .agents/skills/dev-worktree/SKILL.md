@@ -23,6 +23,14 @@ wherever the worktree sits: `git worktree remove`, never `rm -rf` — a worktree
 holds uncommitted work that no checkpoint can recover, and its `.git` file
 makes it a repository root, which removal guards treat as protected.
 
+A worktree the user will launch or inspect from goes under
+`~/.cache/<repo>/wt-<topic>` instead, because a sandbox's `$TMPDIR` is
+invisible to the user's shell. If creation is refused (`.git/worktrees` is
+read-only in a sandbox), hand the user the `git worktree add` line. If `uv`
+cannot build the worktree's venv offline, run with the main checkout's
+`.venv` plus `PYTHONPATH=<worktree>/src`, and confirm the import resolves
+into the worktree (`python -c 'import <pkg>; print(<pkg>.__file__)'`).
+
 Scratch is cleared between sessions, so treat the directory as disposable and
 the branch as the artifact — commit before you stop. A cleared scratch area
 leaves the worktree registered, which `git worktree prune` clears; Cleanup below

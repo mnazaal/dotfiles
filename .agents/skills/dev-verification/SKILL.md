@@ -23,6 +23,10 @@ description: "Use before claiming work is complete, fixed, passing, ready, merge
   mechanism nobody ran is the expensive one. Cost is asymmetric — checking costs
   one command, and being wrong costs the work built on top. Whether something
   was run is read from its results directory, not from a sentence in a log.
+  Before recommending, open the record the recommendation rests on: the
+  decision-log entry that introduced what you would keep or drop, the config
+  of a banked result you would quote or set aside, and the code path the
+  results' own records were produced by rather than a reference beside it.
 - No completion, fixed, passing, ready, reviewed, or verified claim without fresh verification evidence.
 - Run the verification that proves the claim or state why blocked. A check counts only if it exercises the change: a test, a type-check, a build, or running the changed command. A syntax-only parse, and a check that failed to start (command not found, import error before collection), are no evidence; name the skipped check and why instead of claiming done.
 - Install a missing declared dependency with the project's own package manager and lockfile, never via `sudo` or the system package manager.

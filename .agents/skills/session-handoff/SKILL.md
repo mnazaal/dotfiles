@@ -42,8 +42,11 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    Load `context-project-docs` before the write. Then check `git diff PLAN.md`
    and the branch list for another session's uncommitted block or handoff
    branch; if one exists, coordinate with that session before staging. When
-   `PLAN.md` sits in a checkout another live session works in, commit from a
-   separate worktree rather than switching that checkout's branch.
+   `PLAN.md` sits in a checkout another live session works in or a live run
+   pins, commit from a separate worktree or by plumbing (`dev-git`) rather
+   than switching that checkout's branch. Two live threads in one plan get one
+   block with a section per thread; carry an untouched thread's section
+   verbatim.
 
 2. Keep it to state with no other home: current branch, uncommitted or unmerged
    work, jobs that outlive the session (cluster job IDs, services) each with
@@ -58,6 +61,11 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    ones quoted in the user's words with the date, agent-decided ones marked as
    such; and exit criteria as runnable commands — the command(s)
    whose output confirms the state the handoff claims.
+   Commands the next session or the user runs (launches, pulls, the registered
+   read) are pasted into the block as plain lines with no `!` prefix, never
+   referenced by section name. A "launched" or "running" line cites its launch
+   record (`results/hpc/<name>.log`, a job id, `sacct`), never the user's
+   pasted command; when the user reports a submission, ask for the job id then.
    Read branch and ref facts (`git branch -vv`, `git rev-parse <ref>`) at write
    time; the user may have merged or moved refs since the session last looked.
    It sits above the plan because a cold reader needs it first, and it stays
@@ -73,8 +81,8 @@ compacting — is `agent-orchestration`'s Phase Boundaries, which puts it third.
    them.
 4. Enumerate the session scratchpad and the sandbox temp directory
    (`$TMPDIR`), which can differ, and decide each item explicitly, keep or
-   discard. If a listing is refused, list what the session wrote there from
-   its own tool calls.
+   discard. If a listing is refused, or `$TMPDIR` is shared with other
+   sessions, list only what this session wrote there from its own tool calls.
    It is session-scoped and usually gone next session, so anything not promoted
    is lost — and which artifacts the next session needs cannot be predicted,
    which is why this is a list rather than a judgement.
@@ -128,7 +136,8 @@ Read what this skill writes BEFORE acting:
    uncommitted work, `git branch --no-merged <base>` for agent branches
    already holding work, and any experiments still running (cluster jobs,
    background tasks; a results directory's exit files beside the scheduler
-   queue). A line forbidding a re-run is re-checked with the smallest run
+   queue). List the results directory newest-first against the handoff's date
+   before trusting a "running" line. A line forbidding a re-run is re-checked with the smallest run
    before it is repeated to the user. If the handoff carries exit-criteria
    commands, run them — verification is then a paste, not a judgment call.
 5. Reconstruct for the user, not just yourself: open with a short frame —

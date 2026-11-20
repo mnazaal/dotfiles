@@ -8,7 +8,8 @@ description: "Use when committing work or choosing integration path: stage corre
 ## Rules
 
 - If anything looks like a private email/user's personal directories/password/secret/API token etc, stop and notify the user immediately.
-- Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included.
+- Stage specific files by name; never `git add -A` or `git add .` without reviewing what would be included. Inside a sandbox, `git status` can list bind-mount stubs (`.bashrc`, `.gitconfig`, settings files) as untracked; they are not real files, so record them as an env quirk rather than reporting or staging them.
+- Leave the branch of a checkout the user launches from, or another session works in, where it is. Commit from a worktree, or by plumbing: a temporary `GIT_INDEX_FILE`, `git commit-tree`, then `git branch <new> <commit>` for each new commit. Create a new branch rather than moving an existing ref; a hook refuses `git update-ref`. Re-read `git rev-parse <base>` just before writing any git fact into a plan or message.
 - AI attribution trailers must be accurate — use `Assisted-by:` (not `Co-Authored-By:`) for AI tools, and only when AI substantially contributed (not tab-completion or trivial fixes). This deliberately overrides any harness's built-in commit template that defaults to `Co-Authored-By:`; don't let the more prominent built-in win — `Co-Authored-By: <AI> <noreply@…>` misattributes copyright and can link a real GitHub account via the email.
 - Staging is the user's record of what they have actually read. Stage what you are told to stage; never stage on the user's behalf to make a commit look complete.
 - Run `dev-verification` evidence (tests, lint) before committing if the change is non-trivial. Evidence must reflect the *committed* state: inspect the staged diff and ensure no relevant unstaged or untracked changes are required for the check to pass.
@@ -73,6 +74,8 @@ rejected-commit round-trip.
 2. Summarize scope and risk. Before recommending a merge, check it can fast-forward: `git merge-base --is-ancestor <target> <branch>` (exit 0 = a `--ff-only` merge will work). If it cannot, rebase the branch onto the target rather than proposing a merge commit, and dry-run the conflicts first: `git merge-tree --write-tree <target> <branch>` — it does not touch the working tree. Exit 1 means the merge conflicts or a ref is wrong, and stderr says which. Exit 0 does not promise a clean rebase, which replays each commit in turn.
 3. If review was requested, resolve its findings before proceeding. An unrepaired finding blocks integration, and a repair written in this pass is pending review, not resolved (`dev-verification`).
 4. Present options: PR, merge, continue, park, cleanup, abandon.
+   - A handed fast-forward starts on the base: `git checkout <base>`, `git merge --ff-only <branch>`, then check out the branch again if a launch needs it. Run on the branch itself, the merge prints "Already up to date" and moves nothing. After the user reports it done, confirm with `git rev-parse <base>`.
+   - Where a hook refuses branch deletion and the sandbox refuses `git worktree prune`, cleanup is one user-run script under `~/.cache/`: fast-forward, push, prune, then delete only branches that `git merge-base --is-ancestor` or `git cherry` shows are in the base. Tag unmerged branches as archives first.
 5. Execute only chosen safe path.
 6. Report final state and next action.
 7. Hand over only what is runnable NOW. A cleanup command gated on a result that

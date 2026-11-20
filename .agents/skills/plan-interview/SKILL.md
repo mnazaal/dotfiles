@@ -74,7 +74,10 @@ one fixed shape, in chat and in a structured question tool alike:
 2. **The options**, as a short lettered list — a, b, c — each letter paired
    with a name so an answer can say "(b) the soft hook" unambiguously. Each
    option gets one line of what choosing it means, and its main pro and con.
-   Include "other/neither" only when it is a real option.
+   Include "other/neither" only when it is a real option. When one question
+   covers several items, each option states what happens to each item, and
+   any equivalence the question claims between options is checked per item
+   before it is written.
 3. **Recommendation last**: the option you would pick and the one or two
    reasons that decide it. A question you cannot attach a recommendation to is
    not ready to ask — inspect or probe first.

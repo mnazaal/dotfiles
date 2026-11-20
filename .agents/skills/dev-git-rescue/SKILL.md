@@ -27,6 +27,9 @@ description: "Use for git history rewriting and recovery: interactive rebase, sq
 9. Treat the pre-rewrite backup as a ref you only ever *read*. `git rebase <backup>`
    fast-forwards the branch back onto the old tip, silently reinstating the state the
    rewrite was escaping — and the result looks like the rewrite simply never happened.
+   Record the backup as a SHA or a tag, not a branch: under `rebase.updateRefs=true`
+   a rebase moves every branch pointing into the rewritten range, backups included.
+   Check `git config rebase.updateRefs`, or pass `--no-update-refs`.
 
 ## Recovery
 

@@ -108,7 +108,9 @@ If the file fails on entry, STOP and report the competing threads; do not guess
 which is live. Several unmarked forward-looking sets have no determinable
 target, and rewriting the wrong one silently deletes live work.
 Compaction is a separate pass, confirmed by the user. On exit, exactly one
-unmarked live set survives.
+unmarked live set survives. In a user-requested compaction, superseded
+decision-log entries may leave the file when the plan names the commit that
+holds them (`git show <sha>:PLAN.md`).
 
 ## Decision Log
 
@@ -141,7 +143,7 @@ this catches *unpropagated* ones, which pass it silently.
 
 ## Workflow
 
-1. Confirm the direction is settled and identify the target `PLAN.md` governed by `context-project-docs`.
+1. Confirm the direction is settled, identify the target `PLAN.md`, and load `context-project-docs` before the first write.
 2. If `PLAN.md` already exists this is a revision, not a new plan — rewrite the affected single-valued sections rather than appending a dated one.
 3. Run or schedule the step-0 novelty gate before treating novelty as verified.
 4. Draft or rewrite decisions, rationale, execution order, and risks; keep unresolved choices out of the plan or mark them explicitly as risks.
