@@ -43,8 +43,8 @@ BR="${AGENT_BRANCH_PREFIX:-pi}/test"
 unset VIRTUAL_ENV UV_PROJECT UV_PROJECT_ENVIRONMENT
 G() { git -c user.email=t@t -c user.name=t "$@"; }
 
-wait_exit() { # wait (max 30 s) for a run's .exit file; print its code
-	local f="$T/cluster/results/hpc/$1.exit"
+wait_exit() { # wait_exit <name> [runs dir]: wait (max 30 s) for a run's .exit file; print its code
+	local f="${2:-$T/cluster/results/hpc}/$1.exit"
 	for _ in $(seq 300); do
 		[[ -s "$f" ]] && {
 			cat "$f"
@@ -104,13 +104,24 @@ check "relaunch same commit runs" '[[ $(wait_exit B2) == 0 ]]'
 check "relaunch reuses the worktree" '[[ $(git -C "$T/cluster" worktree list | wc -l) == "$n_before" ]]'
 
 # 4. a cwd-relative read of a committed file fails loudly ---------------------------------
-launch rel 'cat code.txt'
-check "cwd-relative read of a committed file fails" '[[ $(wait_exit rel) != 0 ]]'
+launch rel 'LC_ALL=C cat code.txt'
+# cat's own failure, not wait_exit's "timeout": a hung run must not pass.
+rc=$(wait_exit rel)
+check "cwd-relative read of a committed file fails" '[[ $rc == 1 ]] && grep -q "code.txt: No such file" "$T/cluster/results/hpc/rel.log"'
 
 # 5. .env can map HPC_CODE onto tooling ---------------------------------------------------
 echo 'UV_PROJECT=$HPC_CODE' >"$T/cluster/.env"
 launch env 'mkdir -p results; echo "$UV_PROJECT" > results/env.txt'
 check ".env sees HPC_CODE" '[[ $(wait_exit env) == 0 && $(cat "$T/cluster/results/env.txt") == "$T/cluster/.hpc/wt/$sha_B" ]]'
+
+# .env imports UPPERCASE keys other than HPC_CODE; it cannot rebind hpc's own variables
+# (here `name`, which names the run's .sha file) and names what it skipped.
+printf 'name=clobbered\nlower_key=x\nHPC_CODE=/elsewhere\nUP_KEY=y\n' >"$T/cluster/.env"
+launch envkeys 'mkdir -p results; printf "%s|%s|%s\n" "$HPC_CODE" "${lower_key-unset}" "$UP_KEY" > results/envkeys.txt'
+check ".env: a lowercase key cannot rebind hpc's variables" '[[ $(wait_exit envkeys) == 0 && $(cat "$T/cluster/results/hpc/envkeys.sha") == "$sha_B" && ! -e "$T/cluster/results/hpc/clobbered.sha" ]]'
+check ".env: lowercase keys stay out of the run, UPPERCASE ones arrive" '[[ $(cut -d"|" -f2,3 "$T/cluster/results/envkeys.txt") == "unset|y" ]]'
+check ".env: HPC_CODE stays the run's worktree" '[[ $(cut -d"|" -f1 "$T/cluster/results/envkeys.txt") == "$T/cluster/.hpc/wt/$sha_B" ]]'
+check ".env: skipped keys are named" 'w=$(grep "not imported" "$T/envkeys.launch") && [[ $w == *HPC_CODE* && $w == *lower_key* && $w == *name* ]]'
 rm "$T/cluster/.env"
 
 # 6. two simultaneous launches of a new commit share one worktree -------------------------
@@ -183,6 +194,75 @@ want=$(git rev-parse HEAD)
 (HPC_DIR="$T/cluster2" "$HPC" --name unborn -- sh -c 'cat code.txt > /dev/null') >"$T/unborn.launch" 2>&1
 check "unborn HEAD: launch runs" '[[ $(cat "$T/cluster2/results/hpc/unborn.exit" 2>/dev/null || { sleep 2; cat "$T/cluster2/results/hpc/unborn.exit"; }) == 0 ]]'
 check "unborn HEAD: copy is on the pushed commit" '[[ $(git -C "$T/cluster2" rev-parse HEAD) == "$want" ]]'
+
+# 12. the launch lock stays held until the run's pidfile exists ----------------------------
+# Otherwise a second launch can take the lock, find no pidfile, and move the tree under a run
+# that has already started. Made deterministic without timing: .env (sourced after hpc's
+# name check) turns the pidfile into a FIFO, so the launch blocks writing it until the run
+# reads it, and the run first records whether a launch lock -- at the runs-dir path or the
+# git-dir path -- can be taken. It then hands the pid back for the launch's own read.
+printf '[ "$name" != lockprobe ] || mkfifo "%s"\n' "$T/cluster/results/hpc/lockprobe.pid" >"$T/cluster/.env"
+cat >"$T/lockprobe.sh" <<'EOF'
+r=$PWD/results/hpc
+held=no
+for l in "$r/.launch.lock" "$PWD/.git/hpc-launch.lock"; do flock -n "$l" true || held=yes; done
+echo "$held" >"$r/lockprobe.held"
+p=$(cat "$r/lockprobe.pid")
+echo "$p" >"$r/lockprobe.pid"
+EOF
+(cd "$T/laptop" && timeout 60 "$HPC" --name lockprobe -- sh "$T/lockprobe.sh") >"$T/lockprobe.launch" 2>&1
+check "launch lock held until the pidfile is written" '[[ $(wait_exit lockprobe) == 0 && $(cat "$T/cluster/results/hpc/lockprobe.held") == yes ]]'
+rm "$T/cluster/.env"
+
+# 13. lock and live-run guard belong to the working copy, not to the runs dir ---------------
+# Default-mode copies: cluster3 (also reached through a symlink), cluster4 and cluster5.
+# Long runs wait for a release file, bounded, instead of sleeping a guessed time.
+cd "$T/laptop" || exit 1
+echo "version F" >code.txt
+G commit -qam F && G push -q origin "$BR"
+for c in cluster3 cluster4 cluster5; do git clone -q "$T/origin.git" "$T/$c" 2>/dev/null; done
+ln -s "$T/cluster3" "$T/cluster3-link"
+shared="$T/shared-runs"
+hold() { # shell snippet: wait (max 60 s) for release file $1
+	printf 'timeout 60 sh -c '\''while [ ! -e "$0" ]; do sleep 0.1; done'\'' %s' "$T/release-$1"
+}
+
+# A launch into cluster4, held inside its lock (in .env), must not stall a launch into
+# cluster5 that merely shares the runs dir.
+printf 'touch "%s"; %s\n' "$T/s3-in-lock" "$(hold s3)" >"$T/cluster4/.env"
+HPC_DIR="$T/cluster4" HPC_RUNS_DIR="$shared" launch S3 'true' &
+s3=$!
+for _ in $(seq 300); do
+	[[ -e "$T/s3-in-lock" ]] && break
+	sleep 0.1
+done
+(cd "$T/laptop" && HPC_DIR="$T/cluster5" HPC_RUNS_DIR="$shared" timeout 20 "$HPC" --name S4 -- true) >"$T/S4.launch" 2>&1
+rc=$?
+check "copies sharing a runs dir do not wait on each other's lock" '[[ -e "$T/s3-in-lock" && $rc == 0 ]]'
+touch "$T/release-s3"
+wait "$s3"
+rm "$T/cluster4/.env"
+
+# A live run of cluster4 in the shared runs dir does not block moving cluster5.
+HPC_DIR="$T/cluster4" HPC_RUNS_DIR="$shared" launch S1 "$(hold s1)"
+echo "version G" >code.txt
+G commit -qam G
+sha_G=$(git rev-parse HEAD)
+HPC_DIR="$T/cluster5" HPC_RUNS_DIR="$shared" launch S2 'true'
+rc=$?
+check "a live run of another copy sharing the runs dir does not block" '[[ $rc == 0 && $(git -C "$T/cluster5" rev-parse HEAD) == "$sha_G" ]]'
+touch "$T/release-s1"
+
+# A live run of cluster3 blocks moving cluster3, however the copy and the runs dir are named.
+HPC_DIR="$T/cluster3" HPC_RUNS_DIR=results/a launch R1 "$(hold r1); cat code.txt > results/R1.txt"
+echo "version H" >code.txt
+G commit -qam H
+HPC_DIR="$T/cluster3-link" HPC_RUNS_DIR=results/b launch R2 'true'
+rc=$?
+check "a live run blocks moving its copy reached by another path and runs dir" '[[ $rc != 0 ]] && grep -q "still running here" "$T/R2.launch"'
+check "the refused launch left the copy on the live run's commit" '[[ $(git -C "$T/cluster3" rev-parse HEAD) == "$sha_G" ]]'
+touch "$T/release-r1"
+check "the live run read its own commit" '[[ $(wait_exit R1 "$T/cluster3/results/a") == 0 && $(cat "$T/cluster3/results/R1.txt") == "version G" ]]'
 
 echo "---- $pass passed, $fail failed"
 [[ $fail == 0 ]]
