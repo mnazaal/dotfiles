@@ -93,14 +93,46 @@ while read -r old new ref; do
 	# Commit-message trailers: an agent commit ends with one `Assisted-by:` line.
 	# Claude Code's own reminder asks for Co-Authored-By, and its session URL earns
 	# nothing permanent in the history, so both are refused HERE rather than only in
-	# dev-git's text, which a gate can only ask to have been loaded. Parsed with
-	# git's trailer parser, so a body sentence that merely mentions the words is not
-	# a refusal. Agents only: CONFINED is already established above.
-	mapfile -t trailer_commits < <(git --no-replace-objects log --format=%H "$new" --not --branches)
+	# dev-git's text, which a gate can only ask to have been loaded. Agents only:
+	# CONFINED is already established above.
+	#
+	# Only commits new to the repository count: one already on a branch or fetched
+	# into a remote-tracking ref, such as a collaborator's Co-authored-by on
+	# origin/main, is not the agent's to answer for. Tags are not excluded, since
+	# `git tag` would let an agent park its own commit there first. The graft and
+	# shallow files are ignored as in the .tex walk above: either can cut the walk
+	# short of a new commit.
+	#
+	# Any line that starts with a forbidden key is refused, not only what
+	# `git interpret-trailers --parse` reports. That parser ends the message at a
+	# `---` line or a scissors line, skips comment lines, and takes
+	# core.commentChar, trailer.separators and trailer.<name>.key from config an
+	# agent can pass with -c; each of those hid a trailer the stored message still
+	# carries. A sentence that mentions the words mid-line is still fine. The
+	# commit is read raw with cat-file, because `log --format=%B` re-encodes it
+	# to i18n.logOutputEncoding, and IBM037 leaves no ASCII key to match.
+	#
+	# Fail closed: a walk or a read that errors refuses rather than passing.
+	mapfile -t trailer_commits < <(
+		GIT_GRAFT_FILE=/dev/null GIT_SHALLOW_FILE=/dev/null git --no-replace-objects \
+			-c advice.graftFileDeprecated=false \
+			rev-list "$new" --not --branches --remotes
+	)
+	if ! wait "$!"; then
+		echo "$ERROR_PREFIX cannot list the commits new to $ref" >&2
+		exit 1
+	fi
 	for c in "${trailer_commits[@]}"; do
-		bad=$(git --no-replace-objects log -1 --format=%B "$c" |
-			git interpret-trailers --parse |
-			grep -Ei '^(co-authored-by|claude-session):' || true)
+		if ! msg=$(git --no-replace-objects cat-file commit "$c"); then
+			echo "$ERROR_PREFIX cannot read commit $c" >&2
+			exit 1
+		fi
+		rc=0
+		bad=$(grep -Ei '^(co-authored-by|claude-session)[[:space:]]*:' <<<"$msg") || rc=$?
+		if ((rc > 1)); then
+			echo "$ERROR_PREFIX cannot check the trailers of commit $c" >&2
+			exit 1
+		fi
 		if [[ -n "$bad" ]]; then
 			echo "$ERROR_PREFIX agent commit ${c:0:12} carries a trailer the policy forbids:" >&2
 			printf '  %s\n' "$bad" >&2

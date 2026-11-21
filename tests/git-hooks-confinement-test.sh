@@ -211,5 +211,72 @@ check "a body line mentioning the words is not a trailer" allow \
 check "the user may write any trailer" allow \
 	"$(g "" commit -q --allow-empty -m user -m 'Co-Authored-By: Someone <a@b.example>')"
 
+# Each of these left the trailer in the stored message but hid it from
+# `git interpret-trailers --parse`, which an earlier version relied on.
+CO='Co-Authored-By: Claude <noreply@anthropic.com>'
+check "trailer after a --- line" refuse "$(g claude commit -q --allow-empty -m t -m '---' -m "$CO")"
+check "trailer after a scissors line" refuse \
+	"$(g claude commit -q --allow-empty -m t -m '# ------------------------ >8 ------------------------' -m "$CO")"
+check "trailer under -c core.commentChar=C" refuse \
+	"$(g claude -c core.commentChar=C commit -q --allow-empty -m t -m "$CO")"
+check "trailer under -c trailer.separators==" refuse \
+	"$(g claude -c trailer.separators='=' commit -q --allow-empty -m t -m "$CO")"
+check "trailer under a trailer.<name>.key alias" refuse \
+	"$(g claude -c trailer.x.key=Co-Authored-By-Not commit -q --allow-empty -m t -m "$CO")"
+check "trailer under -c i18n.logOutputEncoding=IBM037" refuse \
+	"$(g claude -c i18n.logOutputEncoding=IBM037 commit -q --allow-empty -m t -m "$CO")"
+check "trailer with a space before the colon" refuse \
+	"$(g claude commit -q --allow-empty -m t -m 'Co-Authored-By : Claude <noreply@anthropic.com>')"
+
+# Someone else's commit already fetched is not the agent's to answer for.
+up=$(cd "$REPO" && GIT_CONFIG_GLOBAL=/dev/null git -c user.name=t -c user.email=t@t \
+	commit-tree -m theirs -m 'Co-authored-by: Someone <s@x.example>' -p main "main^{tree}")
+g "" update-ref refs/remotes/origin/main "$up" >/dev/null
+check "agent branches from an upstream co-authored commit" allow "$(g claude branch claude/up origin/main)"
+# A tag is agent-writable, so parking a commit on one first must not clear it.
+bad() { # label parent -> a commit no ref reaches, carrying a forbidden trailer
+	(cd "$REPO" && GIT_CONFIG_GLOBAL=/dev/null git -c user.name=t -c user.email=t@t \
+		commit-tree -m "bad $1" -m "$CO" -p "$2" "main^{tree}")
+}
+b=$(bad tag main)
+g claude tag t-bad "$b" >/dev/null
+check "trailer commit parked on a tag first" refuse "$(g claude branch claude/tag t-bad)"
+# A graft that makes main a child of the commit puts it on a branch.
+b=$(bad graft main)
+printf '%s %s\n' "$(git -C "$REPO" rev-parse main)" "$b" >"$REPO/.git/info/grafts"
+check "trailer commit under .git/info/grafts" refuse "$(g claude update-ref refs/heads/claude/graft "$b")"
+rm -f "$REPO/.git/info/grafts"
+# A shallow entry for its clean child ends the walk before the commit.
+b=$(bad shallow main)
+child=$(cd "$REPO" && GIT_CONFIG_GLOBAL=/dev/null git -c user.name=t -c user.email=t@t \
+	commit-tree -m child -p "$b" "main^{tree}")
+printf '%s\n' "$child" >"$REPO/.git/shallow"
+check "trailer commit under .git/shallow" refuse "$(g claude update-ref refs/heads/claude/shallow "$child")"
+rm -f "$REPO/.git/shallow"
+
+# Fail closed: a step of the check that errors refuses a clean commit. Run the
+# hook directly, since git puts its own exec path ahead of PATH for hooks.
+FAKE="$WORK/fakebin"
+mkdir -p "$FAKE"
+# shellcheck disable=SC2016 # the $ expressions belong to the wrapper script
+printf '#!/bin/bash\nfor a in "$@"; do [[ "$a" == "$FAIL_ON" ]] && exit 1; done\nexec %q "$@"\n' \
+	"$(command -v git)" >"$FAKE/git"
+printf '#!/bin/bash\nexit 2\n' >"$FAKE/grep.broken"
+chmod +x "$FAKE/git" "$FAKE/grep.broken"
+clean=$(cd "$REPO" && GIT_CONFIG_GLOBAL=/dev/null git -c user.name=t -c user.email=t@t \
+	commit-tree -m clean -p main "main^{tree}")
+failing() { # subcommand-to-fail [grep] -> "allow"|"refuse"
+	rm -f "$FAKE/grep"
+	[ -n "${2:-}" ] && cp "$FAKE/grep.broken" "$FAKE/grep"
+	(cd "$REPO" && HOME="$MARKER_HOME" AGENT_BRANCH_PREFIX=claude GIT_CONFIG_GLOBAL=/dev/null \
+		FAIL_ON="$1" PATH="$FAKE:$PATH" bash "$HOOKS/reference-transaction" prepared \
+		<<<"$ZERO $clean refs/heads/claude/clean") >/dev/null 2>&1 && echo allow || echo refuse
+}
+check "control: the clean commit passes the hook" allow "$(failing none)"
+check "walk fails (rev-list)" refuse "$(failing rev-list)"
+check "message read fails (cat-file)" refuse "$(failing cat-file)"
+check "trailer match fails (grep exit 2)" refuse "$(failing none grep)"
+rm -f "$FAKE/grep"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
