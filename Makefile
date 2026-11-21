@@ -146,6 +146,7 @@ test:
 	@bash tests/sandbox-profile-test.sh
 	@bash tests/deployment-lifecycle-test.sh
 	@bash tests/dotfiles-doctor-org-test.sh
+	@bash tests/drift-checks-test.sh
 	@bash tests/hpc-test.sh
 	@bash tests/hpc-frozen-code-test.sh
 	@bun test ./tests/guardrails-severity-test.ts
@@ -176,25 +177,12 @@ check-guardrails-native-sync:
 # credential missing on this machine still needs its mask on the next. A
 # denyRead glob can only be checked against the files it matches here.
 check-machinery-ro-sync:
-	@set -eu; \
-	paths_file="$(CURDIR)/.agents/guardrails/sensitive-paths.json"; \
-	profile="$(CURDIR)/.config/sandbox/machinery-ro.profile"; \
-	status=0; \
-	machinery="$$(awk '/"machinery": \[/{f=1} f{print} f && /\]/{f=0}' "$$paths_file" | grep -o '"~/dotfiles[^"]*"' | tr -d '"')"; \
-	if [ -z "$$machinery" ]; then \
-		printf 'machinery-ro-sync: extracted no ~/dotfiles machinery paths from %s — the awk extraction depends on the current JSON formatting\n' "$$paths_file" >&2; \
-		exit 1; \
-	fi; \
-	pinned="$$(grep -v '^[[:space:]]*#' "$$profile")"; \
-	for p in $$machinery; do \
-		pin="$$(printf '%s' "$$p" | sed 's|^~|$$H|')"; \
-		printf '%s\n' "$$pinned" | grep -qF "\"$$pin\"" || { printf 'machinery-ro drift: %s is policy-protected but not pinned read-only in machinery-ro.profile\n' "$$p" >&2; status=1; }; \
-	done; \
-	python3 -c "$$MASK_SYNC_PY" "$(CURDIR)" || status=1; \
-	exit "$$status"
+	@python3 -c "$$MASK_SYNC_PY" "$(CURDIR)"
 
 # Loads the agent profile the way the launcher's `use` does and prints each
-# bind and mask path, then compares them with both policies.
+# bind, pin and mask path, then compares them with both policies. A machinery
+# path counts as pinned only when it is an RO_LAST entry: the check once grepped
+# the whole profile, so a path named in a comment or an RW bind passed.
 define MASK_SYNC_PY
 import glob, json, os, subprocess, sys
 root = sys.argv[1]
@@ -210,19 +198,21 @@ use() {
 RO=() RW=() RO_LAST=() MASK=() MASK_PREPARE=() SANDBOX_ENV=()
 use agent
 printf 'bind\t%s\n' "$${RO[@]}" "$${RW[@]}" "$${RO_LAST[@]}"
+printf 'pin\t%s\n' "$${RO_LAST[@]}"
 printf 'mask\t%s\n' "$${MASK[@]}" "$${MASK_PREPARE[@]}"
 '''
 out = subprocess.run(["bash", "-c", dump], env={**os.environ, "PROFILE_DIR": f"{root}/.config/sandbox"},
                      capture_output=True, text=True)
 if out.returncode:
     sys.exit(f"mask-sync: loading the agent profile failed: {out.stderr.strip()}")
-binds, masks = [], []
+found = {"bind": [], "pin": [], "mask": []}
 for line in out.stdout.splitlines():
     kind, _, path = line.partition("\t")
     # printf prints one empty line for an empty array, and an empty mask
     # would cover every path.
     if path.rstrip("/"):
-        (binds if kind == "bind" else masks).append(path.rstrip("/"))
+        found[kind].append(path.rstrip("/"))
+binds, pins, masks = found["bind"], set(found["pin"]), found["mask"]
 if not binds or not masks:
     sys.exit("mask-sync: the agent profile printed no binds or no masks")
 
@@ -233,12 +223,19 @@ def covered(path, roots):
 
 policy = json.load(open(f"{root}/.agents/guardrails/sensitive-paths.json"))
 settings = json.load(open(f"{root}/.claude/settings.json"))
+status = 0
+machinery = [p for p in policy["machinery"] if p.startswith("~/dotfiles/")]
+if not machinery:
+    sys.exit("machinery-ro-sync: sensitive-paths.json lists no ~/dotfiles machinery paths")
+for path in machinery:
+    if home + path[1:] not in pins:
+        print(f"machinery-ro drift: {path} is policy-protected but not an RO_LAST pin in the agent profile", file=sys.stderr)
+        status = 1
 want = [home + c[1:] for c in policy["credentials"]]
 for rule in settings.get("sandbox", {}).get("filesystem", {}).get("denyRead", []):
     if rule.startswith("~/"):
         path = home + rule[1:]
         want += sorted(glob.glob(path)) if "*" in path else [path]
-status = 0
 for path in want:
     if covered(path, binds) and not covered(path, masks):
         print(f"mask drift: {path.replace(home, '~', 1)} is hidden from Claude's Bash but bound into Pi's; add it to MASK in machinery-ro.profile", file=sys.stderr)
@@ -373,9 +370,11 @@ audit-skills:
 # So the config cannot apply itself, and this pair is the substitute: the check
 # makes the drift loud, and `make pi-packages` fixes it on a new machine or
 # after editing the file. Both share one resolver so they cannot disagree about
-# what "missing" means.
+# what "missing" means. An entry pinned to an exact version (npm:name@1.2.3)
+# counts as missing while another version is installed: comparing names alone
+# let a pin drift with the check green.
 define PI_PACKAGES_PY
-import json, os, shutil, sys
+import json, os, re, shutil, sys
 
 mode = sys.argv[1]
 repo = os.environ.get("REPO") or "."
@@ -413,6 +412,8 @@ if not os.path.isdir(os.path.join(agent_dir, "npm")):
 
 missing = []
 unmappable = []
+unversioned = []
+installed_as = {}
 for entry in declared:
     source = entry if isinstance(entry, str) else (entry or {}).get("source")
     if not source:
@@ -423,11 +424,26 @@ for entry in declared:
         unmappable.append(source)
         continue
     spec = source[4:]
-    # Strip a trailing @version. A leading @ is a scope, not a version.
+    # Split off a trailing @version. A leading @ is a scope, not a version.
     at = spec.rfind("@")
-    name = spec[:at] if at > 0 else spec
-    if not os.path.isdir(os.path.join(node_modules, *name.split("/"))):
+    name, pinned = (spec[:at], spec[at + 1:]) if at > 0 else (spec, "")
+    package = os.path.join(node_modules, *name.split("/"))
+    if not os.path.isdir(package):
         missing.append(source)
+        continue
+    if not pinned:
+        continue
+    if not re.fullmatch(r"\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?", pinned):
+        # A range or dist-tag names no single version to compare against.
+        unversioned.append(source)
+        continue
+    try:
+        installed = json.load(open(os.path.join(package, "package.json"), encoding="utf-8")).get("version")
+    except (OSError, ValueError):
+        installed = None
+    if installed != pinned:
+        missing.append(source)
+        installed_as[source] = installed or "unknown"
 
 if mode == "missing":
     for m in missing:
@@ -436,10 +452,12 @@ if mode == "missing":
 
 for u in unmappable:
     print("note: %s is not an npm source; presence not checked" % u)
+for u in unversioned:
+    print("note: %s pins no exact version; version not checked" % u)
 if missing:
-    print("pi-package drift: declared in settings.json but not installed:", file=sys.stderr)
+    print("pi-package drift: declared in settings.json but not installed at that version:", file=sys.stderr)
     for m in missing:
-        print("  %s" % m, file=sys.stderr)
+        print("  %s%s" % (m, " (installed: %s)" % installed_as[m] if m in installed_as else ""), file=sys.stderr)
     print("  a packages entry does not install anything -- run: make pi-packages", file=sys.stderr)
     sys.exit(1)
 endef
