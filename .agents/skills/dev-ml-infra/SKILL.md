@@ -60,6 +60,9 @@ project-name/
   depends on methods; methods do not depend on the harness.
 - `results/` is the only generated-output root. Put MLflow state, Hydra
   outputs, sweeps, checkpoints, figures, tables, logs, and artifacts under it.
+  The exception is a manuscript's figures and tables, which their producers
+  write into the manuscript's `generated` directories
+  (`research-manuscript-workflow`).
 - Place each output by what reads it, when the run writes it. A record
   (metrics, resolved config, logs, summaries) is read on the laptop and is
   pulled. Resume state (training checkpoints, caches a requeued job reloads)

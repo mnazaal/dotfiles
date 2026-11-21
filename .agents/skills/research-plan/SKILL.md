@@ -87,8 +87,8 @@ share of a plan's content).
 Count only **unmarked** forward-looking sets. A block carrying `DONE`,
 `RESOLVED`, `PARKED`, `SUPERSEDED`, or its own recorded outcome is history, not
 a rival — a finished phase is not ambiguous, and counting it is the fastest way
-to make this gate something you ignore. The generated handoff block above the
-first heading is not a rival either: it is single-valued and replaced on every
+to make this gate something you ignore. The generated handoff block directly
+below the title is not a rival either: it is single-valued and replaced on every
 write (`session-handoff`), so it records where you are, not a competing plan.
 What actually counts:
 

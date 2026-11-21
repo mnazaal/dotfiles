@@ -158,9 +158,11 @@ cost of getting them wrong is the whole sweep.
   the floor you cannot tell an arm difference from pipeline error, and arms that
   all sit far above it are measuring the pipeline, not the method. Reading this
   off the checklist afterwards is too late; the design is already spent.
-- **Estimate per-cell wall-clock before fanning out.** Time the real arm mix
-  under the real worker count; a few cheap cells or one shard give a floor,
-  and the estimate says so. `dev-hpc` owns the cluster-side minimum and the
+- **Estimate per-cell wall-clock before fanning out.** Take it from the real
+  arm mix under the real worker count: prior runs, or a few cheap cells or one
+  shard, which give a floor, and the estimate says so. Do not add a separate
+  serialized timing phase to a cluster sweep; launch it with modest
+  over-provisioning and read the real cost off its first finished cells. `dev-hpc` owns the cluster-side minimum and the
   batching that clears it.
 
 ## Sustained Improvement Loop

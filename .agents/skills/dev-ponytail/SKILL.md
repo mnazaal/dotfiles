@@ -76,6 +76,6 @@ Three shapes that get retired first:
 
 - `dev-python` or `dev-jax` for framework-specific implementation.
 - `dev-tdd` for behavior-first changes.
-- `decide-priority` when questioning whether work should happen.
+- `decide-priority` to park work with a trigger that brings it back.
 - `dev-borrow-design` when the thing being ported comes from a reference project
   being surveyed for ideas.

@@ -7,9 +7,9 @@ description: "Load BEFORE asking the user two or more clarifying questions, any 
 
 ## Purpose
 
-Clarify ambiguous work before execution by interviewing the user one decision at a time.
+Clarify ambiguous work before execution by interviewing the user in rounds, each round asking every decision whose prerequisites are settled.
 
-Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, or sequencing would make immediate action wasteful. If the workspace can answer the question, inspect instead of interviewing. If the options are already known and only ranking remains, route to `decide-priority`.
+Use when unclear scope, assumptions, dependencies, risks, acceptance criteria, or sequencing would make immediate action wasteful. If the workspace can answer the question, inspect instead of interviewing. If the options are already known and only ranking or parking them remains, route to `decide-priority`.
 
 ## Rules
 
@@ -109,7 +109,7 @@ option; in chat, this is the shape of each numbered question in a round.
 ## Routing
 
 - Use `dev-scout` when repository inspection can answer a question.
-- Use `decide-priority` when choosing among known options.
+- Use `decide-priority` when ranking or parking known work items.
 - Use `dev-ponytail` when the plan may be over-engineered.
 - Use `debug-root-cause` when the plan is actually an unclear bug fix.
 - Use `research-plan` for the decision log's shape and home, and for persisting a settled direction into `PLAN.md`.
@@ -118,4 +118,4 @@ option; in chat, this is the shape of each numbered question in a round.
 ## Anti-Patterns
 
 - Turning the interview into implementation.
-- Ranking options without explicit criteria; route that to `decide-priority`.
+- Ranking options inside the interview; ranking or parking known items is `decide-priority`'s.

@@ -45,4 +45,4 @@ description: "Mandatory for academic papers, literature, citations, related work
 - `research-lit-search` for related work or subfield maps.
 - `research-session` for session orientation and idea triage.
 - `research-run` for experiment evidence.
-- `decide-priority` for action selection under uncertainty.
+- `decide-priority` for ranking or parking work items.

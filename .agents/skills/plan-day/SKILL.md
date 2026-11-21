@@ -56,7 +56,7 @@ was captured, not that nothing is pending.
    has sat undated.
 4. Check the habits file only for repeaters that have lapsed.
 5. Separate fixed commitments from candidate tasks; find conflicts and overload.
-6. Use `decide-priority` when ranking candidates requires explicit tradeoffs.
+6. Use `decide-priority` when ranking candidates or parking some of them.
 7. Produce the brief, and close the loop: emit the proposed dates as an org
    snippet the user can yank. Read-only means the processing step depends on
    them acting, so make acting a paste rather than a re-derivation.
@@ -104,7 +104,7 @@ SCHEDULED: <YYYY-MM-DD day>
 
 ## Routing
 
-- Use `decide-priority` when choosing among competing tasks or tradeoffs.
+- Use `decide-priority` when ranking competing tasks or parking some.
 - Use `plan-interview` when today's constraints or goals are too ambiguous to plan directly.
 - Use `research-run` when today's next action is experiment/log/result follow-up.
 - Use `dev-*` or `debug-*` only after a concrete software task or bug is selected.
