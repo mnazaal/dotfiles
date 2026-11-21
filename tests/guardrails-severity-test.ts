@@ -653,6 +653,33 @@ test("code-review gate: integration and PR moments, not everyday git", () => {
   }
 });
 
+// Audited 2026-11-21: the PR gate was `arg_contains: "create"`, a substring over
+// every argument, so it fired on `--json createdAt` and on any comment body that
+// said "create", yet missed `gh pr new` (create's alias) and `gh pr merge`. The
+// merge gate missed `git pull`, which lands remote work in the current branch,
+// and fired on `git merge --abort`, which integrates nothing. The PR verb is now
+// matched as the word after `pr`, and abort/continue/quit forms are exempt.
+// Each list is compared whole, so a red run names every case it misses.
+const reviewRails = createGuardrails("claude");
+const reviewGated = (command: string) =>
+  (reviewRails.evaluate({ tool: "bash", command, cwd }, new Set()).skills ?? []).includes("code-review");
+test("code-review gate: fires on every integrating verb", () => {
+  const fires = [
+    "gh pr new --fill", "gh pr create --title x --body y", "gh pr merge 12 --squash", "gh pr merge --auto",
+    "git pull", "git pull --ff-only origin main", "git -C repo pull", "git merge --no-ff claude/x",
+  ];
+  expect(fires.map((c) => `${c}: ${reviewGated(c)}`)).toEqual(fires.map((c) => `${c}: true`));
+});
+test("code-review gate: quiet on commands that merely mention one", () => {
+  const quiet = [
+    "gh pr list --json createdAt", "gh pr view 5 --json title,createdAt",
+    "gh pr comment 5 --body 'please create a test'", "gh pr list --search create",
+    "git merge --abort", "git merge --continue", "git merge --quit",
+  ];
+  const decide = (c: string) => reviewRails.evaluate({ tool: "bash", command: c, cwd }, new Set()).decision;
+  expect(quiet.map((c) => `${c}: ${reviewGated(c)} ${decide(c)}`)).toEqual(quiet.map((c) => `${c}: false allow`));
+});
+
 const machineryCommand = "cat ~/.config/git/hooks/pre-commit";
 test("machinery in bash: denied outside a sandbox", () => {
   const rails = createGuardrails("claude", { inSandbox: false });

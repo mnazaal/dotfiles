@@ -1339,7 +1339,9 @@ export function createGuard(agent: string, opts: GuardOptions = {}) {
 export type SkillGateHit = { skills: string[]; message: string };
 
 // Gate triggers — one of four, discriminated by `trigger.type`.
-type BashTrigger = { type: "bash"; command: string; subcommands?: string[]; arg_contains?: string };
+type BashTrigger = {
+  type: "bash"; command: string; subcommands?: string[]; verbs?: string[]; arg_contains?: string; unless_args?: string[];
+};
 type WriteTrigger = { type: "write"; path_glob: string; at_root?: boolean; except?: string[] };
 type FetchTrigger = { type: "fetch"; domains: string[] };
 type CapabilityTrigger = { type: "capability"; all_of: string[] };
@@ -1362,8 +1364,10 @@ function globMatch(glob: string, s: string): boolean {
 /**
  * Skill gates (skill-gates.json): observable events that require an agent skill
  * to have been loaded this session. Four trigger types — `bash` (command +
- * optional subcommands, and/or `arg_contains` matched against the argument
- * list), `write` (a Write/Edit path), `fetch` (a WebFetch URL),
+ * optional subcommands, optional `verbs` -- the first positional word after
+ * the subcommand, as in `gh pr merge` -- and/or `arg_contains` matched against
+ * the argument list; `unless_args` names exact arguments that exempt the call,
+ * as in `git merge --abort`), `write` (a Write/Edit path), `fetch` (a WebFetch URL),
  * and `capability` (a provider-neutral event classification).
  * The core only matches events to gates; the ADAPTER supplies the session
  * evidence ("was the skill loaded?"), since that is host-specific. Adapters
@@ -1398,10 +1402,12 @@ export function createSkillGate() {
       for (const g of bashGates) {
         const t = g.trigger;
         if (parsed.command !== t.command) continue;
-        if (t.subcommands?.length) {
-          const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : undefined);
-          if (!t.subcommands.includes(sub)) continue;
-        }
+        const sub = subcommandOf(parsed.args, t.command === "git" ? GIT_VALUE_OPTS : undefined);
+        if (t.subcommands?.length && !t.subcommands.includes(sub)) continue;
+        // A verb is a whole word in its own position: a substring needle also
+        // matched `--json createdAt` and any message body saying "create".
+        if (t.verbs?.length && !t.verbs.includes(subcommandOf(parsed.args.slice(parsed.args.indexOf(sub) + 1)))) continue;
+        if (t.unless_args?.some((u) => parsed.args.includes(u))) continue;
         if (t.arg_contains) {
           const needle = t.arg_contains.toLowerCase();
           if (!parsed.args.some((a) => a.toLowerCase().includes(needle))) continue;
