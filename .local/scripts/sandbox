@@ -172,6 +172,52 @@ run_bwrap() {
 
 	for d in "${RO[@]}"; do if [ -e "$d" ]; then p+=(--ro-bind "$d" "$d"); fi; done
 	for d in "${RW[@]}"; do if [ -e "$d" ]; then p+=(--bind "$d" "$d"); fi; done
+	# A pin protects a path's contents, not its directory entry. Renaming any
+	# unpinned ancestor inside a writable bind carries the read-only mount away
+	# with it, and the agent then recreates the path with a file of its own,
+	# which the host runs: confirmed 2026-11-20 by `mv ~/dotfiles/.config/pi/agent`
+	# succeeding inside a live pi session. rename(2) refuses to move a mount
+	# point, so bind each such ancestor onto itself: still writable, no longer
+	# movable. These sit inside the writable binds above and under the pins
+	# below, outermost first, because a later bind of a parent would hide the
+	# self-bind of its child. Masks get the same treatment: moving the parent of
+	# the credential-cache mask lets the agent recreate that directory and own
+	# the socket host git then uses. A symlinked ancestor cannot be anchored (the
+	# agent can delete and re-point the link), so it refuses the launch.
+	#
+	# Required mask sources are created first, so their parents exist to anchor.
+	for d in "${MASK_PREPARE[@]}"; do
+		if [ "$DRYRUN" -eq 0 ]; then
+			[ ! -L "$d" ] || die "required mask source is a symlink: $d"
+			# Only the leaf contains the socket; the parent needs no private mode.
+			# shellcheck disable=SC2174
+			mkdir -p -m 0700 -- "$d" || die "cannot prepare required mask: $d"
+		fi
+	done
+	local pin anc root
+	local -a anchors=()
+	local -A anchored=()
+	for pin in "${RO_LAST[@]}" "${MASK[@]}" "${MASK_PREPARE[@]}"; do
+		root=""
+		for d in "${RW[@]}"; do
+			case "$pin" in "$d"/*) if [ ${#d} -gt ${#root} ]; then root=$d; fi ;; esac
+		done
+		[ -n "$root" ] || continue
+		anc=${pin%/*}
+		while [ "$anc" != "$root" ]; do
+			[ ! -L "$anc" ] || die "a protected path crosses a symlink inside a writable bind, which the agent could re-point: $anc (protecting $pin)"
+			if [ -d "$anc" ] && [ -z "${anchored[$anc]:-}" ]; then
+				anchored[$anc]=1
+				anchors+=("$anc")
+			fi
+			anc=${anc%/*}
+		done
+	done
+	if [ ${#anchors[@]} -gt 0 ]; then
+		while IFS= read -r d; do
+			p+=(--bind "$d" "$d")
+		done < <(printf '%s\n' "${anchors[@]}" | LC_ALL=C sort)
+	fi
 	# Emitted last so a pin nested inside a writable bind stays read-only. The
 	# manual guarantees binds are "applied in the order they are given as
 	# arguments", and this was measured to hold for a REPEATED DESTINATION too:
@@ -191,16 +237,10 @@ run_bwrap() {
 		fi
 	done
 	# Required masks must not disappear when a host source is absent at launch:
-	# the credential-cache daemon could create its socket afterwards. Create a
-	# private mountpoint before bwrap binds the writable cache parent. Dry runs
-	# print the mask without changing the host.
+	# the credential-cache daemon could create its socket afterwards. Their
+	# private mountpoints were created above, before the anchors. Dry runs print
+	# the mask without changing the host.
 	for d in "${MASK_PREPARE[@]}"; do
-		if [ "$DRYRUN" -eq 0 ]; then
-			[ ! -L "$d" ] || die "required mask source is a symlink: $d"
-			# Only the leaf contains the socket; the parent needs no private mode.
-			# shellcheck disable=SC2174
-			mkdir -p -m 0700 -- "$d" || die "cannot prepare required mask: $d"
-		fi
 		p+=(--perms 0000 --tmpfs "$d")
 	done
 

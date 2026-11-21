@@ -25,7 +25,8 @@ mkdir -p \
 	"$home/.cache/git/credential" "$home/.local/state/headroom" "$home/.local/state/nvim" \
 	"$home/org/roam" "$home/org/agenda" "$home/org/agents" \
 	"$home/dotfiles/.agents/guardrails" "$home/dotfiles/.agents/skills" \
-	"$home/projects/demo/src" "$project" "$home/.config/onedrive"
+	"$home/projects/demo/src" "$project" "$home/.config/onedrive" \
+	"$home/dotfiles/.config/pi/agent/extensions"
 touch "$home/.config/pi/agent/mcp-cache.json" \
 	"$home/.config/pi/agent/run-history.jsonl" \
 	"$home/.config/pi/agent/auth.json" "$home/projects/demo/.env.local"
@@ -166,6 +167,57 @@ assert_mounts 'agent in ~/projects/demo' "$output" \
 # of work rather than a container of them.
 output=$(run "$home/dotfiles" -p agent)
 assert_mounts 'agent in ~/dotfiles' "$output" "--bind $home/dotfiles $home/dotfiles"
+
+# A pin's unpinned ancestors inside a writable bind are bound onto themselves,
+# between that bind and the pin: a mount point cannot be renamed, so the pin
+# cannot be carried away and replaced (2026-11-20, `mv ~/dotfiles/.config/pi/agent`
+# succeeded in a live pi session). Without these, the pin order above holds and
+# the protection still fails. EVERY ancestor counts: anchoring only the direct
+# parent leaves `mv ~/dotfiles/.config/pi` open, one level up.
+anchor_chain() { # cwd writable-root pin-mount ancestors (outermost first)...
+	local cwd=$1 prev="--bind $2 $2" pin=$3 a
+	shift 3
+	for a in "$@"; do
+		assert_mount_order "$cwd" agent "$prev" "--bind $a $a"
+		prev="--bind $a $a"
+	done
+	assert_mount_order "$cwd" agent "$prev" "$pin"
+}
+anchor_chain "$home/dotfiles" "$home/dotfiles" \
+	"--ro-bind $home/dotfiles/.config/pi/agent/extensions $home/dotfiles/.config/pi/agent/extensions" \
+	"$home/dotfiles/.config" "$home/dotfiles/.config/pi" "$home/dotfiles/.config/pi/agent"
+anchor_chain "$home/dotfiles" "$home/dotfiles" \
+	"--ro-bind $home/dotfiles/.agents/guardrails $home/dotfiles/.agents/guardrails" \
+	"$home/dotfiles/.agents"
+anchor_chain "$home/projects/demo" "$home/.local/share" \
+	"--ro-bind $home/.local/share/bun/bin $home/.local/share/bun/bin" \
+	"$home/.local/share/bun"
+# Masks too: moving ~/.cache/git would carry the credential-cache mask away.
+anchor_chain "$home/projects/demo" "$home/.cache" \
+	"--tmpfs $home/.cache/git/credential" \
+	"$home/.cache/git"
+# A protected path that crosses a symlink inside a writable bind cannot be
+# anchored, because the agent can re-point the link: the launch is refused.
+mkdir -p "$home/projects/demo/real/x"
+ln -s real "$home/projects/demo/link"
+printf 'RO_LAST+=("$PWD/link/x")\n' >"$tmp/symlinked.profile"
+if out=$(run "$home/projects/demo" -p agent -p "$tmp/symlinked.profile" 2>&1); then
+	printf 'sandbox profiles: a pin through a symlinked ancestor launched:\n%s\n' "$out" >&2
+	exit 1
+fi
+case "$out" in *"crosses a symlink"*) ;; *)
+	printf 'sandbox profiles: symlinked-ancestor refusal gave the wrong message:\n%s\n' "$out" >&2
+	exit 1
+	;;
+esac
+rm "$home/projects/demo/link"
+# ...and only inside a writable bind: from a project, ~/dotfiles is read-only and
+# its directories need no anchor.
+output=$(run "$home/projects/demo" -p agent)
+assert_mounts 'agent in ~/projects/demo, no anchors in read-only trees' "$output" \
+	"--bind $home/.local/share/bun $home/.local/share/bun" \
+	-- \
+	"--bind $home/dotfiles/.agents $home/dotfiles/.agents"
 
 # From a SUBDIRECTORY the writable unit is still the repository: binding only
 # $PWD leaves .git under the read-only ~/projects bind, so an agent edits files
