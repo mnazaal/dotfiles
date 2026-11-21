@@ -18,6 +18,12 @@ script="$repo/.local/scripts/agent-checkpoint"
 tmp=$(mktemp -d)
 trap 'chmod -R u+w "$tmp" 2>/dev/null || true; rm -r "$tmp" 2>/dev/null || true' EXIT
 
+# Hermetic git config. The checkpoint pins core.hooksPath to the GLOBAL value
+# (behavior 23), so without this the user's real global hooks would run on
+# fixture refs and decide these tests.
+printf '[core]\n\thooksPath = %s/nohooks\n' "$tmp" >"$tmp/global.gitconfig"
+export GIT_CONFIG_GLOBAL="$tmp/global.gitconfig" GIT_CONFIG_NOSYSTEM=1
+
 fail() {
 	printf 'agent-checkpoint: %s\n' "$1" >&2
 	exit 1
@@ -363,5 +369,203 @@ printf '%s\n' "$tree_paths" | grep -qx '.claude/settings.json' &&
 	fail "an untracked mask residue file under .claude/ was captured as a phantom empty file"
 printf '%s\n' "$tree_paths" | grep -qx 'genuinely-empty.txt' ||
 	fail "a genuine (user-writable) empty file was dropped along with the residue"
+
+# --- 23. repository config cannot make the checkpoint run a command ----------
+# The per-turn hooks run this script on the HOST, but the sandboxed agent can
+# write .git/config, and git runs programs that config names: core.fsmonitor in
+# `git status`, a filter driver's clean/process command in `git add`, the
+# reference-transaction hook under core.hooksPath in `git update-ref`. Every
+# way in is planted here (direct, through include.path, in worktree-scope
+# config) and each would leave a marker file. The snapshot must still be taken,
+# holding the raw content, since dropping it would cost the turn its recovery.
+r=$(new_repo hostexec)
+m="$tmp/hostexec-markers"
+mkdir -p "$m" "$tmp/evilhooks"
+printf '#!/bin/sh\ntouch %s/hook\n' "$m" >"$tmp/evilhooks/reference-transaction"
+chmod +x "$tmp/evilhooks/reference-transaction"
+printf '[core]\n\tfsmonitor = touch %s/fsmonitor-included; false\n' "$m" >"$tmp/hostexec.cfg"
+git -C "$r" config core.fsmonitor "touch $m/fsmonitor; false"
+git -C "$r" config include.path "$tmp/hostexec.cfg"
+git -C "$r" config core.hooksPath "$tmp/evilhooks"
+git -C "$r" config filter.evil.clean "touch $m/clean; cat"
+git -C "$r" config filter.evil.process "touch $m/process"
+git -C "$r" config filter.evil.required true
+git -C "$r" config core.repositoryformatversion 1
+git -C "$r" config extensions.worktreeConfig true
+git -C "$r" config --worktree filter.wt.clean "touch $m/worktree-clean; cat"
+printf '*.txt filter=evil\n*.dat filter=wt\n' >"$r/.gitattributes"
+printf 'MODIFIED\n' >"$r/tracked.txt"
+printf 'payload\n' >"$r/new.dat"
+rc=0
+run_in "$r" || rc=$?
+[ -z "$(ls -A "$m")" ] ||
+	fail "repository config ran a command on the host: $(cd "$m" && printf '%s ' *)"
+[ "$rc" -eq 0 ] || fail "planted repository config aborted the snapshot"
+snap=$(refs_of "$r")
+[ -n "$snap" ] || fail "no checkpoint ref written in a repo with planted config"
+[ "$(git -C "$r" show "$snap:tracked.txt")" = "MODIFIED" ] ||
+	fail "the filtered file was not captured with its raw content"
+[ "$(git -C "$r" show "$snap:new.dat")" = "payload" ] ||
+	fail "the worktree-filtered file was not captured with its raw content"
+
+# --- 24. a submodule's config cannot either -----------------------------------
+# `git status` recurses into submodules, running git there with the
+# submodule's own config, which the agent can also write. Same-size edits, so
+# git must re-read content (and run any filter) rather than trust the size.
+s=$(new_repo hostexec-subsrc)
+r=$(new_repo hostexec-super)
+m="$tmp/hostexec-sub-markers"
+mkdir -p "$m"
+git -C "$r" -c protocol.file.allow=always submodule -q add "$s" sub
+git -C "$r" commit -q -m sub
+git -C "$r/sub" config core.fsmonitor "touch $m/fsmonitor; false"
+git -C "$r/sub" config filter.subf.clean "touch $m/clean; cat"
+git -C "$r/sub" config filter.subf.process "touch $m/process"
+printf '*.txt filter=subf\n' >"$r/sub/.git-info-attributes"
+mkdir -p "$(git -C "$r/sub" rev-parse --git-dir)/info"
+cp "$r/sub/.git-info-attributes" "$(git -C "$r/sub" rev-parse --git-dir)/info/attributes"
+rm "$r/sub/.git-info-attributes"
+printf 'ORIGINAL\n' >"$r/sub/tracked.txt"
+printf 'MODIFIED\n' >"$r/tracked.txt"
+rc=0
+run_in "$r" || rc=$?
+[ -z "$(ls -A "$m")" ] ||
+	fail "submodule config ran a command on the host: $(cd "$m" && printf '%s ' *)"
+[ "$rc" -eq 0 ] || fail "planted submodule config aborted the snapshot"
+[ -n "$(refs_of "$r")" ] || fail "no checkpoint ref written beside a planted submodule"
+# The hook's cwd can be a subdirectory, where `git ls-files` lists only paths
+# below it: the submodule must still be kept out of `git add`.
+mkdir -p "$r/dir"
+printf 'MORE\n' >>"$r/tracked.txt"
+rc=0
+(cd "$r/dir" && "$script" >/dev/null) || rc=$?
+[ -z "$(ls -A "$m")" ] ||
+	fail "submodule config ran a command when run from a subdirectory: $(cd "$m" && printf '%s ' *)"
+[ "$rc" -eq 0 ] || fail "a run from a subdirectory beside a submodule aborted the snapshot"
+
+# --- 25. a submodule's new commit is still recorded --------------------------
+# Keeping submodules out of `git add` must not freeze them at HEAD's commit.
+s=$(new_repo subptr-src)
+r=$(new_repo subptr-super)
+git -C "$r" -c protocol.file.allow=always submodule -q add "$s" sub
+git -C "$r" commit -q -m sub
+git -C "$r/sub" commit -q --allow-empty -m "agent work inside the submodule"
+want=$(git -C "$r/sub" rev-parse HEAD)
+run_in "$r" || fail "a moved submodule aborted the snapshot"
+got=$(git -C "$r" rev-parse "$(refs_of "$r"):sub")
+[ "$got" = "$want" ] || fail "the snapshot froze the submodule at HEAD's commit instead of its new one"
+
+# --- 26. a partial clone's lazy fetch cannot run a command --------------------
+# Marked a partial clone with HEAD at a missing commit, git would fetch it from
+# the promisor remote and run remote.<name>.uploadpack. Failing is acceptable
+# here (the repository is broken); running the command is not.
+r=$(new_repo promisor)
+m="$tmp/promisor-markers"
+mkdir -p "$m"
+git -C "$r" config core.repositoryformatversion 1
+git -C "$r" config extensions.partialClone evil
+git -C "$r" config remote.evil.promisor true
+git -C "$r" config remote.evil.url "$tmp/nowhere"
+git -C "$r" config remote.evil.uploadpack "touch $m/uploadpack; false"
+git -C "$r" config protocol.file.allow always
+git -C "$r" rev-parse HEAD | tr '0-9a-f' '1-9a-f0' >"$r/.git/$(git -C "$r" symbolic-ref HEAD)"
+printf 'MODIFIED\n' >"$r/tracked.txt"
+(cd "$r" && "$script" >/dev/null 2>&1) || :
+[ -z "$(ls -A "$m")" ] || fail "a lazy fetch ran remote.*.uploadpack on the host"
+
+# --- 27. core.worktree cannot widen the snapshot to a host directory ----------
+# Pointed at a parent directory, core.worktree would have `git add` hash files
+# the sandbox hides (a stand-in ~/.ssh here) into objects the agent can read.
+h="$tmp/fakehome"
+mkdir -p "$h/.ssh" "$h/projects"
+printf 'SECRET-KEY-MATERIAL\n' >"$h/.ssh/id_ed25519"
+r=$(new_repo worktree-escape)
+mv "$r" "$h/projects/p"
+r="$h/projects/p"
+git -C "$r" config core.worktree "$h"
+printf 'new\n' >"$r/new.txt"
+(cd "$r" && "$script" >/dev/null 2>&1) || :
+snap=$(git --git-dir="$r/.git" for-each-ref --format='%(refname)' refs/agent-checkpoint)
+[ -n "$snap" ] || fail "no snapshot taken in a repository with core.worktree set"
+paths=$(git --git-dir="$r/.git" ls-tree -r --name-only "$snap")
+printf '%s\n' "$paths" | grep -qx 'new.txt' ||
+	fail "the snapshot did not capture the repository's own working tree"
+printf '%s\n' "$paths" | grep -q 'id_ed25519' &&
+	fail "core.worktree pulled a host file into the snapshot"
+
+# --- 28. git-lfs extensions in repository config cannot run --------------------
+# The user's global git-lfs filter is trusted, but git-lfs also runs
+# lfs.extension.<name>.clean programs read from the repository's .git/config.
+if command -v git-lfs >/dev/null 2>&1; then
+	cat >>"$tmp/global.gitconfig" <<-'EOF'
+		[filter "lfs"]
+			clean = git-lfs clean -- %f
+			smudge = git-lfs smudge -- %f
+			process = git-lfs filter-process
+			required = true
+	EOF
+	r=$(new_repo lfs-extension)
+	m="$tmp/lfs-markers"
+	mkdir -p "$m"
+	printf '#!/bin/sh\ntouch %s/lfs-extension\ncat\n' "$m" >"$tmp/lfs-ext"
+	chmod +x "$tmp/lfs-ext"
+	git -C "$r" config lfs.extension.x.clean "$tmp/lfs-ext %f"
+	git -C "$r" config lfs.extension.x.smudge "$tmp/lfs-ext %f"
+	git -C "$r" config lfs.extension.x.priority 0
+	printf '*.bin filter=lfs\n' >"$r/.gitattributes"
+	printf 'payload\n' >"$r/a.bin"
+	run_in "$r" || fail "an lfs-tracked file aborted the snapshot"
+	[ -z "$(ls -A "$m")" ] || fail "an lfs extension from repository config ran on the host"
+	git -C "$r" show "$(refs_of "$r"):a.bin" | grep -q 'git-lfs.github.com/spec' ||
+		fail "the user's global git-lfs filter was not applied (expected a pointer file)"
+fi
+
+# --- 29. the user's global hooks still run ------------------------------------
+# The real repository is touched only by update-ref, pinned to the GLOBAL
+# core.hooksPath. A repository-local hooksPath must lose to it, and the global
+# hooks must still run rather than be switched off.
+mkdir -p "$tmp/globalhooks" "$tmp/localhooks"
+m="$tmp/hooks-markers"
+mkdir -p "$m"
+for d in global local; do
+	printf '#!/bin/sh\ntouch %s/%s\n' "$m" "$d" >"$tmp/${d}hooks/reference-transaction"
+	chmod +x "$tmp/${d}hooks/reference-transaction"
+done
+r=$(new_repo hooks)
+git -C "$r" config core.hooksPath "$tmp/localhooks"
+printf 'MODIFIED\n' >"$r/tracked.txt"
+printf '[core]\n\thooksPath = %s/globalhooks\n' "$tmp" >"$tmp/hooks.gitconfig"
+run_in "$r" GIT_CONFIG_GLOBAL="$tmp/hooks.gitconfig" || fail "non-zero exit with global hooks"
+[ -e "$m/global" ] || fail "the global reference-transaction hook did not run"
+[ -e "$m/local" ] && fail "the repository-local hooksPath ran on the host"
+
+# --- 30. run from a subdirectory, the whole working tree is captured ----------
+# The scratch git directory has no working tree of its own, so the script must
+# name the repository root; git would otherwise take the cwd as the root.
+r=$(new_repo fromsubdir)
+mkdir -p "$r/deep/er"
+printf 'MODIFIED\n' >"$r/tracked.txt"
+printf 'new\n' >"$r/deep/new.txt"
+(cd "$r/deep/er" && "$script" >/dev/null) || fail "non-zero exit when run from a subdirectory"
+snap=$(refs_of "$r")
+[ "$(git -C "$r" show "$snap:tracked.txt")" = "MODIFIED" ] ||
+	fail "a run from a subdirectory missed a change at the repository root"
+git -C "$r" ls-tree -r --name-only "$snap" | grep -qx 'deep/new.txt' ||
+	fail "a run from a subdirectory filed paths relative to the subdirectory"
+
+# --- 31. a sparse checkout keeps the files outside its sparse set -------------
+# Those files are absent from disk only because the checkout is sparse; the
+# snapshot must keep them as committed, not record them as deleted.
+r=$(new_repo sparse)
+mkdir -p "$r/in" "$r/out"
+printf 'a\n' >"$r/in/a"
+printf 'b\n' >"$r/out/b"
+git -C "$r" add in/a out/b
+git -C "$r" commit -q -m dirs
+git -C "$r" sparse-checkout set in
+printf 'MODIFIED\n' >"$r/in/a"
+run_in "$r" || fail "non-zero exit in a sparse checkout"
+git -C "$r" ls-tree -r --name-only "$(refs_of "$r")" | grep -qx 'out/b' ||
+	fail "a sparse checkout's excluded file was recorded as deleted"
 
 printf 'agent-checkpoint: all behaviors pass\n'

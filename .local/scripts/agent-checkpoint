@@ -47,10 +47,99 @@ note() {
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
+# The per-turn hooks run this on the HOST, in a repository whose .git directory
+# the sandboxed agent can write, and git runs programs its config names: `git
+# status` runs core.fsmonitor, `git add` runs filter drivers (and git-lfs runs
+# its lfs.extension.* programs), a partial clone's lazy fetch runs
+# remote.*.uploadpack, `git update-ref` runs hooks from core.hooksPath. Each is
+# a command the agent chose, executed outside the sandbox. Naming bad keys one
+# by one cannot keep up with that list, and the agent can rewrite the config
+# between two git calls. So everything that reads or indexes the working tree
+# runs against a throwaway git directory whose config this script writes (the
+# `shadow` function below); the repository's own config, attributes and hooks
+# are never read there.
+#
+# Only for-each-ref and update-ref touch the real repository. They get
+# fixed-name pins, the value git sees outside the repository (global, then
+# system) or an inert default, set in the environment so the agent cannot
+# change them mid-run. No transport is allowed anywhere, a second layer under
+# the scratch directory, which has no partial-clone remote to fetch from.
+#
+# The cost: a filter defined only in the repository's own config (git-crypt is
+# the common one) does not run here, so a snapshot stores those files as they
+# are in the working tree, decrypted. Snapshot refs stay local; a `git push
+# --mirror` would publish them.
+n=${GIT_CONFIG_COUNT:-0}
+pin() {
+	export "GIT_CONFIG_KEY_$n=$1" "GIT_CONFIG_VALUE_$n=$2"
+	n=$((n + 1))
+}
+trusted() { # key default -> the key's value outside the repository, else default
+	git config --global --includes --get "$1" 2>/dev/null ||
+		git config --system --includes --get "$1" 2>/dev/null ||
+		printf '%s' "$2"
+}
+pin core.fsmonitor "$(trusted core.fsmonitor false)"
+pin core.hooksPath "$(trusted core.hooksPath /dev/null)"
+export GIT_CONFIG_COUNT=$n GIT_ALLOW_PROTOCOL=none
+
+# Fix the repository and its working tree once. The working tree is the
+# directory holding `.git`, never core.worktree, which the agent could point at
+# $HOME and so copy host files into objects it can read.
+gd=$(git rev-parse --absolute-git-dir 2>/dev/null) || exit 0
+common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+top=$PWD
+until [ -e "$top/.git" ] || [ "$top" = / ]; do
+	top=${top%/*}
+	top=${top:-/}
+done
+[ -e "$top/.git" ] || exit 0
+export GIT_DIR="$gd" GIT_WORK_TREE="$top"
+head=$(git rev-parse -q --verify HEAD 2>/dev/null) || head=
+fmt=$(git rev-parse --show-object-format 2>/dev/null) || fmt=sha1
+
+# The throwaway git directory: the repository's objects, a HEAD naming the same
+# commit, its exclude list, and a config written here. Global config (the
+# user's own filters, git-lfs among them) still applies; git-lfs keeps its
+# objects in the real repository.
+sh=$(mktemp -d 2>/dev/null) || fatal "could not create a scratch git directory"
+trap 'rm -rf "$sh"' EXIT
+mkdir -p "$sh/refs" "$sh/info"
+if [ "$fmt" = sha1 ]; then
+	printf '[core]\n\trepositoryformatversion = 0\n\tbare = false\n' >"$sh/config"
+else
+	printf '[core]\n\trepositoryformatversion = 1\n\tbare = false\n[extensions]\n\tobjectformat = %s\n' \
+		"$fmt" >"$sh/config"
+fi
+git config -f "$sh/config" lfs.storage "$common/lfs" || fatal "could not write the scratch git config"
+# Carry a sparse checkout over, or `git add -A` would record every file outside
+# the sparse set as deleted. The pattern file only narrows paths; it runs nothing.
+if [ "$(git config --get core.sparseCheckout 2>/dev/null)" = true ]; then
+	git config -f "$sh/config" core.sparseCheckout true
+	if [ "$(git config --get core.sparseCheckoutCone 2>/dev/null)" = true ]; then
+		git config -f "$sh/config" core.sparseCheckoutCone true
+	fi
+	cp "$gd/info/sparse-checkout" "$sh/info/sparse-checkout" 2>/dev/null || :
+fi
+if [ -n "$head" ]; then
+	printf '%s\n' "$head" >"$sh/HEAD"
+else
+	printf 'ref: refs/heads/unborn\n' >"$sh/HEAD"
+fi
+cp "$common/info/exclude" "$sh/info/exclude" 2>/dev/null || :
+shadow() { GIT_DIR="$sh" GIT_OBJECT_DIRECTORY="$common/objects" git "$@"; }
+
 # A failing `git status` is NOT a clean tree. Discarding its status made the two
 # indistinguishable, so a held index.lock, an unreadable index or an ownership
 # refusal all reported "nothing to snapshot" and returned success.
-if ! status=$(git status --porcelain 2>/dev/null); then
+#
+# --ignore-submodules=dirty, because without it `git status` runs git inside
+# each submodule, under that submodule's own config, which the agent can also
+# write. The snapshot records a submodule as its commit and never captured its
+# working tree, so ignoring that loses nothing. GIT_OPTIONAL_LOCKS=0 keeps this
+# status, which reads the real index, from writing it back.
+if ! status=$(GIT_OPTIONAL_LOCKS=0 GIT_INDEX_FILE="$gd/index" \
+	shadow status --porcelain --ignore-submodules=dirty 2>/dev/null); then
 	fatal "could not read the working tree (git status failed)"
 fi
 [ -n "$status" ] || exit 0
@@ -58,21 +147,31 @@ fi
 # An unborn HEAD (a repo with no commits yet) has no tree to read and no commit
 # to point at. That is where work is LEAST recoverable, so snapshot it anyway,
 # parentless, instead of falling through to the silent no-op below.
-if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
-	parent=(-p HEAD)
+if [ -n "$head" ]; then
+	parent=(-p "$head")
 else
 	parent=()
 fi
 
-idx=$(mktemp -u 2>/dev/null) || fatal "could not create a temporary index"
-addfail="$idx.addfail"
-adderr="$idx.adderr"
-top=$(git rev-parse --show-toplevel 2>/dev/null) || fatal "could not find the repository root"
+idx="$sh/index"
+addfail="$sh/addfail"
+adderr="$sh/adderr"
 tree=$(
-	export GIT_INDEX_FILE="$idx"
+	export GIT_INDEX_FILE="$idx" GIT_DIR="$sh" GIT_OBJECT_DIRECTORY="$common/objects"
 	if [ ${#parent[@]} -gt 0 ]; then
 		git read-tree HEAD 2>/dev/null || exit 1
 	fi
+	# Submodules are kept out of `git add`, which otherwise runs `git status`
+	# inside each one under that submodule's own config. Their new commits are
+	# recorded below by reading the submodule's HEAD, which runs nothing.
+	keep=() subs=()
+	while IFS= read -r -d '' entry; do
+		case $entry in 160000\ *)
+			subs+=("${entry#*$'\t'}")
+			keep+=(":(top,exclude,literal)${entry#*$'\t'}")
+			;;
+		esac
+	done < <(git ls-files -s -z --full-name -- ':/' 2>/dev/null)
 	# --ignore-errors, because a path that cannot be indexed must not cost us the
 	# whole snapshot. The harness masks its own denied paths as /dev/null
 	# character devices at the root of EVERY project it opens, and `git add`
@@ -86,7 +185,13 @@ tree=$(
 	# mixed into this capture, which carries the tree sha alone. The stderr is
 	# kept too: what `git add` refused decides below whether an unchanged tree is
 	# a clean tree or a failed capture.
-	git add -A --ignore-errors 2>"$adderr" || : >"$addfail"
+	git add -A --ignore-errors -- ':/' "${keep[@]}" 2>"$adderr" || : >"$addfail"
+	for s in "${subs[@]}"; do
+		[ -e "$top/$s/.git" ] || continue
+		c=$(env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_OBJECT_DIRECTORY -u GIT_WORK_TREE \
+			git -C "$top/$s" rev-parse -q --verify HEAD 2>/dev/null) &&
+			git update-index --cacheinfo "160000,$c,$s" 2>/dev/null
+	done
 	# The same masks reach the HOST as ordinary files. A bind mount needs a
 	# mount point, so the harness creates one, and a killed session leaves them
 	# behind: zero-byte, mode 444, at every path it masked (root dotfiles and
@@ -102,10 +207,10 @@ tree=$(
 	find "$top" -maxdepth 2 -type f -size 0 ! -perm -u+w -not -path "$top/.git/*" -print0 2>/dev/null |
 		while IFS= read -r -d '' p; do
 			rel=${p#"$top"/}
-			if git -C "$top" cat-file -e "HEAD:$rel" 2>/dev/null; then
-				git -C "$top" reset -q -- "$rel" 2>/dev/null
+			if git cat-file -e "HEAD:$rel" 2>/dev/null; then
+				git reset -q -- ":(top,literal)$rel" 2>/dev/null
 			else
-				git -C "$top" rm -q --cached --ignore-unmatch -- "$rel" 2>/dev/null
+				git rm -q --cached --ignore-unmatch -- ":(top,literal)$rel" 2>/dev/null
 			fi
 		done
 	git write-tree 2>/dev/null || exit 1
@@ -137,7 +242,7 @@ rm -f "$adderr" 2>/dev/null || true
 # clean tree in a sandboxed repo has to be recognised as one. Before this,
 # every Bash call in a clean repo was refused as "could not index".
 if [ ${#parent[@]} -gt 0 ] &&
-	[ "$tree" = "$(git rev-parse -q --verify 'HEAD^{tree}' 2>/dev/null)" ]; then
+	[ "$tree" = "$(shadow rev-parse -q --verify 'HEAD^{tree}' 2>/dev/null)" ]; then
 	if [ "$add_failed" -eq 1 ] && [ "$masks_only" -eq 0 ]; then
 		fatal "could not index the working tree (the snapshot would hold nothing new)"
 	fi
@@ -152,11 +257,11 @@ fi
 prefix="refs/agent-checkpoint/${AGENT_BRANCH_PREFIX:-agent}"
 last=$(git for-each-ref --sort=-refname --count=1 --format='%(objectname)' \
 	"$prefix/" 2>/dev/null)
-if [ -n "$last" ] && [ "$(git rev-parse -q --verify "$last^{tree}" 2>/dev/null)" = "$tree" ]; then
+if [ -n "$last" ] && [ "$(shadow rev-parse -q --verify "$last^{tree}" 2>/dev/null)" = "$tree" ]; then
 	exit 0
 fi
 
-sha=$(git commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) ||
+sha=$(shadow commit-tree "$tree" "${parent[@]}" -m "agent checkpoint $(date -u +%FT%TZ)" 2>/dev/null) ||
 	fatal "could not commit the snapshot tree"
 [ -n "$sha" ] || fatal "commit-tree produced no object"
 
