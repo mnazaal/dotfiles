@@ -27,4 +27,13 @@
 # OneDrive: no pass/gnupg exports needed -- the abraunegg client keeps its own
 # refresh token under ~/.config/onedrive. Runs one --sync pass and exits.
 */15 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/onedrive.lock" -c "$HOME/.local/scripts/onedrive-cron" >> "$HOME/.local/state/onedrive-cron.log" 2>&1'
+# Off-machine copy of ~/org, which otherwise exists only on this disk (Dropbox
+# sync is off). One-way mirror into the OneDrive tree; the */15 OneDrive job
+# uploads it, and OneDrive's version history and recycle bin are what make the
+# --delete recoverable. Runs at :07 so the :15 sync picks it up. The README.org
+# check stops an empty or unmounted ~/org from mirroring as "delete everything".
+# Compared by content, never by time: the OneDrive client restamps the copy's
+# mtimes, so -a saw every file as changed and rewrote all ~3000 hourly.
+# No date format here: cron treats an unescaped percent sign as a newline.
+7 * * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" "$HOME/sync/Backup/org" && { if [ -f "$HOME/org/README.org" ]; then /usr/bin/flock -xn "$HOME/.cache/org-backup.lock" /usr/bin/rsync -rlpD --checksum --delete "$HOME/org/" "$HOME/sync/Backup/org/"; else echo "$(date -Is) org-backup: $HOME/org/README.org missing, skipped"; fi; } >> "$HOME/.local/state/org-backup.log" 2>&1'
 41 5 * * * /bin/sh -c 'mkdir -p "$HOME/.cache" "$HOME/.local/state" && /usr/bin/flock -xn "$HOME/.cache/pdf-recompress.lock" -c "$HOME/.local/scripts/pdf-recompress && $HOME/.local/scripts/pdf-recompress prune 14" >> "$HOME/.local/state/pdf-recompress.log" 2>&1'
