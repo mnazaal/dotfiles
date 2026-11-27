@@ -27,6 +27,12 @@ that would settle the question.
 - Every finding is advisory. Nothing here blocks a commit.
 - Scale depth to blast radius, not to diff size: a two-line change to a loss, a
   mask, or a metric outranks a hundred lines of plotting.
+- Review every file in the change. On a large change a reviewer samples
+  without saying so; the coverage list in Output makes a skipped file visible.
+- Past about 15 changed files, one reader starts skimming. Split the files into
+  batches of at most 8, keeping a directory together, and give each batch to a
+  fresh reviewer. Merge their coverage lists, and re-send any file no reviewer
+  listed, once, in batches of the same size.
 
 ## Read the diff for
 
@@ -96,13 +102,25 @@ The exclusion list is what keeps the output short enough to stay read.
 
 ```
 <severity: critical | warning | note>  <file:line>
+Quote: <the flagged line, copied verbatim from the file>
 <what is wrong, one sentence>
 Settles it: <the single command, probe, or file to read>
 ```
 
+The quote is the position check: if it does not match the file at that line,
+the finding points at the wrong place. For something missing, quote the line
+where it belongs.
+
+End with one coverage line per file in the change:
+
+```
+Coverage: <reviewed> of <files>
+- <file>: reviewed | skipped — <reason>
+```
+
 If nothing meets the bar, say the diff looks sound and
 name what you checked — an all-nits review is evidence the change is fine, not
-a reason to promote a nit.
+a reason to promote a nit. "Looks sound" needs every file in the coverage list.
 
 ## Boundary
 
